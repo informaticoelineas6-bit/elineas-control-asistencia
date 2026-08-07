@@ -29,11 +29,19 @@ packages/
 - **specs** evita que el path o el shape de una respuesta se desincronicen
   entre backend y frontend: ambos importan el mismo objeto.
 
+## Docker
+
+Cada app tiene su propio `Dockerfile` (multi-stage: `dev` con hot reload,
+`prod` con el build final), pero el contexto de build de ambos es la RAÍZ del
+monorepo — necesitan `packages/`. `docker-compose.yml` (dev) y
+`docker-compose.prod.yml` (servidor) están en la raíz, no dentro de cada app.
+Detalle completo en [DEPLOY.md](../../DEPLOY.md).
+
 ## Comunicación entre apps
 
 En desarrollo:
 
-- `frontend` corre en `http://localhost:3000`.
+- `frontend` corre en `http://localhost:3004`.
 - `backend` corre en `http://localhost:3001`.
 
 El frontend llama al backend con `fetch` (`credentials: "include"`) usando

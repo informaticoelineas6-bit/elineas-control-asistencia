@@ -1,6 +1,6 @@
 import { betterAuth } from "better-auth";
 
-const frontendUrl = process.env.FRONTEND_URL ?? "http://localhost:3000";
+const frontendUrl = process.env.FRONTEND_URL ?? "http://localhost:3004";
 
 export const auth = betterAuth({
 	emailAndPassword: {

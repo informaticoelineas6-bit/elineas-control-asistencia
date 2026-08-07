@@ -1,0 +1,88 @@
+# Desarrollo: Postgres propio (imagen oficial, no se construye nada a mano) +
+# backend (Hono, hot reload con `bun --hot`) + frontend (TanStack Start, hot
+# reload con Vite). Todo se construye desde la raíz del monorepo para poder
+# compartir `packages/`.
+#
+#   cp .env.example .env
+#   docker compose up -d --build
+#
+#   frontend → http://localhost:3004
+#   backend  → http://localhost:3001
+services:
+  postgres:
+    image: postgres:16-alpine
+    container_name: elineas-control-asistencia-postgres
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER:-elineas}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-elineas}
+      POSTGRES_DB: ${POSTGRES_DB:-elineas_control_asistencia}
+    ports:
+      # Publicado solo para conectar herramientas de GUI (psql, DBeaver...);
+      # el backend habla con este servicio por su nombre (`postgres`) en la
+      # red interna de compose, no por este puerto.
+      - "${POSTGRES_HOST_PORT:-5434}:5432"
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test:
+        [
+          "CMD-SHELL",
+          "pg_isready -U ${POSTGRES_USER:-elineas} -d ${POSTGRES_DB:-elineas_control_asistencia}",
+        ]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+
+  backend:
+    build:
+      context: .
+      dockerfile: apps/backend/Dockerfile
+      target: dev
+    image: elineas-control-asistencia-backend:dev
+    container_name: elineas-control-asistencia-backend
+    restart: unless-stopped
+    ports:
+      - "3001:3001"
+    env_file:
+      - apps/backend/.env.local
+    environment:
+      # Sobrescribe lo que diga `.env.local`: dentro de compose, Postgres se
+      # alcanza por el nombre del servicio, no por `localhost`.
+      DATABASE_URL: postgres://${POSTGRES_USER:-elineas}:${POSTGRES_PASSWORD:-elineas}@postgres:5432/${POSTGRES_DB:-elineas_control_asistencia}
+    volumes:
+      # Solo el código fuente se monta (recarga en caliente); node_modules,
+      # package.json, etc. quedan tal como los deja la imagen. A propósito NO
+      # se monta la raíz completa (`.:/app`): un volumen anónimo anidado
+      # bajo un bind mount así le borró el contenido a `packages/specs` en
+      # este mismo entorno (Docker sobre WSL2) — ver DEPLOY.md.
+      - ./apps/backend/src:/app/apps/backend/src
+      - ./packages/validations/src:/app/packages/validations/src
+      - ./packages/specs/src:/app/packages/specs/src
+    depends_on:
+      postgres:
+        condition: service_healthy
+
+  frontend:
+    build:
+      context: .
+      dockerfile: apps/frontend/Dockerfile
+      target: dev
+    image: elineas-control-asistencia-frontend:dev
+    container_name: elineas-control-asistencia-frontend
+    restart: unless-stopped
+    ports:
+      - "3004:3004"
+    env_file:
+      - apps/frontend/.env.local
+    volumes:
+      # Ídem: solo código fuente, sin bind mount de la raíz (ver comentario
+      # en el servicio `backend`).
+      - ./apps/frontend/src:/app/apps/frontend/src
+      - ./packages/validations/src:/app/packages/validations/src
+      - ./packages/specs/src:/app/packages/specs/src
+    depends_on:
+      - backend
+
+volumes:
+  pgdata:

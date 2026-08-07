@@ -7,7 +7,7 @@
     "dev": "bun run --filter './apps/*' dev",
     "dev:backend": "bun run --filter backend dev",
     "dev:frontend": "bun run --filter frontend dev",
-    "build": "bun run --filter './apps/*' build",
+    "build": "bun run --filter frontend build",
     "format": "biome format",
     "lint": "biome lint",
     "check": "biome check",

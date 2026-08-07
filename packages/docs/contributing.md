@@ -1,5 +1,9 @@
 # Levantar el proyecto en local
 
+> Esta guía es para correr las apps directo con Bun en el host. Si prefieres
+> Docker (incluye un Postgres propio, sin instalar nada más), ver
+> [DEPLOY.md](../../DEPLOY.md).
+
 ## Requisitos
 
 - [Bun](https://bun.sh) instalado.
@@ -19,10 +23,10 @@ de una sola vez gracias a los workspaces de Bun.
 - `apps/backend/.env.local`
 
   ```
-  DATABASE_URL=postgresql://usuario:password@localhost:5432/mi_bd
+  DATABASE_URL=postgresql://usuario:password@localhost:5434/mi_bd
   BETTER_AUTH_URL=http://localhost:3001
   BETTER_AUTH_SECRET=  # bunx --bun @better-auth/cli secret
-  FRONTEND_URL=http://localhost:3000
+  FRONTEND_URL=http://localhost:3004
   PORT=3001
   ```
 
@@ -37,7 +41,7 @@ de una sola vez gracias a los workspaces de Bun.
 ```bash
 bun run dev            # backend + frontend en paralelo
 bun run dev:backend    # solo backend (http://localhost:3001)
-bun run dev:frontend   # solo frontend (http://localhost:3000)
+bun run dev:frontend   # solo frontend (http://localhost:3004)
 ```
 
 ## Base de datos

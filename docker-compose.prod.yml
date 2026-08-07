@@ -1,0 +1,85 @@
+# Producción: backend y frontend ya construidos (sin bind mounts, sin hot
+# reload). Postgres es EXTERNO — un contenedor YA EXISTENTE en el servidor,
+# gestionado por el proyecto `elineas`, no por este compose — igual que en
+# elineas-monorepo / elineas-auth (ver DEPLOY.md).
+#
+#   docker compose -f docker-compose.prod.yml up -d --build
+#
+# Puertos publicados solo en 127.0.0.1: pon un reverse proxy con TLS delante.
+services:
+  backend:
+    build:
+      context: .
+      dockerfile: apps/backend/Dockerfile
+      target: prod
+    image: elineas-control-asistencia-backend:1.0.0
+    container_name: elineas-control-asistencia-backend
+    restart: unless-stopped
+    env_file:
+      - apps/backend/.env.production
+    environment:
+      PORT: 3001
+      # Postgres externo ya existente en el servidor (no lo levanta este
+      # compose). POSTGRES_HOST es el container_name (o alias de red) de ese
+      # contenedor en `elineas-db`. Nombre de base fijado aquí (no en el
+      # .env): esta app tiene su propia base "elineas_control_asistencia",
+      # creada una sola vez a mano (ver DEPLOY.md § 1).
+      DATABASE_URL: postgres://${POSTGRES_USER:?falta POSTGRES_USER}:${POSTGRES_PASSWORD:?falta POSTGRES_PASSWORD}@${POSTGRES_HOST:?falta POSTGRES_HOST}:${POSTGRES_PORT:-5432}/elineas_control_asistencia
+    ports:
+      - "127.0.0.1:${BACKEND_PORT:-3001}:3001"
+    healthcheck:
+      test:
+        [
+          "CMD",
+          "bun",
+          "-e",
+          "await fetch('http://localhost:3001/api/health').then(r=>process.exit(r.ok?0:1)).catch(()=>process.exit(1))",
+        ]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+      start_period: 10s
+    logging:
+      driver: json-file
+      options:
+        max-size: "10m"
+        max-file: "5"
+    networks:
+      - elineas-db
+
+  frontend:
+    build:
+      context: .
+      dockerfile: apps/frontend/Dockerfile
+      target: prod
+      args:
+        # Se incrusta en el bundle del cliente en build-time (ver Dockerfile):
+        # cambiar este valor exige reconstruir la imagen.
+        VITE_BACKEND_URL: ${VITE_BACKEND_URL:?falta VITE_BACKEND_URL}
+    image: elineas-control-asistencia-frontend:1.0.0
+    container_name: elineas-control-asistencia-frontend
+    restart: unless-stopped
+    environment:
+      NODE_ENV: production
+    ports:
+      - "127.0.0.1:${FRONTEND_PORT:-3004}:3004"
+    healthcheck:
+      test:
+        [
+          "CMD-SHELL",
+          "wget -q -O /dev/null http://localhost:3004/ || exit 1",
+        ]
+      interval: 10s
+      timeout: 5s
+      retries: 3
+      start_period: 10s
+    logging:
+      driver: json-file
+      options:
+        max-size: "10m"
+        max-file: "5"
+
+networks:
+  elineas-db:
+    name: elineas_default
+    external: true

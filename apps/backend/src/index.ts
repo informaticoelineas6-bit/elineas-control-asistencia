@@ -3,7 +3,7 @@ import { cors } from "hono/cors";
 import { auth } from "#/lib/auth";
 import { todos } from "#/routes/todos";
 
-const frontendUrl = process.env.FRONTEND_URL ?? "http://localhost:3000";
+const frontendUrl = process.env.FRONTEND_URL ?? "http://localhost:3004";
 
 const app = new Hono();
 
@@ -27,5 +27,9 @@ const port = Number(process.env.PORT ?? 3001);
 
 export default {
 	port,
+	// Explícito: dentro de un contenedor hay que escuchar en todas las
+	// interfaces, no solo en loopback, para que el mapeo de puertos de Docker
+	// pueda alcanzarlo.
+	hostname: "0.0.0.0",
 	fetch: app.fetch,
 };

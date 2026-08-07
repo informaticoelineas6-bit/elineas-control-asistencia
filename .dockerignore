@@ -1,0 +1,32 @@
+# El contexto de build es la raíz del monorepo; que se mantenga chico y sin secretos.
+.git
+.gitignore
+node_modules
+**/node_modules
+
+# Artefactos de build locales — cada imagen los genera de cero.
+**/dist
+**/dist-ssr
+**/.output
+**/.nitro
+**/.tanstack
+**/.vinxi
+**/*.tsbuildinfo
+
+# Secretos — se pasan en runtime vía `env_file` / build args, nunca se hornean en la imagen.
+.env
+.env.*
+**/.env
+**/.env.*
+!**/.env.example
+
+# Tests y docs no hacen falta para correr las apps.
+**/*.test.ts
+**/*.md
+!apps/*/README.md
+!packages/*/README.md
+
+# Editor / tooling
+.vscode
+.idea
+*.local
