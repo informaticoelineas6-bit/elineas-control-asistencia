@@ -63,10 +63,11 @@ apuntando a `VITE_BACKEND_URL`; no ejecuta lógica de auth en el servidor.
 > — hoy ningún loader lo hace, todo el estado de sesión se lee en cliente
 > con `authClient.useSession()`.
 
-> **Pendiente:** existe documentación de un Identity Server externo de
-> Elineas ([identity-server-usage.md](./identity-server-usage.md)) que
-> propone autenticar contra ese servicio (JWT + roles por sistema) en vez
-> de manejar email/password localmente. `apps/backend` hoy sigue usando
-> better-auth local tal como estaba antes de este reordenamiento a
-> monorepo — migrar a ese Identity Server es trabajo aparte, no asumido
-> aquí.
+> **Decidido, pendiente de implementar:** la autenticación pasa al
+> **Identity Server de Elineas** ([identity-server-usage.md](./identity-server-usage.md)):
+> JWT verificado contra su JWKS + roles por sistema, y **better-auth se
+> retira**. Lo que hay hoy en `apps/backend/src/lib/auth.ts` es el
+> andamiaje previo a esa decisión. El contrato completo —`systemSlug`,
+> custodia de tokens, autorización y su impacto en perfiles y roles— está
+> en [specs/00-migracion-datos-e-identidad.md](./specs/00-migracion-datos-e-identidad.md)
+> Parte C.
