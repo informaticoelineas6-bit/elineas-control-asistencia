@@ -2,7 +2,7 @@
 
 > **Estado:** ❌ no iniciado. **Es la spec cero: condiciona a todas las demás.**
 > **Origen:** decisión de proyecto (no viene de `old-docs.md`).
-> **Referencia normativa de identidad:** [identity-server-usage.md](../identity-server-usage.md).
+> **Referencia normativa de identidad:** [identity-server-usage.md](../docs/identity-server-usage.md).
 > **Relacionada con:** [21-migracion-desde-legacy](./21-migracion-desde-legacy.md) (el detalle
 > tabla por tabla vive allí), [02](./02-usuarios-y-perfiles.md), [03](./03-roles-y-autorizacion.md),
 > [04](./04-autenticacion.md).
@@ -12,7 +12,7 @@ Dos decisiones ya tomadas que dejan de ser discutibles y pasan a ser requisitos:
 1. **La base de datos deja Supabase y pasa al contenedor de PostgreSQL del monorepo.**
 2. **Todo lo relativo a usuarios, roles, autenticación y autorización se rige por el
    Identity Server de Elineas** (`elineas auth`), según
-   [identity-server-usage.md](../identity-server-usage.md). **better-auth sale del proyecto.**
+   [identity-server-usage.md](../docs/identity-server-usage.md). **better-auth sale del proyecto.**
 
 ---
 
@@ -26,7 +26,7 @@ Dos decisiones ya tomadas que dejan de ser discutibles y pasan a ser requisitos:
 | Producción | Contenedor de PostgreSQL **compartido de Elineas**, alcanzado por la red externa `elineas-db`; base `elineas_control_asistencia` | `docker-compose.prod.yml` |
 
 El backend habla con él por `DATABASE_URL` y es el **único** que lo toca: el frontend nunca
-accede a la base ([architecture.md](../architecture.md)).
+accede a la base ([architecture.md](../docs/architecture.md)).
 
 > ⚠️ En producción la instancia de PostgreSQL es **compartida con otros sistemas de Elineas**,
 > igual que lo era la de Supabase (hallazgo H-2). La diferencia es que ahora la separación es
@@ -39,7 +39,7 @@ accede a la base ([architecture.md](../architecture.md)).
 | Postgres gestionado | Contenedor `postgres` / instancia de Elineas | esta |
 | **Auth** | **Identity Server de Elineas** | Parte B |
 | **RLS** (autoridad real de permisos) | **Nada equivalente**: la autorización pasa a los handlers de Hono | [03](./03-roles-y-autorizacion.md) §6 |
-| PostgREST (`supabase.from(...)` desde el cliente) | API HTTP tipada con contratos en `packages/specs` | [api-conventions.md](../api-conventions.md) |
+| PostgREST (`supabase.from(...)` desde el cliente) | API HTTP tipada con contratos en `packages/specs` | [api-conventions.md](../docs/api-conventions.md) |
 | Funciones SQL y triggers | Servicios de dominio en TypeScript | [21](./21-migracion-desde-legacy.md) §2 |
 | Edge Functions (Deno, 8) | Rutas de Hono + procesos programados | [16](./16-reporteria-mensual.md), [19](./19-panel-superadmin.md) |
 | Storage (`monthly-reports`, `app-releases`) | **Por decidir** (§A.5) | [16](./16-reporteria-mensual.md), [20](./20-app-movil-y-distribucion.md) |
@@ -218,7 +218,7 @@ Acompañamiento:
 
 # Parte C — Identidad: Identity Server de Elineas
 
-> **Fuente normativa:** [identity-server-usage.md](../identity-server-usage.md).
+> **Fuente normativa:** [identity-server-usage.md](../docs/identity-server-usage.md).
 > Esta sección fija cómo se aplica a este producto; ante cualquier diferencia, manda el
 > documento de integración.
 
@@ -371,7 +371,7 @@ naturaleza**: deja de crear cuentas y pasa a completar perfiles.
 
 1. **¿Quién habla con el IS: el backend de Hono o las funciones de servidor de TanStack
    Start?** La documentación trae ejemplos de ambos. Coherente con
-   [architecture.md](../architecture.md) (el backend es dueño de la autenticación) →
+   [architecture.md](../docs/architecture.md) (el backend es dueño de la autenticación) →
    **recomendación: Hono**. Pero implica cookies cross-origin entre `:3004` y `:3001`, que ya
    obligaron a `sameSite: "none"`.
 2. **Cookies httpOnly y app móvil.** En un WebView o cliente nativo el patrón de cookies no

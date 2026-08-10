@@ -1,7 +1,7 @@
 # Specs — Control de Asistencia ELINEAS
 
 Especificaciones funcionales del sistema, una por funcionalidad. Salen de trocear
-[`../old-docs.md`](../old-docs.md) — el mapa del sistema legacy (React + Vite + Supabase) —
+[`../old-docs.md`](../docs/old-docs.md) — el mapa del sistema legacy (React + Vite + Supabase) —
 en unidades que se puedan leer, corregir y construir por separado sobre el monorepo nuevo
 (Hono + Drizzle + TanStack Start).
 
@@ -127,7 +127,7 @@ construye todo lo demás y la 21 condiciona el modelo de datos.
 
 - **La base de datos deja Supabase** y pasa al contenedor de PostgreSQL del monorepo.
 - **Usuarios, roles, autenticación y autorización se rigen por el Identity Server de Elineas**
-  ([identity-server-usage.md](../identity-server-usage.md)); **better-auth se retira**.
+  ([identity-server-usage.md](../docs/identity-server-usage.md)); **better-auth se retira**.
 - **El alta de usuarios se hace en el Identity Server**, no en esta aplicación — ni siquiera
   llamando a su API. Aquí sólo se completa el perfil de negocio.
 - **Un perfil desactivado no puede autenticarse aquí**: el login se rechaza aunque las

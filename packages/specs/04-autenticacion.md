@@ -4,7 +4,7 @@
 > **Estado en el sistema legacy:** ✅ implementado (Supabase Auth).
 > **Estado en el monorepo nuevo:** ⚠️ hay better-auth en `apps/backend/src/lib/auth.ts`, **que se retira**: la autenticación pasa al Identity Server de Elineas.
 > **Normativo:** [00-migracion-datos-e-identidad](./00-migracion-datos-e-identidad.md) Parte C
-> y [identity-server-usage.md](../identity-server-usage.md). Ante cualquier diferencia, mandan esos dos.
+> y [identity-server-usage.md](../docs/identity-server-usage.md). Ante cualquier diferencia, mandan esos dos.
 > **Depende de:** [02-usuarios-y-perfiles](./02-usuarios-y-perfiles.md), [03-roles-y-autorizacion](./03-roles-y-autorizacion.md).
 
 ---
