@@ -1,24 +1,44 @@
-import { todosSpec } from "@elineas/specs";
-import type { CreateTodoInput } from "@elineas/validations";
-
 const backendUrl = import.meta.env.VITE_BACKEND_URL;
 
-export async function listTodos() {
-	const res = await fetch(`${backendUrl}${todosSpec.list.path}`, {
-		credentials: "include",
-	});
-	if (!res.ok) throw new Error("No se pudieron obtener las tareas");
-	return todosSpec.list.response.parse(await res.json());
+export class ApiError extends Error {
+	constructor(
+		readonly status: number,
+		message: string,
+	) {
+		super(message);
+		this.name = "ApiError";
+	}
 }
 
-export async function createTodo(input: CreateTodoInput) {
-	const body = todosSpec.create.body.parse(input);
-	const res = await fetch(`${backendUrl}${todosSpec.create.path}`, {
-		method: todosSpec.create.method,
-		headers: { "Content-Type": "application/json" },
+/**
+ * Llamada al backend con las cookies de sesión incluidas.
+ *
+ * `credentials: "include"` es imprescindible: los tokens del Identity Server
+ * viven en cookies httpOnly del origen del backend y el JavaScript de esta app
+ * no puede —ni debe— leerlos (RN-00.36).
+ */
+export async function apiFetch(
+	path: string,
+	init: RequestInit = {},
+): Promise<Response> {
+	return fetch(`${backendUrl}${path}`, {
+		...init,
 		credentials: "include",
-		body: JSON.stringify(body),
+		headers: {
+			...(init.body ? { "Content-Type": "application/json" } : {}),
+			...init.headers,
+		},
 	});
-	if (!res.ok) throw new Error("No se pudo crear la tarea");
-	return todosSpec.create.response.parse(await res.json());
+}
+
+/** Lanza `ApiError` con el mensaje que manda el backend, no uno genérico. */
+export async function apiError(res: Response): Promise<ApiError> {
+	let message = "No se pudo completar la operación.";
+	try {
+		const body = (await res.json()) as { error?: string };
+		if (body.error) message = body.error;
+	} catch {
+		// respuesta sin cuerpo JSON: nos quedamos con el mensaje por defecto
+	}
+	return new ApiError(res.status, message);
 }
