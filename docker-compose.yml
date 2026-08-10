@@ -19,8 +19,9 @@ services:
       POSTGRES_DB: ${POSTGRES_DB:-elineas_control_asistencia}
     ports:
       # Publicado solo para conectar herramientas de GUI (psql, DBeaver...);
-      # el backend habla con este servicio por su nombre (`postgres`) en la
-      # red interna de compose, no por este puerto.
+      # el backend habla con este servicio por su `container_name` en la red
+      # interna de compose, no por este puerto (ver por qué en el comentario
+      # de DATABASE_URL más abajo).
       - "${POSTGRES_HOST_PORT:-5434}:5432"
     volumes:
       - pgdata:/var/lib/postgresql/data
@@ -48,11 +49,21 @@ services:
       - apps/backend/.env.local
     environment:
       # Sobrescribe lo que diga `.env.local`: dentro de compose, Postgres se
-      # alcanza por el nombre del servicio, no por `localhost`.
-      DATABASE_URL: postgres://${POSTGRES_USER:-elineas}:${POSTGRES_PASSWORD:-elineas}@postgres:5432/${POSTGRES_DB:-elineas_control_asistencia}
-      # Ídem con el Identity Server: por nombre de contenedor sobre su propia
-      # red, no por `localhost` (que dentro del contenedor es él mismo) ni por
-      # `host.docker.internal` (que sale al gateway del host y se NATea).
+      # alcanza por nombre, no por `localhost`.
+      #
+      # ⚠️ Por `container_name` (elineas-control-asistencia-postgres), NUNCA
+      # por el nombre corto del servicio (`postgres`): este contenedor está
+      # unido a DOS redes (la propia y la del Identity Server, para llegar a
+      # `elineas-auth-api`), y el compose de ese otro proyecto también tiene
+      # un servicio llamado `postgres` con ese mismo alias DNS en su red. Con
+      # el nombre corto, la resolución entre ambas redes es ambigua y puede
+      # caer en el Postgres equivocado — pasó exactamente eso: el backend
+      # conectaba a veces al Postgres del IS, que no tiene esta base, y el
+      # login fallaba con 500 ("database elineas_control_asistencia does not
+      # exist"). El `container_name` es único entre ambas redes.
+      DATABASE_URL: postgres://${POSTGRES_USER:-elineas}:${POSTGRES_PASSWORD:-elineas}@elineas-control-asistencia-postgres:5432/${POSTGRES_DB:-elineas_control_asistencia}
+      # Mismo motivo en sentido inverso: por el `container_name` del IS, no
+      # por su nombre de servicio corto (que en su propio compose es `api`).
       AUTH_API_URL: http://elineas-auth-api:8081
     networks:
       - default
