@@ -54,11 +54,11 @@ services:
       # Solo el código fuente se monta (recarga en caliente); node_modules,
       # package.json, etc. quedan tal como los deja la imagen. A propósito NO
       # se monta la raíz completa (`.:/app`): un volumen anónimo anidado
-      # bajo un bind mount así le borró el contenido a `packages/specs` en
+      # bajo un bind mount así le borró el contenido a `packages/contracts` en
       # este mismo entorno (Docker sobre WSL2) — ver DEPLOY.md.
       - ./apps/backend/src:/app/apps/backend/src
       - ./packages/validations/src:/app/packages/validations/src
-      - ./packages/specs/src:/app/packages/specs/src
+      - ./packages/contracts/src:/app/packages/contracts/src
     depends_on:
       postgres:
         condition: service_healthy
@@ -80,7 +80,7 @@ services:
       # en el servicio `backend`).
       - ./apps/frontend/src:/app/apps/frontend/src
       - ./packages/validations/src:/app/packages/validations/src
-      - ./packages/specs/src:/app/packages/specs/src
+      - ./packages/contracts/src:/app/packages/contracts/src
     depends_on:
       - backend
 

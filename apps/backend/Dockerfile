@@ -22,7 +22,7 @@ COPY package.json bun.lock tsconfig.base.json ./
 COPY apps/backend/package.json ./apps/backend/
 COPY apps/frontend/package.json ./apps/frontend/
 COPY packages/validations/package.json ./packages/validations/
-COPY packages/specs/package.json ./packages/specs/
+COPY packages/contracts/package.json ./packages/contracts/
 COPY packages/docs/package.json ./packages/docs/
 RUN --mount=type=cache,id=bun-install-cache,target=/root/.bun/install/cache \
     bun install --frozen-lockfile
@@ -41,7 +41,7 @@ COPY package.json bun.lock tsconfig.base.json ./
 COPY apps/backend/package.json ./apps/backend/
 COPY apps/frontend/package.json ./apps/frontend/
 COPY packages/validations/package.json ./packages/validations/
-COPY packages/specs/package.json ./packages/specs/
+COPY packages/contracts/package.json ./packages/contracts/
 COPY packages/docs/package.json ./packages/docs/
 RUN --mount=type=cache,id=bun-install-cache,target=/root/.bun/install/cache \
     bun install --frozen-lockfile --production
@@ -53,10 +53,10 @@ ENV NODE_ENV=production
 COPY --from=prod-deps /app/node_modules ./node_modules
 COPY --from=prod-deps /app/apps/backend/node_modules ./apps/backend/node_modules
 COPY --from=prod-deps /app/packages/validations/node_modules ./packages/validations/node_modules
-COPY --from=prod-deps /app/packages/specs/node_modules ./packages/specs/node_modules
+COPY --from=prod-deps /app/packages/contracts/node_modules ./packages/contracts/node_modules
 COPY package.json bun.lock tsconfig.base.json ./
 COPY packages/validations ./packages/validations
-COPY packages/specs ./packages/specs
+COPY packages/contracts ./packages/contracts
 COPY apps/backend ./apps/backend
 WORKDIR /app/apps/backend
 EXPOSE 3001

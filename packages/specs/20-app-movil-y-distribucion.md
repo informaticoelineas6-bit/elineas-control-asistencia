@@ -78,7 +78,7 @@ Se genera un build estático del frontend y se empaqueta dentro del APK.
 
 ### (d) React Native / Expo — cliente propio contra la misma API
 
-Aplicación nativa de verdad, compartiendo con la web sólo los contratos de `packages/specs`
+Aplicación nativa de verdad, compartiendo con la web sólo los contratos de `packages/contracts`
 y los esquemas de `packages/validations`.
 
 - **A favor:** **resuelve de raíz la deuda del punto 77** — geolocalización en segundo plano

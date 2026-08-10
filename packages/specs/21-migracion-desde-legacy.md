@@ -18,7 +18,7 @@
 | Autorización | RLS en Postgres (autoridad real) + guard de cliente | **Sólo capa de aplicación** salvo que se decida reimplementar RLS |
 | Lógica de negocio | Repartida entre hooks de React, funciones SQL, triggers y edge functions | Servicios de dominio en el backend |
 | Validación | Ad hoc | Zod compartido (`packages/validations`) |
-| Contratos | Ninguno (cliente hablando directo a la base) | `packages/specs` |
+| Contratos | Ninguno (cliente hablando directo a la base) | `packages/contracts` |
 | Móvil | Capacitor sobre la SPA | Por decidir ([20](./20-app-movil-y-distribucion.md)) |
 | Almacenamiento | Buckets de Supabase (`monthly-reports`, `app-releases`) | Por decidir |
 

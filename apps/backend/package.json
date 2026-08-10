@@ -16,7 +16,7 @@
     "db:studio": "drizzle-kit studio"
   },
   "dependencies": {
-    "@elineas/specs": "workspace:*",
+    "@elineas/contracts": "workspace:*",
     "@elineas/validations": "workspace:*",
     "@hono/zod-validator": "latest",
     "better-auth": "^1.5.3",

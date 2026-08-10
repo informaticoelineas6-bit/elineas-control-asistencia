@@ -7,9 +7,9 @@ frontend.
    agrégalo en `packages/validations/src/<entidad>.ts` con Zod y expórtalo
    desde `packages/validations/src/index.ts`.
 
-2. **Spec** — describe el endpoint en `packages/specs/src/<recurso>.ts`:
+2. **Spec** — describe el endpoint en `packages/contracts/src/<recurso>.ts`:
    `method`, `path` y los esquemas `body`/`response` que importaste de
-   `@elineas/validations`. Exporta el spec desde `packages/specs/src/index.ts`.
+   `@elineas/validations`. Exporta el spec desde `packages/contracts/src/index.ts`.
 
    ```ts
    export const usersSpec = {

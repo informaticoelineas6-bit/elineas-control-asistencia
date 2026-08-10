@@ -39,7 +39,7 @@ accede a la base ([architecture.md](../docs/architecture.md)).
 | Postgres gestionado | Contenedor `postgres` / instancia de Elineas | esta |
 | **Auth** | **Identity Server de Elineas** | Parte B |
 | **RLS** (autoridad real de permisos) | **Nada equivalente**: la autorización pasa a los handlers de Hono | [03](./03-roles-y-autorizacion.md) §6 |
-| PostgREST (`supabase.from(...)` desde el cliente) | API HTTP tipada con contratos en `packages/specs` | [api-conventions.md](../docs/api-conventions.md) |
+| PostgREST (`supabase.from(...)` desde el cliente) | API HTTP tipada con contratos en `packages/contracts` | [api-conventions.md](../docs/api-conventions.md) |
 | Funciones SQL y triggers | Servicios de dominio en TypeScript | [21](./21-migracion-desde-legacy.md) §2 |
 | Edge Functions (Deno, 8) | Rutas de Hono + procesos programados | [16](./16-reporteria-mensual.md), [19](./19-panel-superadmin.md) |
 | Storage (`monthly-reports`, `app-releases`) | **Por decidir** (§A.5) | [16](./16-reporteria-mensual.md), [20](./20-app-movil-y-distribucion.md) |

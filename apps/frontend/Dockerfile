@@ -22,7 +22,7 @@ COPY package.json bun.lock tsconfig.base.json ./
 COPY apps/backend/package.json ./apps/backend/
 COPY apps/frontend/package.json ./apps/frontend/
 COPY packages/validations/package.json ./packages/validations/
-COPY packages/specs/package.json ./packages/specs/
+COPY packages/contracts/package.json ./packages/contracts/
 COPY packages/docs/package.json ./packages/docs/
 RUN --mount=type=cache,id=bun-install-cache,target=/root/.bun/install/cache \
     bun install --frozen-lockfile
@@ -52,7 +52,7 @@ COPY package.json bun.lock tsconfig.base.json ./
 COPY apps/backend/package.json ./apps/backend/
 COPY apps/frontend/package.json ./apps/frontend/
 COPY packages/validations/package.json ./packages/validations/
-COPY packages/specs/package.json ./packages/specs/
+COPY packages/contracts/package.json ./packages/contracts/
 COPY packages/docs/package.json ./packages/docs/
 RUN --mount=type=cache,id=bun-install-cache,target=/root/.bun/install/cache \
     bun install --frozen-lockfile --production

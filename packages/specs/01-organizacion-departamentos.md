@@ -86,7 +86,7 @@ Picker and Packer · Expedición · Transporte · Inventario · Estibadores · *
 2. Validar que no haya horarios, grupos de descanso ni responsabilidades colgando; ofrecer
    reasignación antes que borrado.
 
-## 6. API propuesta (`packages/specs`)
+## 6. API propuesta (`packages/contracts`)
 
 | Método | Path | Descripción |
 |---|---|---|

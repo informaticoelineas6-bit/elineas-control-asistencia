@@ -13,7 +13,7 @@
     "preview": "vite preview --port 3004"
   },
   "dependencies": {
-    "@elineas/specs": "workspace:*",
+    "@elineas/contracts": "workspace:*",
     "@elineas/validations": "workspace:*",
     "@tailwindcss/vite": "^4.1.18",
     "@tanstack/match-sorter-utils": "latest",
