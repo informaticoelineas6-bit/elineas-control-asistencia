@@ -15,7 +15,8 @@
     "db:migrate": "bun run --filter backend db:migrate",
     "db:push": "bun run --filter backend db:push",
     "db:pull": "bun run --filter backend db:pull",
-    "db:studio": "bun run --filter backend db:studio"
+    "db:studio": "bun run --filter backend db:studio",
+    "db:seed": "bun run --filter backend db:seed"
   },
   "devDependencies": {
     "@biomejs/biome": "2.4.5",
