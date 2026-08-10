@@ -62,8 +62,9 @@ cp apps/backend/.env.production.example apps/backend/.env.production
 #   .env                         → POSTGRES_HOST/PORT/USER/PASSWORD (los
 #                                   reales del contenedor existente),
 #                                   VITE_BACKEND_URL (URL pública del backend).
-#   apps/backend/.env.production → BETTER_AUTH_URL, FRONTEND_URL,
-#                                   BETTER_AUTH_SECRET.
+#   apps/backend/.env.production → AUTH_API_URL, SYSTEM_SLUG, FRONTEND_URL.
+#                                   Ese FRONTEND_URL debe estar además dado de
+#                                   alta en ALLOWED_ORIGIN del Identity Server.
 
 docker compose -f docker-compose.prod.yml up -d --build
 ```

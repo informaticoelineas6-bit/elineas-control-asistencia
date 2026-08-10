@@ -24,8 +24,8 @@ de una sola vez gracias a los workspaces de Bun.
 
   ```
   DATABASE_URL=postgresql://usuario:password@localhost:5434/mi_bd
-  BETTER_AUTH_URL=http://localhost:3001
-  BETTER_AUTH_SECRET=  # bunx --bun @better-auth/cli secret
+  AUTH_API_URL=https://auth.elineas.com   # Identity Server; sin esto no arranca
+  SYSTEM_SLUG=control-asistencia
   FRONTEND_URL=http://localhost:3004
   PORT=3001
   ```

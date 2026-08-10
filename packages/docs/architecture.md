@@ -5,28 +5,36 @@ Este repositorio es un monorepo administrado con **Bun workspaces**.
 ```
 apps/
   backend/     API HTTP construida con Hono. Dueña de la base de datos
-               (Drizzle + PostgreSQL) y de la autenticación (better-auth).
+               (Drizzle + PostgreSQL) y de la sesión: es quien habla con el
+               Identity Server de Elineas y custodia sus tokens.
   frontend/    Aplicación web con TanStack Start (React + SSR). Consume la
                API del backend por HTTP, no accede a la base de datos.
 packages/
-  validations/ Esquemas de Zod compartidos (entidades, inputs). Son la
-               única fuente de verdad de forma/validación de los datos.
-  specs/       Contratos de la API: para cada endpoint definen path, método
+  validations/ Esquemas de Zod compartidos (entidades, inputs) y el
+               vocabulario de roles. Son la única fuente de verdad de
+               forma/validación de los datos.
+  contracts/   Contratos de la API: para cada endpoint definen path, método
                y los esquemas de request/response de `validations`. El
                backend los usa para validar sus handlers y el frontend para
                construir llamadas tipadas.
+  specs/       Especificaciones funcionales en markdown, una por
+               funcionalidad. Son el contrato de lo que debe existir.
   docs/        Esta documentación.
 ```
+
+> Los contratos vivían en `packages/specs`; ese nombre pasó a la carpeta de
+> especificaciones funcionales, así que el paquete de código es ahora
+> `packages/contracts` (`@elineas/contracts`).
 
 ## Por qué está separado así
 
 - **backend** y **frontend** son procesos independientes, cada uno con su
   propio `dev`/`build`/deploy. El backend no sabe nada de React; el frontend
-  no sabe nada de Drizzle ni de better-auth.
+  no sabe nada de Drizzle ni de tokens.
 - **validations** evita duplicar reglas de validación: el mismo esquema Zod
   valida el body de una petición en el backend y un formulario en el
   frontend.
-- **specs** evita que el path o el shape de una respuesta se desincronicen
+- **contracts** evita que el path o el shape de una respuesta se desincronicen
   entre backend y frontend: ambos importan el mismo objeto.
 
 ## Docker
@@ -46,28 +54,42 @@ En desarrollo:
 
 El frontend llama al backend con `fetch` (`credentials: "include"`) usando
 `VITE_BACKEND_URL`. El backend habilita CORS con credenciales solo para el
-origen configurado en `FRONTEND_URL`, y better-auth usa `trustedOrigins`
-para aceptar peticiones de auth desde ese mismo origen.
+origen configurado en `FRONTEND_URL`.
 
-## Autenticación
+## Autenticación e identidad
 
-better-auth vive únicamente en `apps/backend` (`src/lib/auth.ts`) y expone
-`/api/auth/*`. El frontend solo usa `better-auth/react` (`authClient`)
-apuntando a `VITE_BACKEND_URL`; no ejecuta lógica de auth en el servidor.
+La identidad la provee el **Identity Server de Elineas**
+([identity-server-usage.md](./identity-server-usage.md)); el contrato completo
+está en [specs/00-migracion-datos-e-identidad.md](../specs/00-migracion-datos-e-identidad.md)
+Parte C. Este sistema **no almacena contraseñas ni las verifica**, y **no crea
+cuentas**: eso se hace en la consola del IS.
 
-> Nota: como el auth vive en un origen distinto al del frontend, las
-> cookies de sesión se configuran como `sameSite: "none"` + `secure: true`.
-> Si en algún momento se necesita leer la sesión durante el *server-side
-> render* del frontend (por ejemplo en un loader), hay que reenviar la
-> cabecera `cookie` de la petición entrante hacia el backend explícitamente
-> — hoy ningún loader lo hace, todo el estado de sesión se lee en cliente
-> con `authClient.useSession()`.
+Reparto en el código:
 
-> **Decidido, pendiente de implementar:** la autenticación pasa al
-> **Identity Server de Elineas** ([identity-server-usage.md](./identity-server-usage.md)):
-> JWT verificado contra su JWKS + roles por sistema, y **better-auth se
-> retira**. Lo que hay hoy en `apps/backend/src/lib/auth.ts` es el
-> andamiaje previo a esa decisión. El contrato completo —`systemSlug`,
-> custodia de tokens, autorización y su impacto en perfiles y roles— está
-> en [specs/00-migracion-datos-e-identidad.md](./specs/00-migracion-datos-e-identidad.md)
-> Parte C.
+| Pieza | Dónde |
+|---|---|
+| Cliente del IS (sign-in, sign-out, refresco de JWT, JWKS, roles) | `apps/backend/src/lib/identity.ts` — el único módulo que llama al IS |
+| Custodia de tokens en cookies httpOnly | `apps/backend/src/lib/cookies.ts` |
+| Caché de roles por sesión (TTL corto) | `apps/backend/src/lib/roles-cache.ts` |
+| Middleware de sesión, rol efectivo y ámbito | `apps/backend/src/middleware/auth.ts` |
+| Vocabulario de roles y su prioridad | `packages/validations/src/roles.ts` |
+| Guard de UI (filtrado del aside, guard de página) | `apps/frontend/src/modules/auth/` |
+
+Reglas que no se negocian:
+
+- El navegador **nunca** llama directo al IS: siempre a través del backend, que
+  es quien recibe y custodia los tokens.
+- El **session token** (larga duración) y el **JWT** (~15 min) van en cookies
+  `httpOnly`; el JavaScript del navegador no los ve.
+- El JWT se verifica **localmente** contra el JWKS del IS; no hay una llamada al
+  IS por petición.
+- El JWT **prueba identidad, no permisos**: la autorización usa siempre los
+  roles de `/api/user-roles/me`, nunca un campo del token.
+- La autorización del cliente es **UX**; cada endpoint valida rol y ámbito por
+  su cuenta.
+
+> Nota: como el backend vive en un origen distinto al del frontend, las cookies
+> son `sameSite: "none"` + `secure: true`, y por eso el estado de sesión se
+> resuelve en cliente (`GET /api/me/permissions`) y no en un loader de SSR. Si
+> algún día ambos se sirven bajo el mismo origen, esto puede volver a `lax` y
+> moverse al servidor — es la decisión abierta §C.9.1 de la spec 00.

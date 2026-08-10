@@ -4,7 +4,7 @@ Monorepo administrado con [Bun workspaces](https://bun.sh/docs/install/workspace
 
 ```
 apps/
-  backend/     API con Hono (auth con better-auth, datos con Drizzle + PostgreSQL)
+  backend/     API con Hono (identidad vía Identity Server, datos con Drizzle + PostgreSQL)
   frontend/    Web con TanStack Start (React, SSR)
 packages/
   validations/ Esquemas de Zod compartidos

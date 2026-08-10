@@ -50,6 +50,13 @@ services:
       # Sobrescribe lo que diga `.env.local`: dentro de compose, Postgres se
       # alcanza por el nombre del servicio, no por `localhost`.
       DATABASE_URL: postgres://${POSTGRES_USER:-elineas}:${POSTGRES_PASSWORD:-elineas}@postgres:5432/${POSTGRES_DB:-elineas_control_asistencia}
+      # Ídem con el Identity Server: por nombre de contenedor sobre su propia
+      # red, no por `localhost` (que dentro del contenedor es él mismo) ni por
+      # `host.docker.internal` (que sale al gateway del host y se NATea).
+      AUTH_API_URL: http://elineas-auth-api:8081
+    networks:
+      - default
+      - elineas-auth
     volumes:
       # Solo el código fuente se monta (recarga en caliente); node_modules,
       # package.json, etc. quedan tal como los deja la imagen. A propósito NO
@@ -86,3 +93,15 @@ services:
 
 volumes:
   pgdata:
+
+networks:
+  # Red por defecto de este stack: backend ↔ postgres ↔ frontend.
+  default:
+  # Red del compose de ~/dev/elineas-auth, donde vive `elineas-auth-api`. No la
+  # crea este compose: hay que levantar antes el Identity Server
+  # (`cd ~/dev/elineas-auth && docker compose up -d`) o este `up` fallará
+  # diciendo que la red no existe. Es coherente con la realidad: sin IS este
+  # backend no puede autenticar a nadie.
+  elineas-auth:
+    name: elineas-auth_default
+    external: true
