@@ -1,0 +1,1 @@
+ALTER TABLE "app_config" ALTER COLUMN "value" DROP NOT NULL;

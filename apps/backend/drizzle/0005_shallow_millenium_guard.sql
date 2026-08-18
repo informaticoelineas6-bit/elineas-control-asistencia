@@ -1,0 +1,1 @@
+ALTER TABLE "employee_compensation" ADD COLUMN "currency" text DEFAULT 'CUP' NOT NULL;
