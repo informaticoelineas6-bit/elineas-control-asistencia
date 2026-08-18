@@ -23,7 +23,7 @@ function IndexPage() {
 			return;
 		}
 		void navigate({
-			to: session.data.profile.isComplete ? "/dashboard" : "/cuenta-pendiente",
+			to: session.data.profile.isComplete ? "/dashboard" : "/pending-account",
 			replace: true,
 		});
 	}, [session.isPending, session.data, navigate]);

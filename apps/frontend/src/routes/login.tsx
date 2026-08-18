@@ -5,6 +5,7 @@ import { Button } from "#/components/ui/button.tsx";
 import { Input } from "#/components/ui/input.tsx";
 import { Label } from "#/components/ui/label.tsx";
 import { useLogin } from "#/modules/auth/session.ts";
+import { InlineError } from "#/modules/errors/inline-error.tsx";
 
 export const Route = createFileRoute("/login")({ component: LoginPage });
 
@@ -30,7 +31,7 @@ function LoginPage() {
 					// Perfil sin departamento: entra, pero a la pantalla de cuenta
 					// pendiente, no al panel (RN-00.46 / RN-02.3).
 					void navigate({
-						to: session.profile.isComplete ? "/dashboard" : "/cuenta-pendiente",
+						to: session.profile.isComplete ? "/dashboard" : "/pending-account",
 					});
 				},
 			},
@@ -85,14 +86,7 @@ function LoginPage() {
 						/>
 					</div>
 
-					{login.isError && (
-						<p
-							role="alert"
-							className="rounded-md bg-destructive/10 px-3 py-2 text-sm text-destructive"
-						>
-							{login.error.message}
-						</p>
-					)}
+					<InlineError error={login.error} />
 
 					<Button type="submit" className="w-full" disabled={login.isPending}>
 						{login.isPending ? "Entrando…" : "Entrar"}

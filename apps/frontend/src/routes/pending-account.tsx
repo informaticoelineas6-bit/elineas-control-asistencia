@@ -4,7 +4,7 @@ import { UserCog } from "lucide-react";
 import { SignOutButton } from "#/components/app-sidebar.tsx";
 import { sessionQueryOptions } from "#/modules/auth/session.ts";
 
-export const Route = createFileRoute("/cuenta-pendiente")({
+export const Route = createFileRoute("/pending-account")({
 	component: PendingAccountPage,
 });
 
@@ -45,7 +45,7 @@ function PendingAccountPage() {
 				<div className="flex justify-center gap-3">
 					<Link
 						to="/dashboard"
-						className="inline-flex h-9 items-center rounded-md border px-4 text-sm hover:bg-accent"
+						className="inline-flex h-9 items-center rounded-md border px-4 text-sm hover:bg-accent/60"
 					>
 						Reintentar
 					</Link>
