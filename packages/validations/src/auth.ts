@@ -21,6 +21,8 @@ export const sessionProfileSchema = z.object({
 	fullName: z.string(),
 	email: z.email(),
 	departmentId: z.uuid().nullable(),
+	/** Resuelto para no obligar a la UI a cruzar el catálogo de departamentos. */
+	departmentName: z.string().nullable(),
 	phone: z.string().nullable(),
 	isActive: z.boolean(),
 	/**

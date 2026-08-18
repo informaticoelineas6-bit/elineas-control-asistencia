@@ -15,8 +15,10 @@ import {
 import { refreshJwt, verifyJwt } from "#/lib/identity";
 import { getRoles } from "#/lib/roles-cache";
 import {
+	enforceGlobalManagerDepartment,
 	findOrCreateProfile,
 	getManagedDepartmentIds,
+	touchLastConnection,
 } from "#/services/profiles";
 
 /**
@@ -107,13 +109,23 @@ export const requireAuth: MiddlewareHandler = async (c, next) => {
 		});
 	}
 
+	// RN-03.6: aquí es donde este sistema conoce por fin los roles, así que aquí
+	// se aplica el departamento forzado del `global_manager`. Es idempotente: no
+	// escribe nada si el perfil ya está donde debe.
+	const scopedProfile = await enforceGlobalManagerDepartment(profile, roles);
+
+	// RN-02.7: throttlado a una escritura cada 5 minutos por perfil. Se hace aquí y
+	// no sólo en el login para que el dato signifique "última vez que estuvo", no
+	// "última vez que se autenticó".
+	await touchLastConnection(scopedProfile.id);
+
 	c.set("auth", {
 		identityUserId: claims.identityUserId,
 		sessionToken,
-		profile,
+		profile: scopedProfile,
 		roles,
 		effectiveRole,
-		managedDepartmentIds: await getManagedDepartmentIds(profile),
+		managedDepartmentIds: await getManagedDepartmentIds(scopedProfile),
 	});
 
 	await next();
