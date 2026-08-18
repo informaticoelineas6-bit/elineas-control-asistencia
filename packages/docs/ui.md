@@ -1,0 +1,1 @@
+1. Las acciones de la tabla deben ser un dropdown con botones o  enlaces.

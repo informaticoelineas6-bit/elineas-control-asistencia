@@ -34,9 +34,11 @@ available = earned − aprobados − pendientes
   entrada válido. **Confirmar** si cuentan los días de tardanza (sí), los justificados
   (¿?) y los de vacaciones (no).
 
-> ⚠️ Este modelo **no refleja la legislación laboral peruana** de vacaciones (30 días por año
-> de servicio, récord vacacional, no acumulación libre). Es una simplificación de negocio
-> aceptada. Si el requisito real es cumplimiento legal, esta spec cambia por completo.
+> ⚠️ Este modelo **no refleja ninguna legislación laboral concreta**: es una simplificación de
+> negocio heredada del legacy. La empresa opera en **Cuba**
+> ([06](./06-configuracion-global.md) §8), así que la normativa a contrastar es el Código de
+> Trabajo cubano y no la peruana que citaba antes esta nota. Si el requisito real es
+> cumplimiento legal, esta spec cambia por completo.
 > **Decisión abierta de negocio, no técnica.**
 
 ## 3. Modelo de datos

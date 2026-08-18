@@ -2,7 +2,13 @@
 
 > **Origen:** `old-docs.md` §3.6, §3.7, punto 15.
 > **Estado en el sistema legacy:** ✅ implementado (`app_config`, clave/valor JSONB).
-> **Estado en el monorepo nuevo:** ❌ no existe.
+> **Estado en el monorepo nuevo:** ✅ implementado. Tabla `app_config`, catálogo completo de §3
+> tipado con default en código (`packages/validations/src/config.ts`), caché con invalidación al
+> escribir (RN-06.7), auditoría del cambio (RN-06.3), validación cruzada del modo de salida
+> (RN-06.5), `GET`/`PATCH /api/config` restringidos a `global_manager+` (RN-06.1) y
+> `GET /api/config/public` con la lista blanca de §5. La pestaña *General* está en
+> `apps/frontend/src/modules/config/config-form.tsx`; las de horarios y sedes llegan con las
+> specs 07 y 08. Pruebas en `apps/backend/src/routes/config.test.ts`.
 > **Depende de:** [03-roles-y-autorizacion](./03-roles-y-autorizacion.md).
 > **Habilita:** casi todas las reglas de asistencia leen de aquí.
 
@@ -35,33 +41,42 @@ todas dependen de estos valores.
 
 ### 3.1 Tiempo y jornada
 
-| Clave | Tipo | Default sugerido | Consumido por |
+| Clave | Tipo | Default | Consumido por |
 |---|---|---|---|
-| `global_timezone` | string IANA | `America/Lima` (confirmar) | Todo cálculo de fecha/hora |
-| `default_work_start_time` | `HH:mm` | — | [07](./07-horarios-y-calendario.md) al crear horarios |
-| `default_work_end_time` | `HH:mm` | — | idem |
-| `late_tolerance_minutes` | int ≥ 0 | — | [09](./09-marcaje-asistencia.md) RN-09.7 |
+| `global_timezone` | string IANA | `America/Havana` | Todo cálculo de fecha/hora |
+| `default_work_start_time` | `HH:mm` \| null | `null` | [07](./07-horarios-y-calendario.md) al crear horarios |
+| `default_work_end_time` | `HH:mm` \| null | `null` | idem |
+| `late_tolerance_minutes` | int 0–240 | `0` | [09](./09-marcaje-asistencia.md) RN-09.7 |
+
+> **Criterio de los defaults.** El valor por defecto es el que hace que el sistema se comporte
+> *como si la clave no estuviera configurada* — nunca un valor plausible inventado. Una
+> tolerancia de 0 minutos o una tasa de vacaciones de 0 se notan enseguida y se corrigen; una
+> inventada se queda ahí produciendo cálculos equivocados que nadie revisa.
 
 ### 3.2 Modo de salida
 
-| Clave | Tipo | Valores | Consumido por |
-|---|---|---|---|
-| `attendance_checkout_mode` | enum | `manual` · `schedule` · `geofence_exit` | [09](./09-marcaje-asistencia.md) RN-09.13 |
-| `attendance_auto_checkout_time` | `HH:mm` | sólo si modo `schedule` | idem |
-| `attendance_geofence_exit_minutes` | int | sólo si modo `geofence_exit` | idem |
+| Clave | Tipo | Valores | Default | Consumido por |
+|---|---|---|---|---|
+| `attendance_checkout_mode` | enum | `manual` · `schedule` · `geofence_exit` | `manual` | [09](./09-marcaje-asistencia.md) RN-09.13 |
+| `attendance_auto_checkout_time` | `HH:mm` \| null | obligatoria si modo `schedule` | `null` | idem |
+| `attendance_geofence_exit_minutes` | int 1–720 \| null | obligatorio si modo `geofence_exit` | `null` | idem |
 
 ### 3.3 Descansos
 
-| Clave | Tipo | Consumido por |
-|---|---|---|
-| `rest_days_min_separation` | int (días) | [10](./10-descansos.md) RN-10.5 |
-| `rest_days_min_separation_departments` | uuid[] | acota a qué departamentos aplica la regla anterior |
+| Clave | Tipo | Default | Consumido por |
+|---|---|---|---|
+| `rest_days_min_separation` | int 0–31 (días) | `0` (regla desactivada) | [10](./10-descansos.md) RN-10.5 |
+| `rest_days_min_separation_departments` | uuid[] | `[]` | acota a qué departamentos aplica la regla anterior |
+
+> Qué significa la lista vacía sigue sin decidirse ([10](./10-descansos.md), decisión abierta 2).
+> Por eso el default de `rest_days_min_separation` es 0: con la regla desactivada la ambigüedad
+> no llega a aplicarse.
 
 ### 3.4 Vacaciones
 
-| Clave | Tipo | Consumido por |
-|---|---|---|
-| `vacation_days_per_worked_day` | number | [11](./11-vacaciones.md) RN-11.2 |
+| Clave | Tipo | Default | Consumido por |
+|---|---|---|---|
+| `vacation_days_per_worked_day` | number 0–1 | `0` (nadie acumula) | [11](./11-vacaciones.md) RN-11.2 |
 
 > ⚠️ En el legacy esta clave aparece además citada como candidata para el **divisor de
 > nómina** (punto 75), que hoy está fijo en `/30` dentro de la función SQL. Son **dos cosas
@@ -69,12 +84,18 @@ todas dependen de estos valores.
 
 ### 3.5 Reportería
 
-| Clave | Tipo | Consumido por |
-|---|---|---|
-| `include_heads_in_global_reports` | boolean | [16](./16-reporteria-mensual.md) |
-| `report_slo_error_rate_pct` | number | [16](./16-reporteria-mensual.md) §KPIs |
-| `report_slo_availability_pct` | number | idem |
-| `google_sheets_report_spreadsheet_id` | string | [16](./16-reporteria-mensual.md) §Sheets |
+| Clave | Tipo | Default | Consumido por |
+|---|---|---|---|
+| `include_heads_in_global_reports` | boolean | `true` | [16](./16-reporteria-mensual.md) |
+| `report_slo_error_rate_pct` | number 0–100 | `1` | [16](./16-reporteria-mensual.md) §KPIs |
+| `report_slo_availability_pct` | number 0–100 | `99` | idem |
+| `google_sheets_report_spreadsheet_id` | string \| null | `null` | [16](./16-reporteria-mensual.md) §Sheets |
+
+### 3.6 Ámbito
+
+| Clave | Tipo | Default | Consumido por |
+|---|---|---|---|
+| `global_manager_department_id` | uuid \| null | `null` (regla desactivada) | [03](./03-roles-y-autorizacion.md) RN-03.6 |
 
 ## 4. Reglas de negocio
 
@@ -90,13 +111,23 @@ todas dependen de estos valores.
   ([16-reporteria-mensual](./16-reporteria-mensual.md) §versiones).
 - **RN-06.5** — Validación cruzada al guardar: si `attendance_checkout_mode = schedule`,
   `attendance_auto_checkout_time` es obligatorio; si es `geofence_exit`,
-  `attendance_geofence_exit_minutes` es obligatorio y > 0.
+  `attendance_geofence_exit_minutes` es obligatorio y > 0. Se valida el resultado **efectivo**,
+  no el parche: alguien puede fijar la hora hoy y cambiar el modo mañana, y lo que tiene que
+  quedar coherente es lo guardado. La misma función (`checkoutModeIssue`) la usan el servidor y
+  el formulario, para que el aviso salga al teclear y no al recibir el 400.
 - **RN-06.6** — La zona horaria es **una sola global**, pero cada departamento tiene además
   la suya en su horario ([07](./07-horarios-y-calendario.md)). Precedencia: la del
   departamento gana; la global es el default al crear un horario nuevo. *Confirmar que este
   era el comportamiento real del legacy.* **Decisión abierta.**
 - **RN-06.7** — La configuración se cachea en el backend; una escritura invalida la caché de
-  forma inmediata para todos los procesos.
+  forma inmediata. ⚠️ Con la implementación actual la caché es **de proceso** (TTL de 30 s):
+  con una sola instancia del backend la invalidación es efectivamente inmediata, pero con
+  varias cada proceso podría servir un valor viejo durante ese TTL. Cuando haya más de una
+  instancia, esto pasa a Redis o a escuchar `NOTIFY`.
+- **RN-06.8 — Los ids de departamento se comprueban al escribir.** Un id que no existe en
+  `global_manager_department_id` o en `rest_days_min_separation_departments` dejaría la regla
+  apuntando al vacío. Y al revés: un departamento referenciado por la configuración no se puede
+  borrar ([01](./01-organizacion-departamentos.md) §3).
 
 ## 5. API propuesta
 
@@ -106,6 +137,10 @@ todas dependen de estos valores.
 | `PATCH` | `/config` | global_manager — body: mapa parcial clave→valor, validado por clave |
 | `GET` | `/config/public` | autenticado — subconjunto seguro (zona horaria, modo de salida, tolerancia) |
 
+El subconjunto público es una **lista blanca explícita** (`PUBLIC_CONFIG_KEYS`), no un "todo
+menos X": añadir una clave al catálogo no debe exponerla por descuido. Hoy son
+`global_timezone`, `late_tolerance_minutes` y las tres del modo de salida.
+
 ## 6. UI
 
 Pestaña *General* dentro de Configuración, agrupada por las secciones de §3. Cada campo con
@@ -114,13 +149,21 @@ toda la empresa.
 
 ## 7. Criterios de aceptación
 
-- [ ] Guardar `attendance_checkout_mode = schedule` sin hora falla con error de validación.
-- [ ] Una clave ausente en base devuelve el default de código.
-- [ ] Un valor con tipo inválido en base no rompe la app: cae al default y se registra.
-- [ ] Cambiar la tolerancia no altera el estado de días ya cerrados.
-- [ ] Un `department_head` recibe 403 en `GET /config`.
+- [x] Guardar `attendance_checkout_mode = schedule` sin hora falla con error de validación.
+- [x] Una clave ausente en base devuelve el default de código.
+- [x] Un valor con tipo inválido en base no rompe la app: cae al default y se registra.
+- [ ] Cambiar la tolerancia no altera el estado de días ya cerrados. *(Con la
+      [09](./09-marcaje-asistencia.md): todavía no hay días que cerrar.)*
+- [x] Un `department_head` recibe 403 en `GET /config`.
+- [x] `GET /config/public` lo lee cualquier autenticado y no devuelve ninguna clave privada.
 
 ## 8. Decisiones abiertas
+
+> **Confirmado:** `global_timezone` es `America/Havana` y la interfaz formatea fechas con
+> `es-CU`. La empresa opera en Cuba: las monedas del sueldo son CUP, MLC, TRO y CLA
+> ([02](./02-usuarios-y-perfiles.md) §6) y el Identity Server valida los teléfonos con país por
+> defecto `CU`.
+
 
 1. Precedencia real entre zona horaria global y por departamento (RN-06.6).
 2. ¿Configuración por departamento para alguna de estas claves, o sólo global?

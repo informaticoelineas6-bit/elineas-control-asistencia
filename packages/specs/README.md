@@ -48,14 +48,22 @@ Fija dos decisiones que ya no se discuten y que reescriben partes de las specs 0
 
 ### Cimientos — nada funciona sin esto
 
-| # | Spec | Estado legacy | Depende de |
-|---|---|---|---|
-| 01 | [Organización: departamentos](./01-organizacion-departamentos.md) | ✅ | — |
-| 02 | [Usuarios y perfiles](./02-usuarios-y-perfiles.md) | ✅ | 01 |
-| 03 | [Roles y autorización](./03-roles-y-autorizacion.md) | ✅ | 02 |
-| 04 | [Autenticación y sesión](./04-autenticacion.md) | ✅ | 02, 03 |
-| 05 | [Shells de interfaz y navegación](./05-shells-y-navegacion.md) | ✅ | 03, 04 |
-| 06 | [Configuración global](./06-configuracion-global.md) | ✅ | 03 |
+Los cimientos están construidos. La columna **monorepo** es lo que hay hoy en el código, no lo
+que la spec pide; cada cabecera detalla qué falta y por qué.
+
+| # | Spec | Legacy | Monorepo | Depende de |
+|---|---|---|---|---|
+| 01 | [Organización: departamentos](./01-organizacion-departamentos.md) | ✅ | ✅ | — |
+| 02 | [Usuarios y perfiles](./02-usuarios-y-perfiles.md) | ✅ | ✅ | 01 |
+| 03 | [Roles y autorización](./03-roles-y-autorizacion.md) | ✅ | ✅ | 02 |
+| 04 | [Autenticación y sesión](./04-autenticacion.md) | ✅ | ✅ | 02, 03 |
+| 05 | [Shells de interfaz y navegación](./05-shells-y-navegacion.md) | ✅ | ⚠️ | 03, 04 |
+| 06 | [Configuración global](./06-configuracion-global.md) | ✅ | ✅ | 03 |
+
+Lo único que queda abierto en los cimientos es el **EmployeeShell** de la
+[05](./05-shells-y-navegacion.md) §3: tres de sus cuatro destinos (`/clock-in`, `/my-week`,
+`/issues`) pertenecen a las specs 09 y 12, así que se construye con ellas. La regla de
+resolución de shell (§2) espera por lo mismo — hoy sólo existe un shell entre el que elegir.
 
 ### Reglas de trabajo — el marco que hace válido un marcaje
 
@@ -137,6 +145,16 @@ construye todo lo demás y la 21 condiciona el modelo de datos.
 
 Todas en [00](./00-migracion-datos-e-identidad.md).
 
+Y dos de forma:
+
+- **El código se escribe en inglés; la interfaz, en español.** Rutas incluidas: *Mi asistencia*
+  vive en `/attendance`. Los comentarios y estas specs siguen en español, porque el código
+  las cita por número de regla. Tabla completa en
+  [contributing.md §idioma](../docs/contributing.md) y
+  [05 §7](./05-shells-y-navegacion.md).
+- **El departamento de los `global_manager` se configura por id**, no por el nombre
+  "Administración" del trigger del legacy ([03](./03-roles-y-autorizacion.md) RN-03.6).
+
 ## Antes de implementar
 
 Lo que sigue abierto y bloquea a varias specs a la vez:
@@ -154,5 +172,6 @@ Lo que sigue abierto y bloquea a varias specs a la vez:
 
 Y una de negocio, no técnica, que puede reescribir una spec entera:
 
-4. **¿El modelo de vacaciones debe cumplir la normativa laboral peruana?**
-   → [11](./11-vacaciones.md) §2.
+4. **¿El modelo de vacaciones debe cumplir la normativa laboral cubana?**
+   → [11](./11-vacaciones.md) §2. *(Decía "peruana": la empresa opera en Cuba, ver
+   [06](./06-configuracion-global.md) §8.)*

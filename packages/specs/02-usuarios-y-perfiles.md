@@ -2,7 +2,12 @@
 
 > **Origen:** `old-docs.md` §3.1, puntos 4, 60, 61; hallazgo H-3.
 > **Estado en el sistema legacy:** ✅ implementado.
-> **Estado en el monorepo nuevo:** ❌ no existe el perfil de negocio.
+> **Estado en el monorepo nuevo:** ✅ implementado, salvo lo que depende de specs por
+> venir (ver §8). Código: `apps/backend/src/services/users.ts`,
+> `apps/backend/src/routes/users.ts`, `apps/backend/src/services/profiles.ts`,
+> `apps/frontend/src/routes/_authed/users.tsx`,
+> `apps/frontend/src/routes/_authed/profile.tsx`. Pruebas:
+> `apps/backend/src/routes/users.test.ts`.
 > **Normativo:** la identidad la gobierna el Identity Server de Elineas —
 > [00-migracion-datos-e-identidad](./00-migracion-datos-e-identidad.md) Parte C.
 > **Depende de:** [01-organizacion-departamentos](./01-organizacion-departamentos.md).
@@ -47,8 +52,8 @@ contrato cancelado — estados nuestros, distintos de que la cuenta exista o no 
 | `email` | text | Copia desnormalizada, se mantiene sincronizada |
 | `full_name` | text | |
 | `department_id` | uuid FK → `departments` | |
-| `phone` | text, nullable | |
-| `monthly_salary` | numeric, nullable | **Dato financiero sensible** (ver §6) |
+| `phone` | text, nullable | Validado con **la misma regla que el Identity Server**: `libphonenumber-js`, formato internacional, país por defecto `CU` en la interfaz (`packages/validations/src/phone.ts`) |
+| ~~`monthly_salary`~~ | — | **Movido a `employee_compensation`** (§6a). Ya no es columna de `profiles` |
 | `is_active` | boolean, default `true` | |
 | `deactivated_at` | timestamptz, nullable | |
 | `deactivated_by` | uuid, nullable | Quién desactivó |
@@ -118,24 +123,51 @@ Paso 2 — esta aplicación
 
 ### 5.2 Desactivación
 1. Motivo obligatorio → `is_active = false`.
-2. Se cierra su sesión activa aquí y se revoca en el IS
-   ([00](./00-migracion-datos-e-identidad.md) RN-00.38). A partir de ese momento no puede
-   volver a entrar: el login lo rechaza (RN-02.4).
+2. Se cierra su sesión activa aquí. **No se revoca en el IS**, y esto corrige lo que decía
+   antes este paso: había una contradicción con RN-02.4, que define la desactivación como una
+   baja *de este sistema* y deja explícito que la cuenta sigue sirviendo para otros sistemas de
+   Elineas. Revocar allí lo echaría de todos. **Manda RN-02.4.**
+   Su sesión aquí muere igual sin tocar el IS: el middleware rechaza a un perfil inactivo en su
+   siguiente petición y le limpia las cookies ([00](./00-migracion-datos-e-identidad.md)
+   RN-00.30), y el login posterior lo rechaza. *Además, el IS no tiene API para revocar la
+   sesión de otra persona: `sign-out` sólo revoca la propia.*
 3. Auditoría.
 4. Reactivar devuelve el acceso sin tocar nada en el IS.
+
+- **RN-02.13 — Para borrar hay que desactivar primero.** El borrado real exige `is_active =
+  false`. No es prudencia: si la cuenta del IS conserva su rol, el perfil **volvería a crearse
+  vacío** en el siguiente ingreso (RN-02.1), perdiendo departamento y contacto sin que nadie se
+  entere. Desactivar es lo que impide ese regreso.
 
 ## 6. Protección del dato salarial
 
 > **Hallazgo H-3 del legacy:** `monthly_salary` vivía en `profiles` y sólo estaba protegido
 > "porque ningún consumidor de rol bajo hacía `select *`". Eso es una convención, no una barrera.
 
-**Requisito para el sistema nuevo (elegir uno, decisión abierta):**
+**Decidido: (a) tabla aparte.**
 
-- **(a) Tabla aparte** `employee_compensation(profile_id, monthly_salary, …)` con acceso
-  restringido a rol administrativo. *Recomendado.*
-- **(b) Mantenerlo en `profiles`** pero prohibir a nivel de capa de datos que cualquier
-  endpoint devuelva la columna salvo los explícitamente autorizados (proyecciones
-  explícitas, nunca `select *`, y un test que lo verifique).
+- **(a) Tabla aparte** `employee_compensation(profile_id, monthly_salary, currency, updated_at,
+  updated_by)`, 1:1 con el perfil. ✅ **Implementado.** La separación es física: un endpoint que
+  consulta `profiles` no puede devolver lo que no está en la fila, ni por descuido ni por un
+  `select *` futuro. Con la RLS fuera del proyecto ([00](./00-migracion-datos-e-identidad.md)
+  RN-00.1) esa diferencia importa más que antes.
+- (b) Mantenerlo en `profiles` con proyecciones explícitas — descartada: volvía a depender de
+  que nadie se equivoque al escribir una consulta nueva.
+
+**Consecuencia sobre la API:** el sueldo **no viaja en `PATCH /users/:id`** como proponía §7,
+sino en sus propios endpoints (`GET`/`PUT /users/:id/compensation`). Compartir DTO con el perfil
+habría reintroducido justo el riesgo que la tabla aparte elimina. Son los únicos dos endpoints
+—y `services/users.ts` el único módulo— que mencionan `employee_compensation`.
+
+El importe **sí** se registra en la bitácora, con valor anterior y nuevo: es el punto de
+auditarlo ([18](./18-auditoria.md) RN-18.2).
+
+**Moneda.** El importe nunca viaja sin ella. Vocabulario cerrado en
+`packages/validations/src/currency.ts`, porque no todas son códigos ISO 4217: `CUP` (moneda
+nacional), `USD`, `EUR`, `MLC` (moneda libremente convertible), `TRO` (tropical) y `CLA`
+(clásica). **Un importe, una moneda** —no varias líneas por persona—; si algún día hay pagos
+mixtos, es una tabla con una fila por moneda, no un campo más aquí. Default `CUP`, y la moneda
+también queda en la bitácora.
 
 ## 7. API propuesta
 
@@ -155,22 +187,53 @@ No hay `POST /users` ni `reset-password`: son operaciones del IS (§5.1).
 
 ## 8. Criterios de aceptación
 
-- [ ] El primer ingreso de una identidad nueva crea exactamente un perfil, incompleto.
-- [ ] Un perfil sin departamento no puede marcar y aparece en `/users/incomplete`.
-- [ ] **Un usuario desactivado no consigue iniciar sesión**, y su historial sigue visible para
-      quien tenga ámbito sobre él.
-- [ ] Desactivar cierra la sesión que la persona tuviera abierta en ese momento.
-- [ ] Reactivar limpia motivo, fecha y autor de la desactivación.
-- [ ] Un `department_head` que consulta `/users` sólo recibe los de los departamentos que gestiona.
-- [ ] Ningún endpoint accesible a `employee` o `department_head` devuelve `monthly_salary`
-      (test explícito).
-- [ ] `last_connection_at` no se escribe más de una vez cada 5 minutos por sesión.
-- [ ] Tras la migración, ningún perfil queda sin `identity_user_id`.
+- [x] El primer ingreso de una identidad nueva crea exactamente un perfil, incompleto.
+- [x] Un perfil sin departamento aparece en `/users/incomplete`. *La otra mitad del criterio
+      —que no pueda marcar— está **bloqueada por la [09](./09-marcaje-asistencia.md)**: no hay
+      marcaje que impedir. Lo que sí se comprueba es que el perfil incompleto no puede pasar
+      por completo, y la UI le dice por qué.*
+- [x] **Un usuario desactivado no consigue iniciar sesión**, y su historial sigue visible para
+      quien tenga ámbito sobre él. *Desaparece del listado operativo y se recupera con
+      `?includeInactive=true`; su ficha sigue accesible.*
+- [x] Desactivar cierra la sesión que la persona tuviera abierta en ese momento. *En su
+      siguiente petición: el middleware la rechaza con 403 y le limpia las cookies.*
+- [x] Reactivar limpia motivo, fecha y autor de la desactivación.
+- [x] Un `department_head` que consulta `/users` sólo recibe los de los departamentos que
+      gestiona. *El filtro se aplica en la consulta, no descartando filas después; y pedir otro
+      departamento explícitamente da 403, no una lista vacía.*
+- [x] Ningún endpoint accesible a `employee` o `department_head` devuelve `monthly_salary`
+      (test explícito). *Se comprueba sobre el cuerpo crudo de la respuesta, buscando el
+      importe y el nombre del campo, en el listado, el detalle y `GET /me`.*
+- [x] `last_connection_at` no se escribe más de una vez cada 5 minutos por sesión.
+- [x] Ningún perfil queda sin `identity_user_id`. *La columna es `not null` y `unique`, así que
+      la base lo garantiza; la migración de los datos del legacy es de la
+      [21](./21-migracion-desde-legacy.md).*
+- [x] **Añadido:** el borrado real exige perfil desactivado (RN-02.13) y no deja punteros
+      colgando.
+- [x] **Añadido:** al asignar departamento a un perfil incompleto se avisa a la persona: es el
+      momento en que su alta queda cerrada.
 
-## 9. Decisiones abiertas
+## 9. Decisiones tomadas
 
-1. ¿Tabla de compensación separada (§6a) o proyecciones controladas (§6b)?
-2. ¿El historial debe congelar el departamento del momento (RN-02.9)?
-3. ¿Qué pasa con el perfil cuando el IS elimina la identidad o le quita el rol? Hoy quedaría
-   huérfano y nadie se enteraría. ¿Hace falta una reconciliación periódica contra el IS?
-4. ¿Cómo se avisa al gestor de asistencia de un alta hecha en el IS? (RN-02.12)
+1. **Tabla de compensación separada** (§6a). Ver ahí el detalle y su consecuencia sobre la API.
+2. **El historial se congela en el marcaje, no aquí.** Cuando exista la tabla de marcajes
+   ([09](./09-marcaje-asistencia.md)), cada marcaje guardará el `department_id` vigente en ese
+   momento. Es exacto y no cuesta nada hoy; queda anotado allí para que no se pierda. Se
+   descartó una tabla de vigencias por departamento: añadiría hoy una tabla que nada consulta y
+   convertiría toda consulta histórica en un rango de fechas.
+3. **La reconciliación contra el IS queda pendiente, y está bloqueada por el propio IS.**
+   No se puede implementar: su API son cinco endpoints (`sign-in`, `token`, `jwks`, `sign-out`,
+   `user-roles/me`) y **ninguno permite listar usuarios ni consultar por rol**, sólo responder
+   por el usuario de la sesión en curso. Sin API de administración no hay con qué reconciliar.
+   Lo que sí se detecta hoy, de forma pasiva: quien pierde el rol o la cuenta deja de poder
+   entrar, y `last_connection_at` delata a los perfiles que llevan mucho sin aparecer.
+   *Si el IS añade un listado de usuarios por sistema, esto pasa a ser un proceso programado.*
+4. **A los gestores se les avisa por el departamento de gestores globales.** Por la misma
+   limitación del punto 3, este sistema no puede preguntarle al IS quién tiene el rol
+   `global_manager`, y almacenar roles aquí está prohibido
+   ([00](./00-migracion-datos-e-identidad.md) RN-00.29). La única lista de gestores que se puede
+   conocer son los miembros activos del departamento configurado en
+   `global_manager_department_id`, donde RN-03.6 los concentra
+   ([06](./06-configuracion-global.md)). **Si esa clave no está configurada no hay a quién
+   avisar**: el aviso no se crea y sólo queda la lista de incompletos, que la pantalla muestra
+   destacada de todas formas.

@@ -2,7 +2,14 @@
 
 > **Origen:** `old-docs.md` §3.6, puntos 46, 47, 48, 49; hallazgo H-4; punto 76.
 > **Estado en el sistema legacy:** ✅ implementado, ⚠️ con lógica de negocio en el cliente.
-> **Estado en el monorepo nuevo:** ❌ no existe.
+> **Estado en el monorepo nuevo:** ⚠️ parcial (mínimo viable, adelantado por la
+> [01](./01-organizacion-departamentos.md)). Existen la tabla `notifications` con su índice de
+> deduplicación, la generación **en el servidor y en la transacción del hecho** (RN-14.1/14.2),
+> los cuatro endpoints de lectura y marcado de §7, y la campana con panel en la cabecera.
+> **Entrega por sondeo cada 30 s** (RN-14.4); no hay entrega en vivo ni aviso emergente
+> (RN-14.5). Del catálogo de §4 se emiten: pausa y reanudación de departamento, aparición de un
+> perfil incompleto (RN-02.12) y cierre del alta al asignar departamento. Código:
+> `apps/backend/src/services/notifications.ts`, `apps/frontend/src/modules/notifications/`.
 > **Depende de:** [02-usuarios-y-perfiles](./02-usuarios-y-perfiles.md), [05-shells-y-navegacion](./05-shells-y-navegacion.md).
 
 ---

@@ -93,3 +93,48 @@ Reglas que no se negocian:
 > resuelve en cliente (`GET /api/me/permissions`) y no en un loader de SSR. Si
 > algún día ambos se sirven bajo el mismo origen, esto puede volver a `lax` y
 > moverse al servidor — es la decisión abierta §C.9.1 de la spec 00.
+
+## Dominio: servicios, transacciones y efectos
+
+Cada funcionalidad de negocio se implementa como un **servicio** en
+`apps/backend/src/services/`, y el router de Hono se limita a validar la entrada,
+exigir el rol y llamarlo. La primera implementada así es la de departamentos
+([specs/01](../specs/01-organizacion-departamentos.md)); las siguientes copian la forma.
+
+| Pieza | Dónde |
+|---|---|
+| Reglas de negocio de un dominio | `apps/backend/src/services/<dominio>.ts` |
+| Validación de entrada y rol mínimo | `apps/backend/src/routes/<dominio>.ts` |
+| Esquemas compartidos | `packages/validations/src/<dominio>.ts` |
+| Path, método y esquemas del endpoint | `packages/contracts/src/<dominio>.ts` |
+| Bitácora | `apps/backend/src/services/audit.ts` — una sola función `audit(tx, entry)` |
+| Notificaciones | `apps/backend/src/services/notifications.ts` — `notify(tx, destinatarios, aviso)` |
+| Configuración global tipada | `apps/backend/src/services/config.ts` |
+| Dato salarial, aislado en su propia tabla | `employee_compensation`, sólo desde `services/users.ts` |
+
+Convenciones que sostienen esto:
+
+- **Una mutación es una transacción.** El cambio, su entrada de bitácora y las
+  notificaciones que provoca se escriben juntos (RN-18.4): si algo se revierte, se
+  revierte todo. De ahí que `audit` y `notify` reciban la transacción como primer
+  argumento en vez de usar la conexión suelta.
+- **Los efectos se generan en el servidor, nunca en el cliente.** En el legacy la
+  regla que decidía cuándo recordar algo vivía en el contexto de notificaciones del
+  frontend, así que sólo se ejecutaba si alguien abría la app (hallazgo H-4).
+- **El vocabulario de acciones auditables y de tipos de notificación es cerrado**
+  (`packages/validations/src/audit.ts` y `notifications.ts`): añadir una obliga a
+  pasar por el catálogo, y de un vistazo se ve qué está cubierto. La bitácora del
+  legacy quedó a medias precisamente por escribirse con cadenas libres desde los
+  puntos de uso.
+- **El path de un endpoint se escribe una sola vez**, en su contrato, con la
+  sintaxis de Hono (`/api/departments/:id`). El backend lo monta tal cual y el
+  frontend lo resuelve con `resolvePath`.
+- **Un dato sensible se aísla en su propia tabla, no en una convención.** El sueldo salió de
+  `profiles` a `employee_compensation` ([specs/02](../specs/02-usuarios-y-perfiles.md) §6a): en
+  el legacy estaba en la misma fila y sólo lo protegía la costumbre de no hacer `select *`
+  (hallazgo H-3). Con la separación física, un endpoint de perfiles no puede filtrarlo aunque
+  alguien escriba una consulta nueva sin pensarlo, y sin RLS de red de seguridad eso importa.
+- **La comprobación de ámbito es una única función tipada** (`hasScope`,
+  `requireScope`, `canManage` en `middleware/auth.ts`), nunca repetida por endpoint:
+  en el legacy se llamó con los argumentos invertidos en varias migraciones y falló
+  en silencio (hallazgo H-1).
