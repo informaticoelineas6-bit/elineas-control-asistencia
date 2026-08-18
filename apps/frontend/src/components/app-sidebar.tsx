@@ -17,6 +17,7 @@ import {
 } from "#/components/ui/sidebar.tsx";
 import { NAV_SECTIONS, ROLE_LABELS } from "#/modules/auth/navigation.ts";
 import { useLogout } from "#/modules/auth/session.ts";
+import { ThemeToggle } from "#/modules/theme/theme-toggle.tsx";
 
 /**
  * Aside colapsable del panel.
@@ -105,6 +106,7 @@ export function AppSidebar({ session }: { session: Permissions }) {
 							</div>
 						</div>
 					</SidebarMenuItem>
+					<ThemeToggle />
 					<SidebarMenuItem>
 						<SidebarMenuButton
 							tooltip="Cerrar sesión"
