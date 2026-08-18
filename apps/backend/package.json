@@ -14,7 +14,7 @@
     "db:push": "drizzle-kit push",
     "db:pull": "drizzle-kit pull",
     "db:studio": "drizzle-kit studio",
-    "db:seed": "bun run src/db/seed.ts"
+    "test": "bun test --env-file=.env.local"
   },
   "dependencies": {
     "@elineas/contracts": "workspace:*",
@@ -27,6 +27,7 @@
     "zod": "^4.3.6"
   },
   "devDependencies": {
+    "@types/bun": "^1.3.14",
     "@types/node": "^22.10.2",
     "@types/pg": "^8.15.6",
     "dotenv": "^17.3.1",

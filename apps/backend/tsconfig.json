@@ -3,7 +3,7 @@
   "include": ["src/**/*.ts", "drizzle.config.ts"],
   "compilerOptions": {
     "lib": ["ES2022"],
-    "types": ["node"],
+    "types": ["node", "bun"],
     "paths": {
       "#/*": ["./src/*"]
     }
