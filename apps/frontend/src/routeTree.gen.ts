@@ -11,16 +11,18 @@
 import { Route as rootRouteImport } from './routes/__root'
 import { Route as IndexRouteImport } from './routes/index'
 import { Route as AuthedRouteImport } from './routes/_authed'
-import { Route as CuentaPendienteRouteImport } from './routes/cuenta-pendiente'
 import { Route as LoginRouteImport } from './routes/login'
-import { Route as AuthedBitacoraRouteImport } from './routes/_authed/bitacora'
-import { Route as AuthedConfiguracionRouteImport } from './routes/_authed/configuracion'
+import { Route as PendingAccountRouteImport } from './routes/pending-account'
+import { Route as AuthedAttendanceRouteImport } from './routes/_authed/attendance'
 import { Route as AuthedDashboardRouteImport } from './routes/_authed/dashboard'
-import { Route as AuthedMiAsistenciaRouteImport } from './routes/_authed/mi-asistencia'
-import { Route as AuthedMiEquipoRouteImport } from './routes/_authed/mi-equipo'
-import { Route as AuthedNominaRouteImport } from './routes/_authed/nomina'
-import { Route as AuthedReportesRouteImport } from './routes/_authed/reportes'
-import { Route as AuthedUsuariosRouteImport } from './routes/_authed/usuarios'
+import { Route as AuthedDepartmentsRouteImport } from './routes/_authed/departments'
+import { Route as AuthedLogsRouteImport } from './routes/_authed/logs'
+import { Route as AuthedPayrollRouteImport } from './routes/_authed/payroll'
+import { Route as AuthedProfileRouteImport } from './routes/_authed/profile'
+import { Route as AuthedReportsRouteImport } from './routes/_authed/reports'
+import { Route as AuthedSettingsRouteImport } from './routes/_authed/settings'
+import { Route as AuthedTeamRouteImport } from './routes/_authed/team'
+import { Route as AuthedUsersRouteImport } from './routes/_authed/users'
 
 const IndexRoute = IndexRouteImport.update({
   id: '/',
@@ -31,24 +33,19 @@ const AuthedRoute = AuthedRouteImport.update({
   id: '/_authed',
   getParentRoute: () => rootRouteImport,
 } as any)
-const CuentaPendienteRoute = CuentaPendienteRouteImport.update({
-  id: '/cuenta-pendiente',
-  path: '/cuenta-pendiente',
-  getParentRoute: () => rootRouteImport,
-} as any)
 const LoginRoute = LoginRouteImport.update({
   id: '/login',
   path: '/login',
   getParentRoute: () => rootRouteImport,
 } as any)
-const AuthedBitacoraRoute = AuthedBitacoraRouteImport.update({
-  id: '/bitacora',
-  path: '/bitacora',
-  getParentRoute: () => AuthedRoute,
+const PendingAccountRoute = PendingAccountRouteImport.update({
+  id: '/pending-account',
+  path: '/pending-account',
+  getParentRoute: () => rootRouteImport,
 } as any)
-const AuthedConfiguracionRoute = AuthedConfiguracionRouteImport.update({
-  id: '/configuracion',
-  path: '/configuracion',
+const AuthedAttendanceRoute = AuthedAttendanceRouteImport.update({
+  id: '/attendance',
+  path: '/attendance',
   getParentRoute: () => AuthedRoute,
 } as any)
 const AuthedDashboardRoute = AuthedDashboardRouteImport.update({
@@ -56,121 +53,148 @@ const AuthedDashboardRoute = AuthedDashboardRouteImport.update({
   path: '/dashboard',
   getParentRoute: () => AuthedRoute,
 } as any)
-const AuthedMiAsistenciaRoute = AuthedMiAsistenciaRouteImport.update({
-  id: '/mi-asistencia',
-  path: '/mi-asistencia',
+const AuthedDepartmentsRoute = AuthedDepartmentsRouteImport.update({
+  id: '/departments',
+  path: '/departments',
   getParentRoute: () => AuthedRoute,
 } as any)
-const AuthedMiEquipoRoute = AuthedMiEquipoRouteImport.update({
-  id: '/mi-equipo',
-  path: '/mi-equipo',
+const AuthedLogsRoute = AuthedLogsRouteImport.update({
+  id: '/logs',
+  path: '/logs',
   getParentRoute: () => AuthedRoute,
 } as any)
-const AuthedNominaRoute = AuthedNominaRouteImport.update({
-  id: '/nomina',
-  path: '/nomina',
+const AuthedPayrollRoute = AuthedPayrollRouteImport.update({
+  id: '/payroll',
+  path: '/payroll',
   getParentRoute: () => AuthedRoute,
 } as any)
-const AuthedReportesRoute = AuthedReportesRouteImport.update({
-  id: '/reportes',
-  path: '/reportes',
+const AuthedProfileRoute = AuthedProfileRouteImport.update({
+  id: '/profile',
+  path: '/profile',
   getParentRoute: () => AuthedRoute,
 } as any)
-const AuthedUsuariosRoute = AuthedUsuariosRouteImport.update({
-  id: '/usuarios',
-  path: '/usuarios',
+const AuthedReportsRoute = AuthedReportsRouteImport.update({
+  id: '/reports',
+  path: '/reports',
+  getParentRoute: () => AuthedRoute,
+} as any)
+const AuthedSettingsRoute = AuthedSettingsRouteImport.update({
+  id: '/settings',
+  path: '/settings',
+  getParentRoute: () => AuthedRoute,
+} as any)
+const AuthedTeamRoute = AuthedTeamRouteImport.update({
+  id: '/team',
+  path: '/team',
+  getParentRoute: () => AuthedRoute,
+} as any)
+const AuthedUsersRoute = AuthedUsersRouteImport.update({
+  id: '/users',
+  path: '/users',
   getParentRoute: () => AuthedRoute,
 } as any)
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
-  '/cuenta-pendiente': typeof CuentaPendienteRoute
   '/login': typeof LoginRoute
-  '/bitacora': typeof AuthedBitacoraRoute
-  '/configuracion': typeof AuthedConfiguracionRoute
+  '/pending-account': typeof PendingAccountRoute
+  '/attendance': typeof AuthedAttendanceRoute
   '/dashboard': typeof AuthedDashboardRoute
-  '/mi-asistencia': typeof AuthedMiAsistenciaRoute
-  '/mi-equipo': typeof AuthedMiEquipoRoute
-  '/nomina': typeof AuthedNominaRoute
-  '/reportes': typeof AuthedReportesRoute
-  '/usuarios': typeof AuthedUsuariosRoute
+  '/departments': typeof AuthedDepartmentsRoute
+  '/logs': typeof AuthedLogsRoute
+  '/payroll': typeof AuthedPayrollRoute
+  '/profile': typeof AuthedProfileRoute
+  '/reports': typeof AuthedReportsRoute
+  '/settings': typeof AuthedSettingsRoute
+  '/team': typeof AuthedTeamRoute
+  '/users': typeof AuthedUsersRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
-  '/cuenta-pendiente': typeof CuentaPendienteRoute
   '/login': typeof LoginRoute
-  '/bitacora': typeof AuthedBitacoraRoute
-  '/configuracion': typeof AuthedConfiguracionRoute
+  '/pending-account': typeof PendingAccountRoute
+  '/attendance': typeof AuthedAttendanceRoute
   '/dashboard': typeof AuthedDashboardRoute
-  '/mi-asistencia': typeof AuthedMiAsistenciaRoute
-  '/mi-equipo': typeof AuthedMiEquipoRoute
-  '/nomina': typeof AuthedNominaRoute
-  '/reportes': typeof AuthedReportesRoute
-  '/usuarios': typeof AuthedUsuariosRoute
+  '/departments': typeof AuthedDepartmentsRoute
+  '/logs': typeof AuthedLogsRoute
+  '/payroll': typeof AuthedPayrollRoute
+  '/profile': typeof AuthedProfileRoute
+  '/reports': typeof AuthedReportsRoute
+  '/settings': typeof AuthedSettingsRoute
+  '/team': typeof AuthedTeamRoute
+  '/users': typeof AuthedUsersRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
   '/': typeof IndexRoute
   '/_authed': typeof AuthedRouteWithChildren
-  '/cuenta-pendiente': typeof CuentaPendienteRoute
   '/login': typeof LoginRoute
-  '/_authed/bitacora': typeof AuthedBitacoraRoute
-  '/_authed/configuracion': typeof AuthedConfiguracionRoute
+  '/pending-account': typeof PendingAccountRoute
+  '/_authed/attendance': typeof AuthedAttendanceRoute
   '/_authed/dashboard': typeof AuthedDashboardRoute
-  '/_authed/mi-asistencia': typeof AuthedMiAsistenciaRoute
-  '/_authed/mi-equipo': typeof AuthedMiEquipoRoute
-  '/_authed/nomina': typeof AuthedNominaRoute
-  '/_authed/reportes': typeof AuthedReportesRoute
-  '/_authed/usuarios': typeof AuthedUsuariosRoute
+  '/_authed/departments': typeof AuthedDepartmentsRoute
+  '/_authed/logs': typeof AuthedLogsRoute
+  '/_authed/payroll': typeof AuthedPayrollRoute
+  '/_authed/profile': typeof AuthedProfileRoute
+  '/_authed/reports': typeof AuthedReportsRoute
+  '/_authed/settings': typeof AuthedSettingsRoute
+  '/_authed/team': typeof AuthedTeamRoute
+  '/_authed/users': typeof AuthedUsersRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
   fullPaths:
     | '/'
-    | '/cuenta-pendiente'
     | '/login'
-    | '/bitacora'
-    | '/configuracion'
+    | '/pending-account'
+    | '/attendance'
     | '/dashboard'
-    | '/mi-asistencia'
-    | '/mi-equipo'
-    | '/nomina'
-    | '/reportes'
-    | '/usuarios'
+    | '/departments'
+    | '/logs'
+    | '/payroll'
+    | '/profile'
+    | '/reports'
+    | '/settings'
+    | '/team'
+    | '/users'
   fileRoutesByTo: FileRoutesByTo
   to:
     | '/'
-    | '/cuenta-pendiente'
     | '/login'
-    | '/bitacora'
-    | '/configuracion'
+    | '/pending-account'
+    | '/attendance'
     | '/dashboard'
-    | '/mi-asistencia'
-    | '/mi-equipo'
-    | '/nomina'
-    | '/reportes'
-    | '/usuarios'
+    | '/departments'
+    | '/logs'
+    | '/payroll'
+    | '/profile'
+    | '/reports'
+    | '/settings'
+    | '/team'
+    | '/users'
   id:
     | '__root__'
     | '/'
     | '/_authed'
-    | '/cuenta-pendiente'
     | '/login'
-    | '/_authed/bitacora'
-    | '/_authed/configuracion'
+    | '/pending-account'
+    | '/_authed/attendance'
     | '/_authed/dashboard'
-    | '/_authed/mi-asistencia'
-    | '/_authed/mi-equipo'
-    | '/_authed/nomina'
-    | '/_authed/reportes'
-    | '/_authed/usuarios'
+    | '/_authed/departments'
+    | '/_authed/logs'
+    | '/_authed/payroll'
+    | '/_authed/profile'
+    | '/_authed/reports'
+    | '/_authed/settings'
+    | '/_authed/team'
+    | '/_authed/users'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
   AuthedRoute: typeof AuthedRouteWithChildren
-  CuentaPendienteRoute: typeof CuentaPendienteRoute
   LoginRoute: typeof LoginRoute
+  PendingAccountRoute: typeof PendingAccountRoute
 }
 
 declare module '@tanstack/react-router' {
@@ -189,13 +213,6 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AuthedRouteImport
       parentRoute: typeof rootRouteImport
     }
-    '/cuenta-pendiente': {
-      id: '/cuenta-pendiente'
-      path: '/cuenta-pendiente'
-      fullPath: '/cuenta-pendiente'
-      preLoaderRoute: typeof CuentaPendienteRouteImport
-      parentRoute: typeof rootRouteImport
-    }
     '/login': {
       id: '/login'
       path: '/login'
@@ -203,18 +220,18 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof LoginRouteImport
       parentRoute: typeof rootRouteImport
     }
-    '/_authed/bitacora': {
-      id: '/_authed/bitacora'
-      path: '/bitacora'
-      fullPath: '/bitacora'
-      preLoaderRoute: typeof AuthedBitacoraRouteImport
-      parentRoute: typeof AuthedRoute
+    '/pending-account': {
+      id: '/pending-account'
+      path: '/pending-account'
+      fullPath: '/pending-account'
+      preLoaderRoute: typeof PendingAccountRouteImport
+      parentRoute: typeof rootRouteImport
     }
-    '/_authed/configuracion': {
-      id: '/_authed/configuracion'
-      path: '/configuracion'
-      fullPath: '/configuracion'
-      preLoaderRoute: typeof AuthedConfiguracionRouteImport
+    '/_authed/attendance': {
+      id: '/_authed/attendance'
+      path: '/attendance'
+      fullPath: '/attendance'
+      preLoaderRoute: typeof AuthedAttendanceRouteImport
       parentRoute: typeof AuthedRoute
     }
     '/_authed/dashboard': {
@@ -224,64 +241,89 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AuthedDashboardRouteImport
       parentRoute: typeof AuthedRoute
     }
-    '/_authed/mi-asistencia': {
-      id: '/_authed/mi-asistencia'
-      path: '/mi-asistencia'
-      fullPath: '/mi-asistencia'
-      preLoaderRoute: typeof AuthedMiAsistenciaRouteImport
+    '/_authed/departments': {
+      id: '/_authed/departments'
+      path: '/departments'
+      fullPath: '/departments'
+      preLoaderRoute: typeof AuthedDepartmentsRouteImport
       parentRoute: typeof AuthedRoute
     }
-    '/_authed/mi-equipo': {
-      id: '/_authed/mi-equipo'
-      path: '/mi-equipo'
-      fullPath: '/mi-equipo'
-      preLoaderRoute: typeof AuthedMiEquipoRouteImport
+    '/_authed/logs': {
+      id: '/_authed/logs'
+      path: '/logs'
+      fullPath: '/logs'
+      preLoaderRoute: typeof AuthedLogsRouteImport
       parentRoute: typeof AuthedRoute
     }
-    '/_authed/nomina': {
-      id: '/_authed/nomina'
-      path: '/nomina'
-      fullPath: '/nomina'
-      preLoaderRoute: typeof AuthedNominaRouteImport
+    '/_authed/payroll': {
+      id: '/_authed/payroll'
+      path: '/payroll'
+      fullPath: '/payroll'
+      preLoaderRoute: typeof AuthedPayrollRouteImport
       parentRoute: typeof AuthedRoute
     }
-    '/_authed/reportes': {
-      id: '/_authed/reportes'
-      path: '/reportes'
-      fullPath: '/reportes'
-      preLoaderRoute: typeof AuthedReportesRouteImport
+    '/_authed/profile': {
+      id: '/_authed/profile'
+      path: '/profile'
+      fullPath: '/profile'
+      preLoaderRoute: typeof AuthedProfileRouteImport
       parentRoute: typeof AuthedRoute
     }
-    '/_authed/usuarios': {
-      id: '/_authed/usuarios'
-      path: '/usuarios'
-      fullPath: '/usuarios'
-      preLoaderRoute: typeof AuthedUsuariosRouteImport
+    '/_authed/reports': {
+      id: '/_authed/reports'
+      path: '/reports'
+      fullPath: '/reports'
+      preLoaderRoute: typeof AuthedReportsRouteImport
+      parentRoute: typeof AuthedRoute
+    }
+    '/_authed/settings': {
+      id: '/_authed/settings'
+      path: '/settings'
+      fullPath: '/settings'
+      preLoaderRoute: typeof AuthedSettingsRouteImport
+      parentRoute: typeof AuthedRoute
+    }
+    '/_authed/team': {
+      id: '/_authed/team'
+      path: '/team'
+      fullPath: '/team'
+      preLoaderRoute: typeof AuthedTeamRouteImport
+      parentRoute: typeof AuthedRoute
+    }
+    '/_authed/users': {
+      id: '/_authed/users'
+      path: '/users'
+      fullPath: '/users'
+      preLoaderRoute: typeof AuthedUsersRouteImport
       parentRoute: typeof AuthedRoute
     }
   }
 }
 
 interface AuthedRouteChildren {
-  AuthedBitacoraRoute: typeof AuthedBitacoraRoute
-  AuthedConfiguracionRoute: typeof AuthedConfiguracionRoute
+  AuthedAttendanceRoute: typeof AuthedAttendanceRoute
   AuthedDashboardRoute: typeof AuthedDashboardRoute
-  AuthedMiAsistenciaRoute: typeof AuthedMiAsistenciaRoute
-  AuthedMiEquipoRoute: typeof AuthedMiEquipoRoute
-  AuthedNominaRoute: typeof AuthedNominaRoute
-  AuthedReportesRoute: typeof AuthedReportesRoute
-  AuthedUsuariosRoute: typeof AuthedUsuariosRoute
+  AuthedDepartmentsRoute: typeof AuthedDepartmentsRoute
+  AuthedLogsRoute: typeof AuthedLogsRoute
+  AuthedPayrollRoute: typeof AuthedPayrollRoute
+  AuthedProfileRoute: typeof AuthedProfileRoute
+  AuthedReportsRoute: typeof AuthedReportsRoute
+  AuthedSettingsRoute: typeof AuthedSettingsRoute
+  AuthedTeamRoute: typeof AuthedTeamRoute
+  AuthedUsersRoute: typeof AuthedUsersRoute
 }
 
 const AuthedRouteChildren: AuthedRouteChildren = {
-  AuthedBitacoraRoute: AuthedBitacoraRoute,
-  AuthedConfiguracionRoute: AuthedConfiguracionRoute,
+  AuthedAttendanceRoute: AuthedAttendanceRoute,
   AuthedDashboardRoute: AuthedDashboardRoute,
-  AuthedMiAsistenciaRoute: AuthedMiAsistenciaRoute,
-  AuthedMiEquipoRoute: AuthedMiEquipoRoute,
-  AuthedNominaRoute: AuthedNominaRoute,
-  AuthedReportesRoute: AuthedReportesRoute,
-  AuthedUsuariosRoute: AuthedUsuariosRoute,
+  AuthedDepartmentsRoute: AuthedDepartmentsRoute,
+  AuthedLogsRoute: AuthedLogsRoute,
+  AuthedPayrollRoute: AuthedPayrollRoute,
+  AuthedProfileRoute: AuthedProfileRoute,
+  AuthedReportsRoute: AuthedReportsRoute,
+  AuthedSettingsRoute: AuthedSettingsRoute,
+  AuthedTeamRoute: AuthedTeamRoute,
+  AuthedUsersRoute: AuthedUsersRoute,
 }
 
 const AuthedRouteWithChildren =
@@ -290,8 +332,8 @@ const AuthedRouteWithChildren =
 const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
   AuthedRoute: AuthedRouteWithChildren,
-  CuentaPendienteRoute: CuentaPendienteRoute,
   LoginRoute: LoginRoute,
+  PendingAccountRoute: PendingAccountRoute,
 }
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)
