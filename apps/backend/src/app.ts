@@ -5,6 +5,7 @@ import { config as appConfig } from "#/lib/config";
 import { auth } from "#/routes/auth";
 import { config as configRoutes } from "#/routes/config.ts";
 import { departments } from "#/routes/departments.ts";
+import { locations } from "#/routes/locations.ts";
 import { me } from "#/routes/me";
 import { notifications } from "#/routes/notifications.ts";
 import { schedules } from "#/routes/schedules.ts";
@@ -47,6 +48,7 @@ export function createApp() {
 	// cuelgan del departamento pero son otro dominio, con su propio servicio y sus
 	// propias reglas de rol. Los paths no se solapan.
 	app.route("/api/departments", schedules);
+	app.route("/api/work-locations", locations);
 	app.route("/api/notifications", notifications);
 	app.route("/api/config", configRoutes);
 	app.route("/api/users", users);

@@ -8,8 +8,9 @@
 > los cuatro endpoints de lectura y marcado de §7, y la campana con panel en la cabecera.
 > **Entrega por sondeo cada 30 s** (RN-14.4); no hay entrega en vivo ni aviso emergente
 > (RN-14.5). Del catálogo de §4 se emiten: pausa y reanudación de departamento, aparición de un
-> perfil incompleto (RN-02.12), cierre del alta al asignar departamento y **cambio de horario del
-> departamento** (RN-07.10, con `dedupe_key` por departamento). Código:
+> perfil incompleto (RN-02.12), cierre del alta al asignar departamento, **cambio de horario del
+> departamento** (RN-07.10, con `dedupe_key` por departamento) y **sede de trabajo desactivada**
+> (spec 08 RN-08.6). Código:
 > `apps/backend/src/services/notifications.ts`, `apps/frontend/src/modules/notifications/`.
 > **Depende de:** [02-usuarios-y-perfiles](./02-usuarios-y-perfiles.md), [05-shells-y-navegacion](./05-shells-y-navegacion.md).
 
@@ -69,6 +70,7 @@ de horario, un recordatorio pendiente.
 | Ajuste de nómina aplicado o revertido | Empleado | [17](./17-nomina.md) ⚠️ *nuevo, punto 76* |
 | Reporte mensual listo | Quien lo solicitó | [16](./16-reporteria-mensual.md) |
 | Departamento pausado / reanudado | Miembros | [01](./01-organizacion-departamentos.md) *propuesta* ✅ |
+| Sede de trabajo desactivada | Quien la tenía elegida | [08](./08-sedes-y-geocerca.md) RN-08.6 ✅ *nuevo* |
 
 Los marcados ⚠️ **no existen en el legacy** y cubren huecos reales: hoy al empleado le
 descuentan sin avisarle.

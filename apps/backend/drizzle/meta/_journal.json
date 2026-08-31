@@ -50,6 +50,13 @@
       "when": 1787147519837,
       "tag": "0006_petite_toad",
       "breakpoints": true
+    },
+    {
+      "idx": 7,
+      "version": "7",
+      "when": 1787151256592,
+      "tag": "0007_colorful_jigsaw",
+      "breakpoints": true
     }
   ]
 }

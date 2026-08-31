@@ -4,6 +4,8 @@ export * from "./auth.ts";
 export * from "./config.ts";
 export * from "./currency.ts";
 export * from "./departments.ts";
+export * from "./geo.ts";
+export * from "./locations.ts";
 export * from "./notifications.ts";
 export * from "./phone.ts";
 export * from "./roles.ts";

@@ -63,6 +63,10 @@ las restablece. Todo eso vive en el IS
   (equivalente a `error-messages.ts` del legacy). Nada de textos crudos en inglés.
 - **RN-04.8** — Al cerrar sesión se limpia todo estado local por usuario: sede seleccionada
   ([08-sedes-y-geocerca](./08-sedes-y-geocerca.md)), caché de consultas y preferencias de shell.
+  Implementado en `useLogout` (`apps/frontend/src/modules/auth/session.ts`): invalida el caché de
+  consultas y borra la copia local de la sede
+  (`modules/locations/selection-cache.ts`). La selección **de verdad** vive en el perfil, en el
+  servidor, así que lo que se borra aquí es sólo la caché.
 
 ## 4. Flujos
 

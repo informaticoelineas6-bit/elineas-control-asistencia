@@ -33,6 +33,15 @@ export const markRejectionReasonSchema = z.enum([
 	"REST_DAY",
 	/** RN-07.3 / RN-07.4: la hora local cae fuera de la ventana del tipo de marca. */
 	"OUTSIDE_TIME_WINDOW",
+	/**
+	 * RN-08.5 / RN-08.6 / RN-09.6: no hay sede seleccionada, la seleccionada ya no
+	 * está activa, o la que manda el cliente no es la del perfil.
+	 */
+	"INVALID_LOCATION",
+	/** RN-08.1: la lectura cae fuera de la geocerca de esa sede. */
+	"OUTSIDE_GEOFENCE",
+	/** RN-08.3: la precisión del GPS es peor que el umbral y la sede bloquea. */
+	"POOR_GPS_ACCURACY",
 ]);
 
 /**
@@ -48,6 +57,10 @@ export const MARK_REJECTION_MESSAGES: Record<MarkRejectionReason, string> = {
 	NOT_WORKDAY: "Ese día no es laborable para tu departamento.",
 	REST_DAY: "Ese día es tu descanso.",
 	OUTSIDE_TIME_WINDOW: "No estás en la ventana horaria para marcar.",
+	INVALID_LOCATION: "La sede contra la que intentas marcar no es válida.",
+	OUTSIDE_GEOFENCE: "Estás fuera del área de tu sede.",
+	POOR_GPS_ACCURACY:
+		"La ubicación de tu dispositivo no es lo bastante precisa.",
 };
 
 export type MarkType = z.infer<typeof markTypeSchema>;

@@ -7,8 +7,17 @@
 > `validateMarkTime` en `apps/backend/src/services/schedule-rules.ts` resuelve rol, pausa,
 > horario, calendario, descansos (por predicado), ventana y tardanza, y devuelve el día laboral
 > al que pertenece la marca. El enum de motivos de rechazo de §6 existe en
-> `packages/validations/src/attendance.ts` con los seis valores que esa función emite hoy; los
-> ocho restantes se añaden al construir esta spec.
+> `packages/validations/src/attendance.ts`.
+> **Y la parte de ubicación**, que es de la [08](./08-sedes-y-geocerca.md):
+> `validateMarkLocation` en `apps/backend/src/services/location-rules.ts` resuelve sede elegida,
+> sede activa, geocerca recalculada en servidor y umbral de precisión, y devuelve distancia,
+> pertenencia y las sedes cercanas para poder explicar el rechazo. Del enum de motivos de §6
+> existen **nueve de los catorce** (`ROLE_CANNOT_MARK`, `DEPARTMENT_PAUSED`, `NO_SCHEDULE`,
+> `NOT_WORKDAY`, `REST_DAY`, `OUTSIDE_TIME_WINDOW`, `INVALID_LOCATION`, `OUTSIDE_GEOFENCE`,
+> `POOR_GPS_ACCURACY`); los cinco restantes —sesión, cuenta inactiva, vacaciones, duplicado y
+> secuencia— se añaden al construir esta spec.
+> Lo que falta aquí es, literalmente, **escribir**: la tabla `attendance_marks`, el handler que
+> compone las dos funciones puras con vacaciones y antirrebote, y las pantallas.
 > **Depende de:** [07-horarios-y-calendario](./07-horarios-y-calendario.md), [08-sedes-y-geocerca](./08-sedes-y-geocerca.md), [10-descansos](./10-descansos.md), [11-vacaciones](./11-vacaciones.md).
 > **Habilita:** [15-paneles-y-dashboard](./15-paneles-y-dashboard.md), [16-reporteria-mensual](./16-reporteria-mensual.md), [11-vacaciones](./11-vacaciones.md) (días trabajados).
 

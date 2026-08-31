@@ -114,6 +114,10 @@ exigir el rol y llamarlo. La primera implementada así es la de departamentos
 | Reglas de tiempo **puras** (spec 07 §4) | `apps/backend/src/services/schedule-rules.ts` |
 | Aritmética de la ventana, compartida con el formulario | `packages/validations/src/schedules.ts` |
 | Calendario de la interfaz (único del proyecto) | `apps/frontend/src/components/ui/calendar.tsx` |
+| Reglas de ubicación **puras** (spec 08 §3) | `apps/backend/src/services/location-rules.ts` |
+| Geometría de la geocerca, compartida con la interfaz | `packages/validations/src/locations.ts` |
+| Capa de ubicación del cliente (spec 08 §4) | `apps/frontend/src/modules/geolocation/` |
+| Mapa de la interfaz (único del proyecto) | `apps/frontend/src/components/ui/map.tsx` |
 
 Convenciones que sostienen esto:
 
@@ -150,6 +154,19 @@ Convenciones que sostienen esto:
   veces: `checkoutModeIssue` (spec 06) y `scheduleIssue`/`describeMarkWindow` (spec 07) son las
   mismas funciones en el servidor y en el navegador. Es lo que hace que el aviso salga al teclear
   y que diga exactamente lo que el servidor va a exigir.
+- **Las dependencias de la interfaz se eligen por lo que cuesta equivocarse.** El calendario
+  (spec 07) es propio porque lo que hacía falta era espacio para pintar marcas, no un motor de
+  fechas; el mapa (spec 08) es **Leaflet** con mosaicos de OpenStreetMap porque el círculo en
+  metros y el marcador arrastrable deciden quién puede marcar, y ahí un error propio sale caro.
+  Los dos son **únicos en el proyecto**: las specs 09, 10 y 11 los reutilizan en vez de añadir
+  otro. Lo que toca `window` —Leaflet, la geolocalización— se carga dentro de un efecto, porque
+  esta aplicación hace SSR.
+- **Lo que decide un marcaje se calcula en el servidor, aunque el cliente sepa calcularlo.** La
+  distancia a una geocerca se escribe una vez, en `validations`, y la usan los dos: la interfaz
+  para decir "estás a 180 m" antes de intentarlo, y el backend para decidir. Pero el backend
+  **siempre recalcula** a partir de lat/lng y jamás acepta un `insideGeofence` venido de fuera
+  (spec 08 RN-08.2) — el esquema de la petición ni siquiera tiene ese campo, para que nadie lo
+  añada por comodidad. Compartir la función es compartir la regla, no la confianza.
 - **La comprobación de ámbito es una única función tipada** (`hasScope`,
   `requireScope`, `canManage` en `middleware/auth.ts`), nunca repetida por endpoint:
   en el legacy se llamó con los argumentos invertidos en varias migraciones y falló

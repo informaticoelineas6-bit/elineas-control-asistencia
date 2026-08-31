@@ -6,6 +6,7 @@ import {
 	ClipboardList,
 	FileBarChart,
 	LayoutDashboard,
+	Satellite,
 	ScrollText,
 	Settings,
 	UserRound,
@@ -74,6 +75,17 @@ export const NAV_SECTIONS = [
 				to: "/profile",
 				label: "Mi perfil",
 				icon: UserRound,
+				roles: EMPLOYEE_AND_UP,
+			},
+			/*
+			 * Spec 08 §6. La ve cualquier rol a propósito, incluido el gestor global
+			 * que no marca: quien la usa de verdad es el jefe en planta con el teléfono
+			 * de otro en la mano, resolviendo un "dice que estoy fuera y estoy dentro".
+			 */
+			{
+				to: "/gps",
+				label: "Diagnóstico GPS",
+				icon: Satellite,
 				roles: EMPLOYEE_AND_UP,
 			},
 		],

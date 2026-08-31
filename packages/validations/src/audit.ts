@@ -30,6 +30,15 @@ export const auditActionSchema = z.enum([
 	"compensation.updated",
 	// Ámbito departamental (spec 03 §3, RN-03.8)
 	"profile.responsibilities_changed",
+	// Horarios y calendario laboral (spec 07)
+	"schedule.created",
+	"schedule.updated",
+	"work_calendar.updated",
+	// Sedes y geocerca (spec 08)
+	"work_location.created",
+	"work_location.updated",
+	"work_location.deactivated",
+	"work_location.reactivated",
 ]);
 
 export type AuditAction = z.infer<typeof auditActionSchema>;

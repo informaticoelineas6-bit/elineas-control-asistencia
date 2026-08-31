@@ -26,6 +26,12 @@ export const notificationTypeSchema = z.enum([
 	 * apilar dos, que es lo que pasa cuando alguien corrige una hora mal puesta.
 	 */
 	"schedule.changed",
+	/**
+	 * Tu sede de trabajo se desactivó y con ella tu selección (spec 08 RN-08.6). El
+	 * aviso lo genera el servidor al desactivar, no el cliente al descubrirlo: la
+	 * persona tiene que enterarse antes de plantarse en la puerta a marcar.
+	 */
+	"work_location.deactivated",
 ]);
 
 export const notificationSchema = z.object({

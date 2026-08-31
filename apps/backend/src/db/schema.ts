@@ -2,6 +2,7 @@ import { relations, sql } from "drizzle-orm";
 import {
 	boolean,
 	date,
+	doublePrecision,
 	index,
 	integer,
 	jsonb,
@@ -95,6 +96,24 @@ export const profiles = pgTable("profiles", {
 		withTimezone: true,
 	}),
 	lastConnectionAt: timestamp("last_connection_at", { withTimezone: true }),
+	/**
+	 * Spec 08 §7, decisión 2 de su §9: la sede contra la que se valida el marcaje de
+	 * esta persona (RN-08.5).
+	 *
+	 * Vive en el perfil y no sólo en el dispositivo por tres razones: sobrevive al
+	 * cambio de teléfono y al borrado de datos del navegador; permite que **el
+	 * servidor** invalide la selección al desactivar la sede (RN-08.6) en vez de
+	 * fiarse de que el cliente se dé cuenta; y sigue siendo por persona, así que dos
+	 * operarios que comparten terminal no heredan la del otro (RN-08.8). El cliente
+	 * guarda además una copia local, pero es caché, no la verdad.
+	 *
+	 * `on delete set null` es red de seguridad: una sede no se borra, se desactiva
+	 * (RN-08.10).
+	 */
+	selectedWorkLocationId: uuid("selected_work_location_id").references(
+		() => workLocations.id,
+		{ onDelete: "set null" },
+	),
 	createdAt: timestamp("created_at", { withTimezone: true })
 		.notNull()
 		.defaultNow(),
@@ -419,4 +438,57 @@ export const workCalendarRelations = relations(workCalendar, ({ one }) => ({
 		fields: [workCalendar.departmentId],
 		references: [departments.id],
 	}),
+}));
+
+/**
+ * Spec 08 §2. Sedes con geocerca circular: centro, radio y umbral de precisión.
+ *
+ * **`geofence_config` del legacy no se porta** (spec 08 §2): era la tabla de
+ * geocerca única del diseño original y sobrevivía como respaldo con migración
+ * automática. Si hay datos que traer, se traen una vez en el script de migración
+ * (spec 21) y se descarta.
+ *
+ * Las coordenadas son `double precision` y no `numeric`: aquí no se suman dineros,
+ * se calculan distancias, y la aritmética de coma flotante es la que usa la
+ * fórmula. El radio y el umbral son enteros en **metros**, que es la unidad en la
+ * que piensa quien configura una sede.
+ *
+ * No hay borrado (RN-08.10): una sede con marcajes históricos detrás no se elimina,
+ * se desactiva — el historial necesita seguir sabiendo contra qué se validó.
+ */
+export const workLocations = pgTable(
+	"work_locations",
+	{
+		id: uuid().primaryKey().defaultRandom(),
+		name: text().notNull(),
+		centerLat: doublePrecision("center_lat").notNull(),
+		centerLng: doublePrecision("center_lng").notNull(),
+		radiusMeters: integer("radius_meters").notNull(),
+		accuracyThreshold: integer("accuracy_threshold").notNull(),
+		/** RN-08.3: con `false` la mala precisión sólo advierte y queda registrada. */
+		blockOnPoorAccuracy: boolean("block_on_poor_accuracy")
+			.notNull()
+			.default(false),
+		isActive: boolean("is_active").notNull().default(true),
+		createdAt: timestamp("created_at", { withTimezone: true })
+			.notNull()
+			.defaultNow(),
+		updatedAt: timestamp("updated_at", { withTimezone: true })
+			.notNull()
+			.defaultNow(),
+	},
+	(table) => [
+		/**
+		 * Dos sedes con el mismo nombre son indistinguibles en el selector que alguien
+		 * usa antes de marcar, así que la base lo impide sin distinguir mayúsculas —
+		 * mismo criterio que los departamentos (RN-01.1).
+		 */
+		uniqueIndex("work_locations_name_lower_idx").on(sql`lower(${table.name})`),
+		/** La consulta de cada día es "las sedes activas". */
+		index("work_locations_active_idx").on(table.isActive),
+	],
+);
+
+export const workLocationsRelations = relations(workLocations, ({ many }) => ({
+	profiles: many(profiles),
 }));

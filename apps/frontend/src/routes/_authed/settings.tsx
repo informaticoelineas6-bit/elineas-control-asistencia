@@ -1,6 +1,11 @@
 import { useQuery } from "@tanstack/react-query";
 import { createFileRoute } from "@tanstack/react-router";
-import { CalendarClock, SlidersHorizontal, TriangleAlert } from "lucide-react";
+import {
+	CalendarClock,
+	MapPin,
+	SlidersHorizontal,
+	TriangleAlert,
+} from "lucide-react";
 import { Skeleton } from "#/components/ui/skeleton.tsx";
 import {
 	Tabs,
@@ -13,6 +18,7 @@ import { configQueryOptions } from "#/modules/config/api.ts";
 import { ConfigForm } from "#/modules/config/config-form.tsx";
 import { departmentsQueryOptions } from "#/modules/departments/api.ts";
 import { InlineError } from "#/modules/errors/inline-error.tsx";
+import { LocationsTab } from "#/modules/locations/locations-tab.tsx";
 import { SchedulesTab } from "#/modules/schedules/schedules-tab.tsx";
 
 const PATH = "/settings" as const;
@@ -28,9 +34,9 @@ export const Route = createFileRoute("/_authed/settings")({
 /**
  * Configuración (spec 06 §6 y spec 07 §6).
  *
- * Dos pestañas: *General* es el catálogo de claves de la spec 06, y *Horarios y
- * calendario* el horario por departamento y su calendario laboral (spec 07). Las
- * sedes y la geocerca tendrán la suya cuando llegue la spec 08.
+ * Tres pestañas: *General* es el catálogo de claves de la spec 06, *Horarios y
+ * calendario* el horario por departamento y su calendario laboral (spec 07), y
+ * *Sedes y geocerca* el dónde se puede marcar (spec 08).
  */
 function ConfigPage() {
 	const config = useQuery(configQueryOptions());
@@ -69,6 +75,10 @@ function ConfigPage() {
 								<CalendarClock />
 								Horarios y calendario
 							</TabsTrigger>
+							<TabsTrigger value="locations">
+								<MapPin />
+								Sedes y geocerca
+							</TabsTrigger>
 						</TabsList>
 
 						<TabsContent value="general" className="max-w-4xl space-y-6">
@@ -103,6 +113,10 @@ function ConfigPage() {
 								departments={departments.data ?? []}
 								config={config.data}
 							/>
+						</TabsContent>
+
+						<TabsContent value="locations">
+							<LocationsTab config={config.data} />
 						</TabsContent>
 					</Tabs>
 				)

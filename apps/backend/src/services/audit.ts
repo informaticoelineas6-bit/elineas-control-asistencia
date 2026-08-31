@@ -28,6 +28,16 @@ export type Tx = Parameters<Parameters<typeof db.transaction>[0]>[0];
  */
 export type Database = Tx | typeof db;
 
+/**
+ * Quién ejecuta una operación, para su entrada de bitácora. Vive aquí —y no en el
+ * servicio de turno— porque lo piden todos: es el segundo argumento de casi toda
+ * mutación de dominio.
+ */
+export type Actor = {
+	profileId: string;
+	sourceIp?: string | null;
+};
+
 export type AuditEntry = {
 	/** Quién actuó. `null` cuando actúa el sistema, no una persona. */
 	actorId: string | null;

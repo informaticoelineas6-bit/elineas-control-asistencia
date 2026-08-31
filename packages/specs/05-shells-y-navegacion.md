@@ -66,13 +66,17 @@ Barra lateral con navegación **agrupada** y filtrada por rol. Agrupación imple
 
 | Grupo | Ítems | Quién lo ve |
 |---|---|---|
-| **Personal** | Inicio · Mi asistencia¹ · Mi perfil | todos |
+| **Personal** | Inicio · Mi asistencia¹ · Mi perfil · Diagnóstico GPS² | todos |
 | **Gestión** | Mi equipo · Reportes | `department_head` y por encima |
 | **Administración** | Usuarios · Departamentos · Nómina · Configuración | `global_manager` y por encima |
 | | Logs | sólo `superadmin` |
 
 ¹ excluido para `global_manager`, que no marca (RN-03.4). `superadmin` sí lo ve, porque hereda
 todo lo anterior.
+
+² lo ve **cualquier rol**, incluido el gestor global que no marca ([08](./08-sedes-y-geocerca.md)
+§6): quien la usa de verdad es el jefe en planta con el teléfono de otro en la mano, resolviendo
+un "dice que estoy fuera y estoy dentro".
 
 > **Esta agrupación sustituye a la del borrador** (*Asistencia · Gestión · Sistema*), que
 > mezclaba en un mismo grupo lo que uno hace consigo mismo y lo que hace con su equipo. La
@@ -143,6 +147,7 @@ pueda ver desde ahí.
 | `/dashboard` | Inicio | ✅ |
 | `/attendance` | Mi asistencia | marcador ([09](./09-marcaje-asistencia.md)) |
 | `/profile` | Mi perfil | ✅ |
+| `/gps` | Diagnóstico GPS | ✅ ([08](./08-sedes-y-geocerca.md) §6) |
 | `/team` | Mi equipo | marcador |
 | `/reports` | Reportes | marcador ([16](./16-reporteria-mensual.md)) |
 | `/users` | Usuarios | ✅ ([02](./02-usuarios-y-perfiles.md)) |

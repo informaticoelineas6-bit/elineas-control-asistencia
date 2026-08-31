@@ -7,6 +7,7 @@ import {
 } from "@tanstack/react-query";
 import { useNavigate } from "@tanstack/react-router";
 import { apiError, apiFetch } from "#/lib/api-client";
+import { clearCachedWorkLocations } from "#/modules/locations/selection-cache.ts";
 
 export const sessionQueryKey = ["session"] as const;
 
@@ -62,6 +63,9 @@ export function useLogout() {
 			await apiFetch(authSpec.logout.path, { method: authSpec.logout.method });
 		},
 		onSettled: async () => {
+			// RN-04.8: al salir no queda estado local por usuario. La sede vive en el
+			// perfil, pero su copia en disco (spec 08 RN-08.8) se borra aquí.
+			clearCachedWorkLocations();
 			queryClient.setQueryData(sessionQueryKey, null);
 			await queryClient.invalidateQueries();
 			await navigate({ to: "/login" });

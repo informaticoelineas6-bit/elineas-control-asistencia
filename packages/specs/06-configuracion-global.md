@@ -8,8 +8,8 @@
 > (RN-06.5), `GET`/`PATCH /api/config` restringidos a `global_manager+` (RN-06.1) y
 > `GET /api/config/public` con la lista blanca de §5. La pestaña *General* está en
 > `apps/frontend/src/modules/config/config-form.tsx` y la de *Horarios y calendario* en
-> `apps/frontend/src/modules/schedules/` ([07](./07-horarios-y-calendario.md)); la de sedes
-> llega con la [08](./08-sedes-y-geocerca.md). Pruebas en
+> `apps/frontend/src/modules/schedules/` ([07](./07-horarios-y-calendario.md)) y la de *Sedes y
+> geocerca* en `apps/frontend/src/modules/locations/` ([08](./08-sedes-y-geocerca.md)). Pruebas en
 > `apps/backend/src/routes/config.test.ts`.
 > **Depende de:** [03-roles-y-autorizacion](./03-roles-y-autorizacion.md).
 > **Habilita:** casi todas las reglas de asistencia leen de aquí.
@@ -62,6 +62,11 @@ todas dependen de estos valores.
 | `attendance_checkout_mode` | enum | `manual` · `schedule` · `geofence_exit` | `manual` | [09](./09-marcaje-asistencia.md) RN-09.13 |
 | `attendance_auto_checkout_time` | `HH:mm` \| null | obligatoria si modo `schedule` | `null` | idem |
 | `attendance_geofence_exit_minutes` | int 1–720 \| null | obligatorio si modo `geofence_exit` | `null` | idem |
+
+> ⚠️ El modo `geofence_exit` **no es fiable hoy** y la interfaz lo advierte al elegirlo: necesita
+> seguimiento de ubicación en segundo plano, que Android corta ([08](./08-sedes-y-geocerca.md) §4,
+> deuda del punto 77). La clave se queda en el catálogo; ofrecerlo de verdad es una decisión de la
+> [20](./20-app-movil-y-distribucion.md).
 
 ### 3.3 Descansos
 

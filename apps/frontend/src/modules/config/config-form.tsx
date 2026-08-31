@@ -312,6 +312,25 @@ export function ConfigForm({
 					</Field>
 				)}
 
+				{/*
+				 * Spec 08 §4 (deuda del punto 77): este modo depende del seguimiento de
+				 * ubicación en segundo plano, que hoy Android corta. La advertencia va
+				 * junto al selector porque es aquí donde alguien lo elige, no tres
+				 * pantallas después.
+				 */}
+				{draft.attendance_checkout_mode === "geofence_exit" && (
+					<p className="flex items-start gap-2 rounded-md border border-amber-500/40 bg-amber-500/10 p-3 text-sm sm:col-span-2">
+						<CircleAlert className="mt-0.5 size-4 shrink-0 text-amber-600" />
+						<span>
+							Este modo <strong>no es fiable todavía</strong>: necesita
+							seguimiento de ubicación en segundo plano y Android mata el
+							proceso con la pantalla apagada, así que hay jornadas que se
+							quedarían sin salida. Mientras no exista la aplicación nativa, usa
+							el modo manual o el cierre por horario.
+						</span>
+					</p>
+				)}
+
 				{draft.attendance_checkout_mode === "geofence_exit" && (
 					<Field
 						id="config-geofence-minutes"

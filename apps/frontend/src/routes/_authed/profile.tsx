@@ -10,6 +10,7 @@ import { Skeleton } from "#/components/ui/skeleton.tsx";
 import { ROLE_LABELS } from "#/modules/auth/navigation.ts";
 import { sessionQueryOptions } from "#/modules/auth/session.ts";
 import { InlineError } from "#/modules/errors/inline-error.tsx";
+import { MyLocationCard } from "#/modules/locations/my-location-card.tsx";
 import { MyScheduleCard } from "#/modules/schedules/my-schedule-card.tsx";
 import {
 	ownProfileQueryOptions,
@@ -155,6 +156,14 @@ function OwnProfilePage() {
 					 * `/me/schedule`, que sólo devuelve lo suyo.
 					 */}
 					<MyScheduleCard />
+
+					{/*
+					 * Spec 08 RN-08.7/RN-08.8: la sede contra la que se validan sus
+					 * marcajes, con la comprobación en vivo al lado. Aquí y no en una
+					 * pantalla aparte porque es un dato del perfil, y porque quien lo
+					 * necesita cambiar lo busca donde están sus cosas.
+					 */}
+					<MyLocationCard />
 				</div>
 
 				<form onSubmit={onSubmit} className="space-y-4 rounded-xl border p-4">

@@ -14,7 +14,7 @@ import {
 	profiles,
 	userDepartmentResponsibilities,
 } from "#/db/schema";
-import { audit, type Database } from "#/services/audit.ts";
+import { type Actor, audit, type Database } from "#/services/audit.ts";
 import { configKeysReferencing, getConfig } from "#/services/config.ts";
 import { notify } from "#/services/notifications.ts";
 
@@ -29,10 +29,8 @@ import { notify } from "#/services/notifications.ts";
 
 type DepartmentRow = typeof departments.$inferSelect;
 
-export type Actor = {
-	profileId: string;
-	sourceIp?: string | null;
-};
+/** Se re-exporta desde `audit.ts`, que es donde vive: lo usan todos los servicios. */
+export type { Actor } from "#/services/audit.ts";
 
 function toDepartment(row: DepartmentRow): Department {
 	return {
