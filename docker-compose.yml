@@ -40,7 +40,7 @@ services:
       context: .
       dockerfile: apps/backend/Dockerfile
       target: dev
-    image: elineas-control-asistencia-backend:1.0.0
+    image: elineas-control-asistencia-backend:0.0.7
     container_name: elineas-control-asistencia-backend
     restart: unless-stopped
     ports:
@@ -86,7 +86,7 @@ services:
       context: .
       dockerfile: apps/frontend/Dockerfile
       target: dev
-    image: elineas-control-asistencia-frontend:1.0.0
+    image: elineas-control-asistencia-frontend:0.0.7
     container_name: elineas-control-asistencia-frontend
     restart: unless-stopped
     ports:
