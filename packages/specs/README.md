@@ -48,28 +48,51 @@ Fija dos decisiones que ya no se discuten y que reescriben partes de las specs 0
 
 ### Cimientos — nada funciona sin esto
 
-| # | Spec | Estado legacy | Depende de |
-|---|---|---|---|
-| 01 | [Organización: departamentos](./01-organizacion-departamentos.md) | ✅ | — |
-| 02 | [Usuarios y perfiles](./02-usuarios-y-perfiles.md) | ✅ | 01 |
-| 03 | [Roles y autorización](./03-roles-y-autorizacion.md) | ✅ | 02 |
-| 04 | [Autenticación y sesión](./04-autenticacion.md) | ✅ | 02, 03 |
-| 05 | [Shells de interfaz y navegación](./05-shells-y-navegacion.md) | ✅ | 03, 04 |
-| 06 | [Configuración global](./06-configuracion-global.md) | ✅ | 03 |
+Los cimientos están construidos. La columna **monorepo** es lo que hay hoy en el código, no lo
+que la spec pide; cada cabecera detalla qué falta y por qué.
+
+| # | Spec | Legacy | Monorepo | Depende de |
+|---|---|---|---|---|
+| 01 | [Organización: departamentos](./01-organizacion-departamentos.md) | ✅ | ✅ | — |
+| 02 | [Usuarios y perfiles](./02-usuarios-y-perfiles.md) | ✅ | ✅ | 01 |
+| 03 | [Roles y autorización](./03-roles-y-autorizacion.md) | ✅ | ✅ | 02 |
+| 04 | [Autenticación y sesión](./04-autenticacion.md) | ✅ | ✅ | 02, 03 |
+| 05 | [Shells de interfaz y navegación](./05-shells-y-navegacion.md) | ✅ | ⚠️ | 03, 04 |
+| 06 | [Configuración global](./06-configuracion-global.md) | ✅ | ✅ | 03 |
+
+Lo único que queda abierto en los cimientos es el **EmployeeShell** de la
+[05](./05-shells-y-navegacion.md) §3. Dos de sus cuatro destinos ya existen —`/clock-in` y
+`/profile`— y las pantallas de marcaje e historial están hechas en columna estrecha y con el
+botón grande, así que montarlas en una barra inferior no obliga a rehacerlas; faltan `/my-week`
+(reutiliza el historial de la [09](./09-marcaje-asistencia.md)) e `/issues`
+([12](./12-incidencias.md)), y la regla de resolución de shell (§2), que hoy no tiene entre qué
+elegir.
 
 ### Reglas de trabajo — el marco que hace válido un marcaje
 
-| # | Spec | Estado legacy | Depende de |
-|---|---|---|---|
-| 07 | [Horarios y calendario laboral](./07-horarios-y-calendario.md) | ✅ | 01, 06 |
-| 08 | [Sedes, geocerca y geolocalización](./08-sedes-y-geocerca.md) | ⚠️ | 03, 06 |
-| 10 | [Descansos](./10-descansos.md) | ✅ | 01, 06 |
+| # | Spec | Legacy | Monorepo | Depende de |
+|---|---|---|---|---|
+| 07 | [Horarios y calendario laboral](./07-horarios-y-calendario.md) | ✅ | ✅ | 01, 06 |
+| 08 | [Sedes, geocerca y geolocalización](./08-sedes-y-geocerca.md) | ⚠️ | ✅ | 03, 06 |
+| 10 | [Descansos](./10-descansos.md) | ✅ | ❌ | 01, 06 |
+
+Las specs [07](./07-horarios-y-calendario.md) y [08](./08-sedes-y-geocerca.md) dejaron construidas
+**las dos mitades de la validación de un marcaje** —`validateMarkTime` (¿toca marcar ahora?) y
+`validateMarkLocation` (¿desde aquí?)—, más los dos componentes que reutilizan las specs 09, 10 y
+11: el **calendario** y el **mapa**. La [09](./09-marcaje-asistencia.md) las compone, y por eso su
+núcleo de reglas cabe en unas decenas de líneas en vez de en las seiscientas del hook del legacy.
+Lo que falta de este bloque es la [10](./10-descansos.md).
 
 ### Núcleo
 
-| # | Spec | Estado legacy | Depende de |
-|---|---|---|---|
-| 09 | [Marcaje de asistencia](./09-marcaje-asistencia.md) | ✅ | 07, 08, 10, 11 |
+| # | Spec | Legacy | Monorepo | Depende de |
+|---|---|---|---|---|
+| 09 | [Marcaje de asistencia](./09-marcaje-asistencia.md) | ✅ | ✅ | 07, 08, 10, 11 |
+
+Construida **antes** que las specs 10 y 11, de las que depende, dejando en su lugar dos costuras
+probadas: los descansos entran por un predicado y las vacaciones por una bandera. Es el orden que
+el índice ya sugería (09 antes de 11) y evita tener el núcleo del producto esperando por dos
+specs que no cambian su forma.
 
 ### Excepciones — lo que pasa cuando no se marca
 
@@ -137,6 +160,16 @@ construye todo lo demás y la 21 condiciona el modelo de datos.
 
 Todas en [00](./00-migracion-datos-e-identidad.md).
 
+Y dos de forma:
+
+- **El código se escribe en inglés; la interfaz, en español.** Rutas incluidas: *Mi asistencia*
+  vive en `/attendance`. Los comentarios y estas specs siguen en español, porque el código
+  las cita por número de regla. Tabla completa en
+  [contributing.md §idioma](../docs/contributing.md) y
+  [05 §7](./05-shells-y-navegacion.md).
+- **El departamento de los `global_manager` se configura por id**, no por el nombre
+  "Administración" del trigger del legacy ([03](./03-roles-y-autorizacion.md) RN-03.6).
+
 ## Antes de implementar
 
 Lo que sigue abierto y bloquea a varias specs a la vez:
@@ -154,5 +187,6 @@ Lo que sigue abierto y bloquea a varias specs a la vez:
 
 Y una de negocio, no técnica, que puede reescribir una spec entera:
 
-4. **¿El modelo de vacaciones debe cumplir la normativa laboral peruana?**
-   → [11](./11-vacaciones.md) §2.
+4. **¿El modelo de vacaciones debe cumplir la normativa laboral cubana?**
+   → [11](./11-vacaciones.md) §2. *(Decía "peruana": la empresa opera en Cuba, ver
+   [06](./06-configuracion-global.md) §8.)*

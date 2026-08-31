@@ -57,6 +57,7 @@ apps fuera de Docker) o el que pongas en `apps/backend/.env.local`.
 | `bun run build` | Build del frontend (el backend corre directo desde el código fuente, sin build) |
 | `bun run check` / `lint` / `format` | Biome sobre todo el repo |
 | `bun run db:generate` / `db:migrate` / `db:studio` | Drizzle, delegado a `apps/backend` |
+| `bun run test` | Pruebas del backend (necesitan el Postgres del compose migrado) |
 
 ## Documentación
 

@@ -2,7 +2,14 @@
 
 > **Origen:** `old-docs.md` Parte 2, §3.1, §3.8, puntos 5, 8, 9, 10, 18, 45.
 > **Estado en el sistema legacy:** ✅ implementado (RLS en Postgres como autoridad real).
-> **Estado en el monorepo nuevo:** ❌ no existe.
+> **Estado en el monorepo nuevo:** ✅ implementado en su parte de servidor y de UI. Middleware
+> de sesión, rol efectivo, ámbito y helpers (`requireRole`, `requireScope`, `canManage`) en
+> `apps/backend/src/middleware/auth.ts`; RN-03.6 en `apps/backend/src/services/profiles.ts`;
+> filtrado del aside y guard de página en `apps/frontend/src/modules/auth/`. Los dos endpoints
+> de §7 sobre responsabilidades de departamento están en
+> `apps/backend/src/services/responsibilities.ts`, con su diálogo "Departamentos a cargo" en la
+> pantalla de usuarios. Cada endpoint de las specs 01 y 02 tiene su prueba de autorización.
+> Sigue abierta la decisión 2 (RLS).
 > **Depende de:** [02-usuarios-y-perfiles](./02-usuarios-y-perfiles.md).
 > **Habilita:** todo. Ninguna otra spec puede implementarse sin ésta.
 
@@ -72,9 +79,14 @@ Departamentos **adicionales** que gestiona un `department_head`, además del suy
 - **RN-03.5 — No hay rol por defecto.** Lo asigna un administrador en el IS al crear la
   cuenta; sin él no hay acceso. *(En el legacy se otorgaba `employee` automáticamente al
   registrarse — ese comportamiento desaparece con el auto-registro.)*
-- **RN-03.6 — Departamento forzado para `global_manager`.** Al asignar el rol, el perfil se
-  mueve al departamento "Administración" (trigger `enforce_gm_department` en el legacy).
-  *Revisar si esta regla debe conservarse o es un parche del legacy.* **Decisión abierta.**
+- **RN-03.6 — Departamento forzado para `global_manager`.** ✅ **Decidido: se conserva**, pero el
+  destino es **configurable por id**, no el nombre "Administración" del trigger
+  `enforce_gm_department` del legacy. La clave es `global_manager_department_id`
+  ([06](./06-configuracion-global.md)); si está sin configurar, la regla queda desactivada.
+  Se aplica **al resolver la sesión** —el único momento en que este sistema conoce los roles de
+  alguien, porque viven en el Identity Server (RN-00.29)— y el cambio se audita con actor `null`,
+  que es lo que corresponde a una regla aplicada por el sistema.
+  Implementación: `enforceGlobalManagerDepartment` en `apps/backend/src/services/profiles.ts`.
 - **RN-03.7 — Debe existir siempre al menos un `superadmin`** con rol vigente en el IS. Esta
   aplicación no puede garantizarlo (no gestiona roles): es una **responsabilidad operativa**
   de quien administra el IS, y conviene dejarla escrita en el procedimiento de altas y bajas.
@@ -122,24 +134,34 @@ Referencia rápida para implementar los filtros de cada endpoint.
 |---|---|---|
 | `GET` | `/me/permissions` | autenticado — rol efectivo + departamentos gestionados |
 | `GET` | `/users/:id/department-responsibilities` | global_manager |
-| `PUT` | `/users/:id/department-responsibilities` | global_manager |
+| `PUT` | `/users/:id/department-responsibilities` | global_manager — reemplaza el conjunto completo |
+
+El `PUT` es de **reemplazo**, no de añadido: el cuerpo (`{ departmentIds }`) describe la lista
+entera de departamentos adicionales. Así quitar uno no necesita un verbo aparte y cada cambio
+de ámbito deja **una** entrada de bitácora (`profile.responsibilities_changed`) con el antes y
+el después. El departamento **propio** del perfil se descarta en silencio si viene en la lista:
+ya está en el ámbito por RN-03.2, y guardarlo además en la tabla lo ataría a un departamento
+que puede cambiar.
 
 No hay endpoints de roles: se consultan al IS y se otorgan en su consola (§3).
 
 ## 8. Criterios de aceptación
 
-- [ ] Un usuario con `employee` + `department_head` resuelve a `department_head`.
-- [ ] Un `department_head` con un departamento adicional ve los datos de **ambos**.
-- [ ] Un `employee` que llama a un endpoint de ámbito departamental recibe 403, aunque la UI
+- [x] Un usuario con `employee` + `department_head` resuelve a `department_head`.
+- [x] Un `department_head` con un departamento adicional ve los datos de **ambos**.
+- [x] Un `employee` que llama a un endpoint de ámbito departamental recibe 403, aunque la UI
       nunca se lo hubiera ofrecido.
-- [ ] Un `global_manager` no puede registrar un marcaje.
-- [ ] Existe un test de autorización por cada endpoint con ámbito.
-- [ ] Ningún endpoint autoriza leyendo un campo de rol del JWT.
+- [ ] Un `global_manager` no puede registrar un marcaje. *(Con la [09](./09-marcaje-asistencia.md).)*
+- [ ] Existe un test de autorización por cada endpoint con ámbito. *(Faltan `/config`, `/me` y
+      `/notifications`.)*
+- [x] Ningún endpoint autoriza leyendo un campo de rol del JWT. *(`verifyJwt` sólo devuelve
+      identidad; los roles salen del IS con el session token.)*
 - [ ] Un cambio de rol en la consola del IS se refleja aquí como máximo tras el TTL de caché.
 
 ## 9. Decisiones abiertas
 
-1. ¿Se conserva RN-03.6 (departamento forzado a Administración)?
+1. ~~¿Se conserva RN-03.6 (departamento forzado a Administración)?~~ **Resuelta:** se conserva
+   con el departamento configurable por id. Ver RN-03.6.
 2. ¿Se reimplementa RLS en Postgres o la autorización vive sólo en la capa Hono?
    (Ver [00](./00-migracion-datos-e-identidad.md) RN-00.1: es el riesgo número uno de la migración.)
 3. ¿`department_head` debería poder ver salarios de su equipo? (Hoy: **no**.)

@@ -2,7 +2,13 @@
 
 > **Origen:** `old-docs.md` §3.2, puntos 33, 34, 35, 36, 49.
 > **Estado en el sistema legacy:** ✅ implementado.
-> **Estado en el monorepo nuevo:** ❌ no existe.
+> **Estado en el monorepo nuevo:** ❌ no existe. La validación horaria de la
+> [07](./07-horarios-y-calendario.md) §4 ya deja el enganche preparado: recibe los descansos como
+> **predicado** `isRestDay(workDate)` en vez de un array de días de la semana, precisamente para
+> no tener que elegir la convención de `days_of_week` (decisión abierta 1) antes de tiempo. El
+> marcaje ([09](./09-marcaje-asistencia.md)) ya lo pasa —hoy sin conectar, así que nadie
+> descansa (RN-10.3)— y la agregación diaria ya tiene su `isRestDay` para clasificar `DESCANSO`.
+> Construir esta spec es, en su parte de marcaje, **conectar dos argumentos**.
 > **Depende de:** [01-organizacion-departamentos](./01-organizacion-departamentos.md), [06-configuracion-global](./06-configuracion-global.md).
 > **Habilita:** [09-marcaje-asistencia](./09-marcaje-asistencia.md) (no se marca en descanso), [15](./15-paneles-y-dashboard.md) y [16](./16-reporteria-mensual.md) (estado `DESCANSO`).
 

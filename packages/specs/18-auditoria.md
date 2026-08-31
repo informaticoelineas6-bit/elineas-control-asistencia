@@ -2,7 +2,15 @@
 
 > **Origen:** `old-docs.md` §3.6, punto 16; punto 76 (hueco de nómina).
 > **Estado en el sistema legacy:** ✅ implementado, ⚠️ con cobertura parcial.
-> **Estado en el monorepo nuevo:** ❌ no existe.
+> **Estado en el monorepo nuevo:** ⚠️ parcial (mínimo viable, adelantado por la
+> [01](./01-organizacion-departamentos.md)). Existen la tabla `audit_log` con sus tres índices,
+> la función única `audit(tx, entry)` que se invoca **dentro de la transacción** de la acción
+> auditada (RN-18.3/18.4) y el catálogo cerrado de acciones
+> (`packages/validations/src/audit.ts`). **De §3 están instrumentados los dominios de
+> departamentos y usuarios** —incluido el cambio de `monthly_salary`, que era el hueco del
+> legacy (punto 76)— más la configuración global. Falta la lectura: no hay `GET /audit` ni
+> pantalla, así que hoy la bitácora se consulta en base.
+> Código: `apps/backend/src/services/audit.ts`.
 > **Depende de:** [03-roles-y-autorizacion](./03-roles-y-autorizacion.md).
 
 ---

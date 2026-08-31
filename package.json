@@ -2,7 +2,10 @@
   "name": "elineas-control-asistencia",
   "private": true,
   "type": "module",
-  "workspaces": ["apps/*", "packages/*"],
+  "workspaces": [
+    "apps/*",
+    "packages/*"
+  ],
   "scripts": {
     "dev": "bun run --filter './apps/*' dev",
     "dev:backend": "bun run --filter backend dev",
@@ -16,7 +19,7 @@
     "db:push": "bun run --filter backend db:push",
     "db:pull": "bun run --filter backend db:pull",
     "db:studio": "bun run --filter backend db:studio",
-    "db:seed": "bun run --filter backend db:seed"
+    "test": "bun run --filter backend test"
   },
   "devDependencies": {
     "@biomejs/biome": "2.4.5",

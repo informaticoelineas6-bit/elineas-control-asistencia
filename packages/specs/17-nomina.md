@@ -103,7 +103,7 @@ Administrador → marca `reverted` con motivo. No se borra.
 
 ## 5. UI
 
-Página de nómina (`/nomina`), sólo rol administrativo:
+Página de nómina (`/payroll`), sólo rol administrativo:
 
 - **Sueldos** — edición de `monthly_salary` por empleado, con filtro por departamento.
 - **Historial de ajustes** — filtros por departamento, empleado, periodo, categoría y estado;

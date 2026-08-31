@@ -2,6 +2,11 @@
 
 > **Origen:** `old-docs.md` §3.6 (`app_releases`), puntos 66, 67, 68, 77.
 > **Estado en el sistema legacy:** ✅ implementado, ⚠️ compilación y firma 100 % manuales, seguimiento en segundo plano deficiente.
+> **Preparado en el monorepo:** la capa de ubicación del cliente
+> ([08](./08-sedes-y-geocerca.md) §4) está aislada en
+> `apps/frontend/src/modules/geolocation/location-layer.ts` y su interfaz no menciona
+> `navigator`: el proveedor nativo entra cambiando la implementación de esas cuatro funciones, sin
+> tocar ninguna pantalla. Hoy sólo hay seguimiento **en primer plano**.
 > **Estado en el monorepo nuevo:** ❌ no existe. **La migración del frontend a TanStack Start invalida el empaquetado anterior.**
 > **Depende de:** [04-autenticacion](./04-autenticacion.md), [08-sedes-y-geocerca](./08-sedes-y-geocerca.md), [19-panel-superadmin](./19-panel-superadmin.md).
 

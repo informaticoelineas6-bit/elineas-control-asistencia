@@ -2,7 +2,13 @@
 
 > **Origen:** `old-docs.md` puntos 2, 6, 7, 8, 66.
 > **Estado en el sistema legacy:** ✅ implementado (Supabase Auth).
-> **Estado en el monorepo nuevo:** ⚠️ hay better-auth en `apps/backend/src/lib/auth.ts`, **que se retira**: la autenticación pasa al Identity Server de Elineas.
+> **Estado en el monorepo nuevo:** ✅ implementado contra el Identity Server. better-auth **ya
+> se retiró**. Login, logout, custodia de tokens en cookies httpOnly, renovación transparente
+> del JWT y sonda de sesión: `apps/backend/src/lib/identity.ts`, `lib/cookies.ts`,
+> `routes/auth.ts` y `apps/frontend/src/modules/auth/session.ts`. Las reglas de §8 están
+> cubiertas por `apps/backend/src/routes/auth.test.ts`. Queda pendiente lo atado a otras specs:
+> la custodia de tokens en nativo (§7, spec 20) y la limpieza de la sede al salir (RN-04.8,
+> spec 08).
 > **Normativo:** [00-migracion-datos-e-identidad](./00-migracion-datos-e-identidad.md) Parte C
 > y [identity-server-usage.md](../docs/identity-server-usage.md). Ante cualquier diferencia, mandan esos dos.
 > **Depende de:** [02-usuarios-y-perfiles](./02-usuarios-y-perfiles.md), [03-roles-y-autorizacion](./03-roles-y-autorizacion.md).
@@ -57,6 +63,10 @@ las restablece. Todo eso vive en el IS
   (equivalente a `error-messages.ts` del legacy). Nada de textos crudos en inglés.
 - **RN-04.8** — Al cerrar sesión se limpia todo estado local por usuario: sede seleccionada
   ([08-sedes-y-geocerca](./08-sedes-y-geocerca.md)), caché de consultas y preferencias de shell.
+  Implementado en `useLogout` (`apps/frontend/src/modules/auth/session.ts`): invalida el caché de
+  consultas y borra la copia local de la sede
+  (`modules/locations/selection-cache.ts`). La selección **de verdad** vive en el perfil, en el
+  servidor, así que lo que se borra aquí es sólo la caché.
 
 ## 4. Flujos
 
@@ -129,10 +139,20 @@ Equivalente a `ProtectedRoute` del legacy, con dos listas:
 
 - `allowedRoles` — quién entra.
 - `excludedRoles` — quién queda explícitamente fuera aunque su prioridad sea mayor
-  (caso real: la pantalla de marcaje excluye a `global_manager`).
+  (caso real: `/clock-in` excluye a `global_manager`).
 
-Ambas deben poder combinarse. En TanStack Router esto se implementa con `beforeLoad` por
-ruta y una redirección a la ruta por defecto del rol.
+Ambas se combinan. Implementación: `ROUTE_ACCESS` y `canAccess` en
+`apps/frontend/src/modules/auth/navigation.ts` —la **misma** tabla que filtra el aside, para que
+guard y menú no puedan discrepar— y el componente `RequireRole`, que redirige al destino por
+defecto del rol (`defaultRouteFor`).
+
+> ⚠️ **No se resuelve en `beforeLoad`,** que es lo que proponía esta spec. Las cookies de sesión
+> pertenecen al origen del backend y el SSR del frontend no las ve (§5, y
+> [00](./00-migracion-datos-e-identidad.md) §C.9 decisión 1): un `beforeLoad` que consultara la
+> sesión recibiría "no autenticado" en cada render de servidor y mandaría al login a todo el
+> mundo. Mientras frontend y backend vivan en orígenes distintos, el guard se resuelve en
+> cliente, igual que el del layout. Si algún día se sirven bajo el mismo origen, esto puede
+> pasar a `beforeLoad` sin cambiar la tabla de acceso.
 
 ## 7. Móvil
 
@@ -147,19 +167,25 @@ ruta y una redirección a la ruta por defecto del rol.
 
 ## 8. Criterios de aceptación
 
-- [ ] El login funciona contra el IS con `systemSlug = control-asistencia`.
-- [ ] Un usuario sin rol en el sistema recibe el mensaje de RN-04.9, no "credenciales inválidas".
-- [ ] El JWT se verifica localmente contra el JWKS, sin llamar al IS en cada petición.
-- [ ] Con el JWT caducado, la siguiente petición se renueva sola y el usuario no lo nota.
-- [ ] El JavaScript del navegador no puede leer el session token ni el JWT.
-- [ ] Cerrar sesión revoca en el IS y borra las cookies y la sede seleccionada.
-- [ ] Un usuario con el perfil desactivado **no obtiene sesión** y recibe "cuenta desactivada".
-- [ ] Ese rechazo no deja tokens vivos en el IS.
-- [ ] Desactivar a alguien con la app abierta lo expulsa en su siguiente petición (RN-04.10).
-- [ ] Un usuario sin departamento asignado entra pero no puede marcar, y ve por qué.
-- [ ] Al recargar la página autenticado no hay parpadeo de redirección al login.
-- [ ] Un `global_manager` que entra a `/marcar` es redirigido, no ve la pantalla vacía.
-- [ ] No queda ninguna referencia a better-auth en el proyecto.
+- [x] El login funciona contra el IS con `systemSlug = control-asistencia`.
+- [x] Un usuario sin rol en el sistema recibe el mensaje de RN-04.9, no "credenciales inválidas".
+- [x] El JWT se verifica localmente contra el JWKS, sin llamar al IS en cada petición.
+- [x] Con el JWT caducado, la siguiente petición se renueva sola y el usuario no lo nota.
+- [x] El JavaScript del navegador no puede leer el session token ni el JWT. *(Las dos cookies
+      salen `HttpOnly; Secure; SameSite=None`.)*
+- [x] Cerrar sesión revoca en el IS y borra las cookies. *(La sede seleccionada, con la
+      [08](./08-sedes-y-geocerca.md): todavía no existe.)*
+- [x] Un usuario con el perfil desactivado **no obtiene sesión** y recibe "cuenta desactivada".
+- [x] Ese rechazo no deja tokens vivos en el IS.
+- [x] Desactivar a alguien con la app abierta lo expulsa en su siguiente petición (RN-04.10).
+- [x] Un usuario sin departamento asignado entra y ve por qué (pantalla de cuenta pendiente).
+      *(El bloqueo del marcaje en sí, con la [09](./09-marcaje-asistencia.md).)*
+- [x] Al recargar la página autenticado no hay parpadeo de redirección al login. *(El layout
+      distingue "cargando" de "no autenticado" y pinta esqueleto mientras tanto.)*
+- [ ] Un `global_manager` que entra a `/clock-in` es redirigido, no ve la pantalla vacía.
+      *(La ruta llega con la [09](./09-marcaje-asistencia.md); el guard que la redirigirá ya
+      está, §6.)*
+- [x] No queda ninguna referencia a better-auth en el proyecto.
 
 ## 9. Decisiones abiertas
 

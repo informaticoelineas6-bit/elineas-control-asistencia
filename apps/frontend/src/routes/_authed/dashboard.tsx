@@ -70,18 +70,14 @@ function DashboardPage() {
 							<dd className="truncate">{user.email}</dd>
 						</div>
 						<div className="flex justify-between gap-4">
-							<dt className="text-muted-foreground">Id en el IS</dt>
-							<dd className="truncate font-mono text-xs">
-								{user.identityUserId}
+							<dt className="text-muted-foreground">Roles que devuelve</dt>
+							<dd className="text-right">
+								{roles.map((role) => ROLE_LABELS[role]).join(" · ")}
 							</dd>
 						</div>
 						<div className="flex justify-between gap-4">
-							<dt className="text-muted-foreground">Roles que devuelve</dt>
-							<dd className="text-right">{roles.join(", ")}</dd>
-						</div>
-						<div className="flex justify-between gap-4">
 							<dt className="text-muted-foreground">Rol efectivo</dt>
-							<dd className="font-medium">{effectiveRole}</dd>
+							<dd className="font-medium">{ROLE_LABELS[effectiveRole]}</dd>
 						</div>
 					</dl>
 				</div>
@@ -91,12 +87,19 @@ function DashboardPage() {
 						Perfil (este sistema)
 					</h2>
 					<dl className="mt-3 space-y-2 text-sm">
-						<div className="flex justify-between gap-4">
-							<dt className="text-muted-foreground">Departamento</dt>
-							<dd className="truncate">
-								{profile.departmentId ?? "sin asignar"}
-							</dd>
-						</div>
+						{/*
+						 * Un `superadmin` no pertenece a un departamento: su alcance es
+						 * global por rol, así que la fila no se le muestra en vez de
+						 * enseñarle un "sin asignar" que parece un error de configuración.
+						 */}
+						{effectiveRole !== "superadmin" && (
+							<div className="flex justify-between gap-4">
+								<dt className="text-muted-foreground">Departamento</dt>
+								<dd className="truncate">
+									{profile.departmentName ?? "sin asignar"}
+								</dd>
+							</div>
+						)}
 						<div className="flex justify-between gap-4">
 							<dt className="text-muted-foreground">Ámbito gestionado</dt>
 							<dd>
@@ -122,7 +125,7 @@ function DashboardPage() {
 						<li key={item.to}>
 							<Link
 								to={item.to}
-								className="inline-flex items-center gap-2 rounded-lg border px-3 py-2 text-sm hover:bg-accent"
+								className="inline-flex items-center gap-2 rounded-lg border px-3 py-2 text-sm hover:bg-accent/60"
 							>
 								<item.icon className="size-4" />
 								{item.label}

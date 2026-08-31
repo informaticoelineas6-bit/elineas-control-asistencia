@@ -12,7 +12,7 @@ services:
       context: .
       dockerfile: apps/backend/Dockerfile
       target: prod
-    image: elineas-control-asistencia-backend:1.0.0
+    image: elineas-control-asistencia-backend:0.0.7
     container_name: elineas-control-asistencia-backend
     restart: unless-stopped
     env_file:
@@ -56,7 +56,7 @@ services:
         # Se incrusta en el bundle del cliente en build-time (ver Dockerfile):
         # cambiar este valor exige reconstruir la imagen.
         VITE_BACKEND_URL: ${VITE_BACKEND_URL:?falta VITE_BACKEND_URL}
-    image: elineas-control-asistencia-frontend:1.0.0
+    image: elineas-control-asistencia-frontend:0.0.7
     container_name: elineas-control-asistencia-frontend
     restart: unless-stopped
     environment:

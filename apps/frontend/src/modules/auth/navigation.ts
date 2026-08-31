@@ -1,12 +1,16 @@
-import type { AppRole } from "@elineas/validations";
+import { type AppRole, ROLES_THAT_DO_NOT_MARK } from "@elineas/validations";
 import {
 	BadgeDollarSign,
+	Building2,
 	CalendarClock,
 	ClipboardList,
 	FileBarChart,
 	LayoutDashboard,
+	Satellite,
 	ScrollText,
 	Settings,
+	Timer,
+	UserRound,
 	Users,
 } from "lucide-react";
 
@@ -27,14 +31,16 @@ const EMPLOYEE_AND_UP = [
 ] as const satisfies readonly AppRole[];
 
 /**
- * `global_manager` no marca asistencia (RN-03.4), así que lo propio de fichaje
- * no se le ofrece. `superadmin` sí, porque hereda todo lo anterior (spec 03 §2).
+ * `global_manager` no marca asistencia (RN-03.4).
+ *
+ * La lista vive en `@elineas/validations` (`ROLES_THAT_DO_NOT_MARK`) porque la
+ * consultan también la validación del marcaje (spec 07 §4) y la vista del horario
+ * propio: la regla se escribe una vez o acaba divergiendo entre el menú y el
+ * servidor. Se expresa como **exclusión** y no acortando la lista de admitidos a
+ * propósito (spec 04 §6): "todos menos el gestor global" es lo que dice la regla,
+ * y enumerar a los demás haría que un rol nuevo entrara por descuido.
  */
-const MARKS = [
-	"employee",
-	"department_head",
-	"superadmin",
-] as const satisfies readonly AppRole[];
+const MARKS_EXCLUDED = ROLES_THAT_DO_NOT_MARK;
 
 const HEAD_AND_UP = [
 	"department_head",
@@ -60,10 +66,35 @@ export const NAV_SECTIONS = [
 				roles: EMPLOYEE_AND_UP,
 			},
 			{
-				to: "/mi-asistencia",
+				to: "/clock-in",
+				label: "Marcar",
+				icon: Timer,
+				roles: EMPLOYEE_AND_UP,
+				excludedRoles: MARKS_EXCLUDED,
+			},
+			{
+				to: "/attendance",
 				label: "Mi asistencia",
 				icon: CalendarClock,
-				roles: MARKS,
+				roles: EMPLOYEE_AND_UP,
+				excludedRoles: MARKS_EXCLUDED,
+			},
+			{
+				to: "/profile",
+				label: "Mi perfil",
+				icon: UserRound,
+				roles: EMPLOYEE_AND_UP,
+			},
+			/*
+			 * Spec 08 §6. La ve cualquier rol a propósito, incluido el gestor global
+			 * que no marca: quien la usa de verdad es el jefe en planta con el teléfono
+			 * de otro en la mano, resolviendo un "dice que estoy fuera y estoy dentro".
+			 */
+			{
+				to: "/gps",
+				label: "Diagnóstico GPS",
+				icon: Satellite,
+				roles: EMPLOYEE_AND_UP,
 			},
 		],
 	},
@@ -71,13 +102,13 @@ export const NAV_SECTIONS = [
 		label: "Gestión",
 		items: [
 			{
-				to: "/mi-equipo",
+				to: "/team",
 				label: "Mi equipo",
 				icon: ClipboardList,
 				roles: HEAD_AND_UP,
 			},
 			{
-				to: "/reportes",
+				to: "/reports",
 				label: "Reportes",
 				icon: FileBarChart,
 				roles: HEAD_AND_UP,
@@ -88,26 +119,32 @@ export const NAV_SECTIONS = [
 		label: "Administración",
 		items: [
 			{
-				to: "/usuarios",
+				to: "/users",
 				label: "Usuarios",
 				icon: Users,
 				roles: MANAGER_AND_UP,
 			},
 			{
-				to: "/nomina",
+				to: "/departments",
+				label: "Departamentos",
+				icon: Building2,
+				roles: MANAGER_AND_UP,
+			},
+			{
+				to: "/payroll",
 				label: "Nómina",
 				icon: BadgeDollarSign,
 				roles: MANAGER_AND_UP,
 			},
 			{
-				to: "/configuracion",
+				to: "/settings",
 				label: "Configuración",
 				icon: Settings,
 				roles: MANAGER_AND_UP,
 			},
 			{
-				to: "/bitacora",
-				label: "Bitácora",
+				to: "/logs",
+				label: "Logs",
 				icon: ScrollText,
 				roles: SUPERADMIN,
 			},
@@ -117,18 +154,62 @@ export const NAV_SECTIONS = [
 
 export type NavPath = (typeof NAV_SECTIONS)[number]["items"][number]["to"];
 
-/** Roles admitidos por cada ruta, para el guard de la propia página. */
-export const ROUTE_ROLES = Object.fromEntries(
+/**
+ * Acceso por ruta, con las **dos listas** del guard del legacy (spec 04 §6):
+ *
+ * - `allowedRoles` — quién entra.
+ * - `excludedRoles` — quién queda fuera **aunque su prioridad alcance**. Sin esta
+ *   segunda lista, "todos menos el gestor global" habría que escribirlo
+ *   enumerando a los demás, y un rol nuevo entraría por descuido.
+ *
+ * Se deriva del propio menú para que filtrado y guard no puedan discrepar: si un
+ * enlace no se ofrece, su ruta tampoco se abre escribiéndola a mano.
+ */
+export type RouteAccess = {
+	allowedRoles: readonly AppRole[];
+	excludedRoles: readonly AppRole[];
+};
+
+export const ROUTE_ACCESS = Object.fromEntries(
 	NAV_SECTIONS.flatMap((section) =>
-		section.items.map((item) => [item.to, item.roles as readonly AppRole[]]),
+		section.items.map((item) => [
+			item.to,
+			{
+				allowedRoles: item.roles as readonly AppRole[],
+				excludedRoles: ("excludedRoles" in item
+					? item.excludedRoles
+					: []) as readonly AppRole[],
+			},
+		]),
 	),
-) as Record<NavPath, readonly AppRole[]>;
+) as Record<NavPath, RouteAccess>;
 
 export function canAccess(
 	role: AppRole | null | undefined,
 	path: NavPath,
 ): boolean {
-	return role != null && ROUTE_ROLES[path].includes(role);
+	if (role == null) return false;
+	const { allowedRoles, excludedRoles } = ROUTE_ACCESS[path];
+	return allowedRoles.includes(role) && !excludedRoles.includes(role);
+}
+
+/** Los roles que de verdad ven una ruta, para explicarlo en pantalla. */
+export function rolesWithAccess(path: NavPath): readonly AppRole[] {
+	const { allowedRoles, excludedRoles } = ROUTE_ACCESS[path];
+	return allowedRoles.filter((role) => !excludedRoles.includes(role));
+}
+
+/**
+ * Destino por defecto de cada rol: adonde va tras iniciar sesión y adonde
+ * apunta el "volver al inicio" de las pantallas de error y del 404.
+ *
+ * Hoy es el panel para todos. Cuando exista la pantalla de marcaje
+ * ([09](../../../../../packages/specs/09-marcaje-asistencia.md)), RN-05.4 la
+ * convierte en el destino de quien marca, y los gestores globales —que no
+ * marcan— se quedan en el panel.
+ */
+export function defaultRouteFor(_role: AppRole): NavPath {
+	return "/dashboard";
 }
 
 export const ROLE_LABELS: Record<AppRole, string> = {

@@ -1,6 +1,5 @@
 import { authSpec } from "@elineas/contracts";
 import { getHighestRole } from "@elineas/validations";
-import { zValidator } from "@hono/zod-validator";
 import { Hono } from "hono";
 import { HTTPException } from "hono/http-exception";
 import {
@@ -11,7 +10,10 @@ import {
 } from "#/lib/cookies";
 import { IdentityError, signIn, signOut } from "#/lib/identity";
 import { getRoles, invalidateRoles } from "#/lib/roles-cache";
+import { validate } from "#/lib/validate.ts";
 import {
+	departmentNameOf,
+	enforceGlobalManagerDepartment,
 	findOrCreateProfile,
 	getManagedDepartmentIds,
 	toSessionProfile,
@@ -24,7 +26,7 @@ export const auth = new Hono();
  * Login (spec 04 §4.1). El navegador manda las credenciales aquí, nunca al IS
  * (RN-00.35); este handler es quien recibe y custodia los tokens.
  */
-auth.post("/login", zValidator("json", authSpec.login.body), async (c) => {
+auth.post("/login", validate("json", authSpec.login.body), async (c) => {
 	const { email, password } = c.req.valid("json");
 
 	let result: Awaited<ReturnType<typeof signIn>>;
@@ -67,13 +69,20 @@ auth.post("/login", zValidator("json", authSpec.login.body), async (c) => {
 	setJwtCookie(c, result.jwt);
 	await touchLastConnection(profile.id);
 
+	// RN-03.6, antes de responder: si a este perfil le toca el departamento de los
+	// gestores globales, la sesión ya sale con él y no con el anterior.
+	const scopedProfile = await enforceGlobalManagerDepartment(profile, roles);
+
 	return c.json(
 		authSpec.login.response.parse({
 			user: result.user,
-			profile: toSessionProfile(profile),
+			profile: toSessionProfile(
+				scopedProfile,
+				await departmentNameOf(scopedProfile.departmentId),
+			),
 			roles,
 			effectiveRole,
-			managedDepartmentIds: await getManagedDepartmentIds(profile),
+			managedDepartmentIds: await getManagedDepartmentIds(scopedProfile),
 		}),
 	);
 });

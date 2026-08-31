@@ -2,7 +2,16 @@
 
 > **Origen:** `old-docs.md` §3.6, puntos 46, 47, 48, 49; hallazgo H-4; punto 76.
 > **Estado en el sistema legacy:** ✅ implementado, ⚠️ con lógica de negocio en el cliente.
-> **Estado en el monorepo nuevo:** ❌ no existe.
+> **Estado en el monorepo nuevo:** ⚠️ parcial (mínimo viable, adelantado por la
+> [01](./01-organizacion-departamentos.md)). Existen la tabla `notifications` con su índice de
+> deduplicación, la generación **en el servidor y en la transacción del hecho** (RN-14.1/14.2),
+> los cuatro endpoints de lectura y marcado de §7, y la campana con panel en la cabecera.
+> **Entrega por sondeo cada 30 s** (RN-14.4); no hay entrega en vivo ni aviso emergente
+> (RN-14.5). Del catálogo de §4 se emiten: pausa y reanudación de departamento, aparición de un
+> perfil incompleto (RN-02.12), cierre del alta al asignar departamento, **cambio de horario del
+> departamento** (RN-07.10, con `dedupe_key` por departamento) y **sede de trabajo desactivada**
+> (spec 08 RN-08.6). Código:
+> `apps/backend/src/services/notifications.ts`, `apps/frontend/src/modules/notifications/`.
 > **Depende de:** [02-usuarios-y-perfiles](./02-usuarios-y-perfiles.md), [05-shells-y-navegacion](./05-shells-y-navegacion.md).
 
 ---
@@ -55,12 +64,13 @@ de horario, un recordatorio pendiente.
 | Vacaciones aprobadas / rechazadas | Solicitante | [11](./11-vacaciones.md) |
 | Nueva incidencia reportada | Jefe(s) del ámbito | [12](./12-incidencias.md) |
 | Incidencia aprobada / rechazada | Empleado | [12](./12-incidencias.md) |
-| Cambio de horario del departamento | Todos los miembros | [07](./07-horarios-y-calendario.md) RN-07.10 |
+| Cambio de horario del departamento | Todos los miembros | [07](./07-horarios-y-calendario.md) RN-07.10 ✅ |
 | Recordatorio de configurar descansos | Empleado / jefe | [10](./10-descansos.md) §5 |
 | Ausencia clasificada (AJ/ANJ) | Empleado | [13](./13-justificacion-ausencias.md) RN-13.7 ⚠️ *nuevo* |
 | Ajuste de nómina aplicado o revertido | Empleado | [17](./17-nomina.md) ⚠️ *nuevo, punto 76* |
 | Reporte mensual listo | Quien lo solicitó | [16](./16-reporteria-mensual.md) |
-| Departamento pausado / reanudado | Miembros | [01](./01-organizacion-departamentos.md) *propuesta* |
+| Departamento pausado / reanudado | Miembros | [01](./01-organizacion-departamentos.md) *propuesta* ✅ |
+| Sede de trabajo desactivada | Quien la tenía elegida | [08](./08-sedes-y-geocerca.md) RN-08.6 ✅ *nuevo* |
 
 Los marcados ⚠️ **no existen en el legacy** y cubren huecos reales: hoy al empleado le
 descuentan sin avisarle.

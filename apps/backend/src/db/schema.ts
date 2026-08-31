@@ -1,11 +1,18 @@
-import { relations } from "drizzle-orm";
+import { relations, sql } from "drizzle-orm";
 import {
 	boolean,
+	date,
+	doublePrecision,
+	index,
+	integer,
+	jsonb,
 	numeric,
 	pgTable,
 	text,
+	time,
 	timestamp,
 	unique,
+	uniqueIndex,
 	uuid,
 } from "drizzle-orm/pg-core";
 
@@ -19,21 +26,40 @@ import {
  * (RN-00.27, RN-00.29).
  */
 
-/** Spec 01 §3. */
-export const departments = pgTable("departments", {
-	id: uuid().primaryKey().defaultRandom(),
-	name: text().notNull().unique(),
-	restGroupsEnabled: boolean("rest_groups_enabled").notNull().default(false),
-	isPaused: boolean("is_paused").notNull().default(false),
-	pauseReason: text("pause_reason"),
-	pausedAt: timestamp("paused_at", { withTimezone: true }),
-	createdAt: timestamp("created_at", { withTimezone: true })
-		.notNull()
-		.defaultNow(),
-	updatedAt: timestamp("updated_at", { withTimezone: true })
-		.notNull()
-		.defaultNow(),
-});
+/**
+ * Spec 01 §3.
+ *
+ * Sin semilla: los departamentos los crea el administrador desde cero (decisión
+ * 1 de la spec 01), y la organización es **plana** — no hay departamento padre
+ * (decisión 2).
+ */
+export const departments = pgTable(
+	"departments",
+	{
+		id: uuid().primaryKey().defaultRandom(),
+		name: text().notNull().unique(),
+		restGroupsEnabled: boolean("rest_groups_enabled").notNull().default(false),
+		isPaused: boolean("is_paused").notNull().default(false),
+		pauseReason: text("pause_reason"),
+		pausedAt: timestamp("paused_at", { withTimezone: true }),
+		createdAt: timestamp("created_at", { withTimezone: true })
+			.notNull()
+			.defaultNow(),
+		updatedAt: timestamp("updated_at", { withTimezone: true })
+			.notNull()
+			.defaultNow(),
+	},
+	(table) => [
+		/**
+		 * RN-01.1 en la base, sin distinguir mayúsculas: "Transporte" y
+		 * "transporte" son el mismo departamento para quien los lee en un selector.
+		 * Con RLS fuera del proyecto (RN-00.1), las reglas que se pueden expresar
+		 * como restricción de la base conviene tenerlas ahí además de en el
+		 * servicio.
+		 */
+		uniqueIndex("departments_name_lower_idx").on(sql`lower(${table.name})`),
+	],
+);
 
 /**
  * Spec 02 §3. 1:1 con el usuario del Identity Server.
@@ -50,16 +76,44 @@ export const profiles = pgTable("profiles", {
 	/** Nulo = perfil incompleto: entra, pero no puede marcar (RN-02.3). */
 	departmentId: uuid("department_id").references(() => departments.id),
 	phone: text(),
-	/** Dato financiero sensible: nunca se expone fuera de global_manager+. */
-	monthlySalary: numeric("monthly_salary", { precision: 12, scale: 2 }),
+	/**
+	 * El sueldo **no está aquí**: vive en `employee_compensation` (spec 02 §6a).
+	 * En el legacy era una columna de esta tabla, protegida sólo por la costumbre
+	 * de que ningún consumidor de rol bajo hacía `select *` — hallazgo H-3. Una
+	 * tabla aparte convierte esa costumbre en una barrera: un endpoint que
+	 * consulta perfiles no puede filtrar lo que no está en la fila.
+	 */
 	isActive: boolean("is_active").notNull().default(true),
 	deactivatedAt: timestamp("deactivated_at", { withTimezone: true }),
+	/**
+	 * Quién desactivó. Sin clave ajena a propósito: si ese perfil se borra, el
+	 * dato de quién tomó la decisión no debe desaparecer con él. El borrado real
+	 * lo pone a nulo explícitamente (RN-02.8).
+	 */
 	deactivatedBy: uuid("deactivated_by"),
 	deactivationReason: text("deactivation_reason"),
 	contractCancelledAt: timestamp("contract_cancelled_at", {
 		withTimezone: true,
 	}),
 	lastConnectionAt: timestamp("last_connection_at", { withTimezone: true }),
+	/**
+	 * Spec 08 §7, decisión 2 de su §9: la sede contra la que se valida el marcaje de
+	 * esta persona (RN-08.5).
+	 *
+	 * Vive en el perfil y no sólo en el dispositivo por tres razones: sobrevive al
+	 * cambio de teléfono y al borrado de datos del navegador; permite que **el
+	 * servidor** invalide la selección al desactivar la sede (RN-08.6) en vez de
+	 * fiarse de que el cliente se dé cuenta; y sigue siendo por persona, así que dos
+	 * operarios que comparten terminal no heredan la del otro (RN-08.8). El cliente
+	 * guarda además una copia local, pero es caché, no la verdad.
+	 *
+	 * `on delete set null` es red de seguridad: una sede no se borra, se desactiva
+	 * (RN-08.10).
+	 */
+	selectedWorkLocationId: uuid("selected_work_location_id").references(
+		() => workLocations.id,
+		{ onDelete: "set null" },
+	),
 	createdAt: timestamp("created_at", { withTimezone: true })
 		.notNull()
 		.defaultNow(),
@@ -91,9 +145,12 @@ export const userDepartmentResponsibilities = pgTable(
 	(table) => [unique().on(table.userId, table.departmentId)],
 );
 
-export const departmentsRelations = relations(departments, ({ many }) => ({
+export const departmentsRelations = relations(departments, ({ many, one }) => ({
 	profiles: many(profiles),
 	responsibilities: many(userDepartmentResponsibilities),
+	/** Uno como máximo (RN-07.1). */
+	schedule: one(departmentSchedules),
+	workCalendar: many(workCalendar),
 }));
 
 export const profilesRelations = relations(profiles, ({ one, many }) => ({
@@ -114,6 +171,447 @@ export const responsibilitiesRelations = relations(
 		department: one(departments, {
 			fields: [userDepartmentResponsibilities.departmentId],
 			references: [departments.id],
+		}),
+	}),
+);
+
+/**
+ * Spec 06 §2. Clave/valor con JSONB, igual que el legacy, pero **tipado al
+ * leer**: cada clave tiene su esquema Zod y su default en código
+ * (`@elineas/validations/config`), y la base sólo guarda sobrescrituras
+ * (RN-06.2).
+ *
+ * Se adelanta aquí, antes de la spec 06 completa, porque RN-03.6 necesita saber
+ * a qué departamento se fuerzan los `global_manager` y esa referencia es
+ * configurable, no un nombre escrito en el código.
+ */
+export const appConfig = pgTable("app_config", {
+	key: text().primaryKey(),
+	/**
+	 * Admite nulo: una clave puede estar **explícitamente puesta a nulo**, que no es
+	 * lo mismo que no estar. Para `global_manager_department_id` ambas cosas
+	 * significan "regla desactivada", pero una clave futura cuyo default no sea nulo
+	 * necesita poder distinguirlas.
+	 */
+	value: jsonb(),
+	updatedAt: timestamp("updated_at", { withTimezone: true })
+		.notNull()
+		.defaultNow(),
+	updatedBy: uuid("updated_by").references(() => profiles.id, {
+		onDelete: "set null",
+	}),
+});
+
+/**
+ * Spec 18 §2. Quién hizo qué, cuándo y sobre qué.
+ *
+ * Se escribe **sólo desde el servidor** (RN-18.3) y **en la transacción de la
+ * acción auditada** (RN-18.4): si la acción se revierte, su rastro también.
+ * Nunca se actualiza ni se borra desde la aplicación (RN-18.6).
+ *
+ * `actorId` no lleva FK a `profiles`: una entrada de bitácora debe sobrevivir al
+ * borrado del perfil que la originó, o el rastro se pierde justo cuando más
+ * falta hace.
+ */
+export const auditLog = pgTable(
+	"audit_log",
+	{
+		id: uuid().primaryKey().defaultRandom(),
+		/** Nulo cuando actúa el sistema, no una persona. */
+		actorId: uuid("actor_id"),
+		/** Verbo canónico, del catálogo de `@elineas/validations` (spec 18 §3). */
+		action: text().notNull(),
+		tableName: text("table_name").notNull(),
+		recordId: text("record_id"),
+		/** Sin contraseñas ni tokens jamás (RN-18.2). */
+		oldData: jsonb("old_data"),
+		newData: jsonb("new_data"),
+		sourceIp: text("source_ip"),
+		/** Motivo, user-agent, id de correlación (RN-18.8). */
+		metadata: jsonb(),
+		createdAt: timestamp("created_at", { withTimezone: true })
+			.notNull()
+			.defaultNow(),
+	},
+	(table) => [
+		index("audit_log_created_at_idx").on(table.createdAt.desc()),
+		index("audit_log_record_idx").on(table.tableName, table.recordId),
+		index("audit_log_actor_idx").on(table.actorId, table.createdAt.desc()),
+	],
+);
+
+/**
+ * Spec 14 §2. Aislamiento estricto por usuario: nadie ve las de otro, ni un
+ * `global_manager` (RN-14.1). Sólo el servidor las crea (RN-14.2).
+ *
+ * `dedupeKey` permite actualizar en vez de duplicar (spec 14 §5) — el índice
+ * único parcial es lo que hace posible el upsert.
+ */
+export const notifications = pgTable(
+	"notifications",
+	{
+		id: uuid().primaryKey().defaultRandom(),
+		userId: uuid("user_id")
+			.notNull()
+			.references(() => profiles.id, { onDelete: "cascade" }),
+		type: text().notNull(),
+		title: text().notNull(),
+		body: text().notNull(),
+		actionUrl: text("action_url"),
+		/** Nulo = no leída. */
+		readAt: timestamp("read_at", { withTimezone: true }),
+		dedupeKey: text("dedupe_key"),
+		createdAt: timestamp("created_at", { withTimezone: true })
+			.notNull()
+			.defaultNow(),
+	},
+	(table) => [
+		index("notifications_user_unread_idx").on(table.userId, table.readAt),
+		index("notifications_user_created_idx").on(
+			table.userId,
+			table.createdAt.desc(),
+		),
+		uniqueIndex("notifications_dedupe_idx")
+			.on(table.userId, table.dedupeKey)
+			.where(sql`dedupe_key is not null`),
+	],
+);
+
+/**
+ * Spec 02 §6a. Compensación, separada de `profiles`.
+ *
+ * Es la respuesta al hallazgo H-3: el sueldo estaba en `profiles` y sólo lo
+ * protegía la costumbre de no hacer `select *`. Aquí la separación es física, así
+ * que ningún endpoint de perfiles puede devolverlo por descuido — y con la RLS
+ * fuera del proyecto (RN-00.1) eso importa más que antes.
+ *
+ * 1:1 con el perfil, con la clave primaria en `profile_id`: no hay historial de
+ * sueldos. Si algún día hace falta, es una tabla nueva con vigencias, no filas
+ * duplicadas aquí.
+ */
+export const employeeCompensation = pgTable("employee_compensation", {
+	profileId: uuid("profile_id")
+		.primaryKey()
+		.references(() => profiles.id, { onDelete: "cascade" }),
+	monthlySalary: numeric("monthly_salary", { precision: 12, scale: 2 }),
+	/**
+	 * Moneda del importe. Vive junto al importe y no en configuración global porque
+	 * en la misma plantilla puede haber gente cobrando en monedas distintas.
+	 * Vocabulario cerrado en `@elineas/validations` (`currencySchema`).
+	 */
+	currency: text().notNull().default("CUP"),
+	updatedAt: timestamp("updated_at", { withTimezone: true })
+		.notNull()
+		.defaultNow(),
+	updatedBy: uuid("updated_by"),
+});
+
+export const employeeCompensationRelations = relations(
+	employeeCompensation,
+	({ one }) => ({
+		profile: one(profiles, {
+			fields: [employeeCompensation.profileId],
+			references: [profiles.id],
+		}),
+	}),
+);
+
+export const notificationsRelations = relations(notifications, ({ one }) => ({
+	profile: one(profiles, {
+		fields: [notifications.userId],
+		references: [profiles.id],
+	}),
+}));
+
+/**
+ * Spec 07 §2. La ventana diaria del departamento: desde y hasta cuándo se acepta
+ * una entrada, y desde y hasta cuándo una salida.
+ *
+ * `department_id` es **único**: un horario vigente por departamento, sin turnos
+ * múltiples ni horarios por persona (RN-07.1, decisión 1 de la §8 cerrada). Si
+ * algún día el negocio necesita turnos, es una tabla nueva con su vigencia, no una
+ * columna que se deje preparada aquí "por si acaso".
+ *
+ * Las cuatro horas son `time` **sin zona**: son horas de reloj de pared, y la zona
+ * en la que hay que leerlas está en su propia columna. Guardarlas como
+ * `timestamptz` es lo que hace que un horario se corra una hora al cambiar el
+ * horario de verano.
+ *
+ * Se borra con el departamento (`cascade`) porque un horario sin departamento no
+ * significa nada; el borrado del departamento, además, está bloqueado mientras
+ * exista horario (spec 01 §5.2).
+ */
+export const departmentSchedules = pgTable("department_schedules", {
+	id: uuid().primaryKey().defaultRandom(),
+	departmentId: uuid("department_id")
+		.notNull()
+		.unique()
+		.references(() => departments.id, { onDelete: "cascade" }),
+	/** Ventana de entrada (RN-07.3). */
+	checkinStartTime: time("checkin_start_time").notNull(),
+	checkinEndTime: time("checkin_end_time").notNull(),
+	/** Ventana de salida (RN-07.4). Puede terminar al día siguiente (RN-07.5). */
+	checkoutStartTime: time("checkout_start_time").notNull(),
+	checkoutEndTime: time("checkout_end_time").notNull(),
+	/**
+	 * Zona IANA del departamento. Gana sobre `global_timezone` (RN-06.6) y es la
+	 * que se usa en cada conversión instante → hora local: **nunca la del
+	 * servidor** (RN-07.2), que en un contenedor es UTC.
+	 */
+	timezone: text().notNull(),
+	allowEarlyCheckin: boolean("allow_early_checkin").notNull().default(false),
+	allowLateCheckout: boolean("allow_late_checkout").notNull().default(false),
+	createdAt: timestamp("created_at", { withTimezone: true })
+		.notNull()
+		.defaultNow(),
+	updatedAt: timestamp("updated_at", { withTimezone: true })
+		.notNull()
+		.defaultNow(),
+});
+
+/**
+ * Spec 07 §2. Qué fechas concretas son laborables para un departamento, con su
+ * tolerancia de tardanza propia.
+ *
+ * **Ausencia de fila significa algo**: la fecha es laborable con la tolerancia
+ * global (RN-07.7, RN-07.8). Por eso la tabla no se siembra con los 365 días del
+ * año — sólo guarda las excepciones—, y por eso el `PUT` del calendario admite
+ * borrar filas y no sólo escribirlas.
+ *
+ * `date` es tipo `date` y no `timestamptz`: un feriado es un día del calendario de
+ * pared, el mismo para todo el departamento, y convertirlo a instante es lo que
+ * hace que se corra de día.
+ */
+export const workCalendar = pgTable(
+	"work_calendar",
+	{
+		id: uuid().primaryKey().defaultRandom(),
+		departmentId: uuid("department_id")
+			.notNull()
+			.references(() => departments.id, { onDelete: "cascade" }),
+		date: date().notNull(),
+		isWorkday: boolean("is_workday").notNull(),
+		/** Nulo = manda la tolerancia global de la spec 06 (RN-07.8). */
+		lateToleranceMinutes: integer("late_tolerance_minutes"),
+		/**
+		 * Por qué esta fecha es distinta: "Feriado: 1 de mayo", "Inventario".
+		 *
+		 * No está en la §2 de la spec y se añade por criterio: el calendario existe
+		 * para feriados y jornadas especiales, y un día marcado sin etiqueta no dice
+		 * de qué se trataba ni en la pantalla ni medio año después, revisando por qué
+		 * a alguien no se le exigió asistencia.
+		 */
+		note: text(),
+		createdAt: timestamp("created_at", { withTimezone: true })
+			.notNull()
+			.defaultNow(),
+		updatedAt: timestamp("updated_at", { withTimezone: true })
+			.notNull()
+			.defaultNow(),
+	},
+	(table) => [
+		/** Un día no puede ser laborable y no laborable a la vez (spec 07 §2). */
+		unique("work_calendar_department_date_key").on(
+			table.departmentId,
+			table.date,
+		),
+		/** La consulta real es siempre "el rango de fechas de este departamento". */
+		index("work_calendar_department_date_idx").on(
+			table.departmentId,
+			table.date,
+		),
+	],
+);
+
+export const departmentSchedulesRelations = relations(
+	departmentSchedules,
+	({ one }) => ({
+		department: one(departments, {
+			fields: [departmentSchedules.departmentId],
+			references: [departments.id],
+		}),
+	}),
+);
+
+export const workCalendarRelations = relations(workCalendar, ({ one }) => ({
+	department: one(departments, {
+		fields: [workCalendar.departmentId],
+		references: [departments.id],
+	}),
+}));
+
+/**
+ * Spec 08 §2. Sedes con geocerca circular: centro, radio y umbral de precisión.
+ *
+ * **`geofence_config` del legacy no se porta** (spec 08 §2): era la tabla de
+ * geocerca única del diseño original y sobrevivía como respaldo con migración
+ * automática. Si hay datos que traer, se traen una vez en el script de migración
+ * (spec 21) y se descarta.
+ *
+ * Las coordenadas son `double precision` y no `numeric`: aquí no se suman dineros,
+ * se calculan distancias, y la aritmética de coma flotante es la que usa la
+ * fórmula. El radio y el umbral son enteros en **metros**, que es la unidad en la
+ * que piensa quien configura una sede.
+ *
+ * No hay borrado (RN-08.10): una sede con marcajes históricos detrás no se elimina,
+ * se desactiva — el historial necesita seguir sabiendo contra qué se validó.
+ */
+export const workLocations = pgTable(
+	"work_locations",
+	{
+		id: uuid().primaryKey().defaultRandom(),
+		name: text().notNull(),
+		centerLat: doublePrecision("center_lat").notNull(),
+		centerLng: doublePrecision("center_lng").notNull(),
+		radiusMeters: integer("radius_meters").notNull(),
+		accuracyThreshold: integer("accuracy_threshold").notNull(),
+		/** RN-08.3: con `false` la mala precisión sólo advierte y queda registrada. */
+		blockOnPoorAccuracy: boolean("block_on_poor_accuracy")
+			.notNull()
+			.default(false),
+		isActive: boolean("is_active").notNull().default(true),
+		createdAt: timestamp("created_at", { withTimezone: true })
+			.notNull()
+			.defaultNow(),
+		updatedAt: timestamp("updated_at", { withTimezone: true })
+			.notNull()
+			.defaultNow(),
+	},
+	(table) => [
+		/**
+		 * Dos sedes con el mismo nombre son indistinguibles en el selector que alguien
+		 * usa antes de marcar, así que la base lo impide sin distinguir mayúsculas —
+		 * mismo criterio que los departamentos (RN-01.1).
+		 */
+		uniqueIndex("work_locations_name_lower_idx").on(sql`lower(${table.name})`),
+		/** La consulta de cada día es "las sedes activas". */
+		index("work_locations_active_idx").on(table.isActive),
+	],
+);
+
+export const workLocationsRelations = relations(workLocations, ({ many }) => ({
+	profiles: many(profiles),
+}));
+
+/**
+ * Spec 09 §2. **La única escritura crítica del sistema**: todo lo demás lee de aquí.
+ *
+ * Sólo se escribe desde el handler de `POST /api/attendance/marks` (spec 09 §4).
+ * No hay `UPDATE` ni `DELETE` desde la aplicación (RN-09.12): una corrección es una
+ * incidencia (spec 12), no una edición.
+ *
+ * Cuatro campos no están en la §2 de la spec y se añaden por criterio, todos por el
+ * mismo motivo — **lo que se puede recalcular hoy no se podrá recalcular mañana**,
+ * porque el horario, la tolerancia y la geocerca cambian y los cambios no son
+ * retroactivos (RN-06.4):
+ *
+ * - `work_date`: a qué jornada pertenece la marca (RN-07.5, jornada nocturna).
+ * - `is_late` / `late_minutes`: la tardanza con la tolerancia **de entonces** (RN-09.7).
+ * - `source`: quién puso la marca, persona o sistema (RN-09.14).
+ * - `department_id`: foto del departamento al marcar. Es la denormalización que la
+ *   §2 pedía evaluar: la reportería filtra por departamento constantemente, y el
+ *   valor correcto para un reporte histórico es el de entonces, no el de hoy.
+ */
+export const attendanceMarks = pgTable(
+	"attendance_marks",
+	{
+		id: uuid().primaryKey().defaultRandom(),
+		/**
+		 * Con `cascade`: el borrado real de un perfil sólo lo puede hacer un
+		 * `superadmin` (RN-02.8), es excepcional y queda en bitácora. Un historial de
+		 * asistencia sin la persona a la que pertenece no le sirve a nadie.
+		 */
+		userId: uuid("user_id")
+			.notNull()
+			.references(() => profiles.id, { onDelete: "cascade" }),
+		/** `IN` o `OUT`, del vocabulario cerrado de `@elineas/validations`. */
+		markType: text("mark_type").notNull(),
+		/** Instante según el servidor (RN-09.11). La columna de la spec se llamaba
+		 * `timestamp`; aquí es `marked_at` para no llamar a una columna igual que un
+		 * tipo de SQL. */
+		markedAt: timestamp("marked_at", { withTimezone: true })
+			.notNull()
+			.defaultNow(),
+		/** Nulo sólo en un intento rechazado antes de poder resolver la jornada. */
+		workDate: date("work_date"),
+		latitude: doublePrecision().notNull(),
+		longitude: doublePrecision().notNull(),
+		accuracy: doublePrecision().notNull(),
+		/** Recalculados en el servidor a partir de lat/lng (RN-08.2). */
+		distanceToCenter: doublePrecision("distance_to_center"),
+		insideGeofence: boolean("inside_geofence"),
+		workLocationId: uuid("work_location_id").references(
+			() => workLocations.id,
+			{ onDelete: "set null" },
+		),
+		departmentId: uuid("department_id").references(() => departments.id, {
+			onDelete: "set null",
+		}),
+		/** RN-09.8 y decisión 2 de la §8: los intentos rechazados también se guardan. */
+		blocked: boolean().notNull().default(false),
+		blockReason: text("block_reason"),
+		isLate: boolean("is_late").notNull().default(false),
+		lateMinutes: integer("late_minutes").notNull().default(0),
+		source: text().notNull().default("manual"),
+		createdAt: timestamp("created_at", { withTimezone: true })
+			.notNull()
+			.defaultNow(),
+	},
+	(table) => [
+		index("attendance_marks_user_time_idx").on(
+			table.userId,
+			table.markedAt.desc(),
+		),
+		index("attendance_marks_time_idx").on(table.markedAt.desc()),
+		/** La consulta de la agregación diaria: la jornada de una persona. */
+		index("attendance_marks_user_workdate_idx").on(
+			table.userId,
+			table.workDate,
+		),
+		/** La de los paneles de departamento (specs 15 y 16). */
+		index("attendance_marks_department_workdate_idx").on(
+			table.departmentId,
+			table.workDate,
+		),
+		/**
+		 * RN-09.10 — Antirrebote **en la base**, que es donde se gana la carrera del
+		 * doble toque: dos peticiones simultáneas no se detectan comprobando antes de
+		 * insertar, sólo con una restricción.
+		 *
+		 * Son dos índices y no uno porque válidos y rechazados no compiten: un intento
+		 * rechazado a las 08:00:10 no puede impedir que el marcaje válido de las
+		 * 08:00:40 —la persona entró en la geocerca entretanto— entre en la misma
+		 * minuto. El truncado va con la zona explícita (`at time zone 'UTC'`) porque
+		 * sin ella la expresión depende de la sesión y PostgreSQL no la admite en un
+		 * índice.
+		 */
+		uniqueIndex("attendance_marks_valid_minute_idx")
+			.on(
+				table.userId,
+				table.markType,
+				sql`date_trunc('minute', ${table.markedAt} at time zone 'UTC')`,
+			)
+			.where(sql`not blocked`),
+		uniqueIndex("attendance_marks_blocked_minute_idx")
+			.on(
+				table.userId,
+				table.markType,
+				sql`date_trunc('minute', ${table.markedAt} at time zone 'UTC')`,
+			)
+			.where(sql`blocked`),
+	],
+);
+
+export const attendanceMarksRelations = relations(
+	attendanceMarks,
+	({ one }) => ({
+		profile: one(profiles, {
+			fields: [attendanceMarks.userId],
+			references: [profiles.id],
+		}),
+		workLocation: one(workLocations, {
+			fields: [attendanceMarks.workLocationId],
+			references: [workLocations.id],
 		}),
 	}),
 );

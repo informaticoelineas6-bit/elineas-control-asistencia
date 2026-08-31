@@ -10,6 +10,7 @@ import {
 } from "#/components/ui/sidebar.tsx";
 import { Skeleton } from "#/components/ui/skeleton.tsx";
 import { sessionQueryOptions } from "#/modules/auth/session.ts";
+import { NotificationsBell } from "#/modules/notifications/notifications-bell.tsx";
 
 export const Route = createFileRoute("/_authed")({ component: AuthedLayout });
 
@@ -50,6 +51,9 @@ function AuthedLayout() {
 					<SidebarTrigger className="-ml-1" />
 					<Separator orientation="vertical" className="mr-2 h-4" />
 					<span className="text-sm font-medium">Control de Asistencia</span>
+					<div className="ml-auto">
+						<NotificationsBell />
+					</div>
 				</header>
 				<div className="flex-1 p-6">
 					<Outlet />
