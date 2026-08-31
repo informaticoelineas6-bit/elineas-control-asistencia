@@ -2,7 +2,13 @@
 
 > **Origen:** `old-docs.md` §3.4, puntos 26–32, 40.
 > **Estado en el sistema legacy:** ✅ implementado.
-> **Estado en el monorepo nuevo:** ❌ no existe.
+> **Estado en el monorepo nuevo:** ❌ no existe, **salvo la parte horaria de su validación**, que
+> es de la [07](./07-horarios-y-calendario.md) §4 y ya está construida y probada:
+> `validateMarkTime` en `apps/backend/src/services/schedule-rules.ts` resuelve rol, pausa,
+> horario, calendario, descansos (por predicado), ventana y tardanza, y devuelve el día laboral
+> al que pertenece la marca. El enum de motivos de rechazo de §6 existe en
+> `packages/validations/src/attendance.ts` con los seis valores que esa función emite hoy; los
+> ocho restantes se añaden al construir esta spec.
 > **Depende de:** [07-horarios-y-calendario](./07-horarios-y-calendario.md), [08-sedes-y-geocerca](./08-sedes-y-geocerca.md), [10-descansos](./10-descansos.md), [11-vacaciones](./11-vacaciones.md).
 > **Habilita:** [15-paneles-y-dashboard](./15-paneles-y-dashboard.md), [16-reporteria-mensual](./16-reporteria-mensual.md), [11-vacaciones](./11-vacaciones.md) (días trabajados).
 

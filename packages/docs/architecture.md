@@ -111,6 +111,9 @@ exigir el rol y llamarlo. La primera implementada así es la de departamentos
 | Notificaciones | `apps/backend/src/services/notifications.ts` — `notify(tx, destinatarios, aviso)` |
 | Configuración global tipada | `apps/backend/src/services/config.ts` |
 | Dato salarial, aislado en su propia tabla | `employee_compensation`, sólo desde `services/users.ts` |
+| Reglas de tiempo **puras** (spec 07 §4) | `apps/backend/src/services/schedule-rules.ts` |
+| Aritmética de la ventana, compartida con el formulario | `packages/validations/src/schedules.ts` |
+| Calendario de la interfaz (único del proyecto) | `apps/frontend/src/components/ui/calendar.tsx` |
 
 Convenciones que sostienen esto:
 
@@ -134,6 +137,19 @@ Convenciones que sostienen esto:
   el legacy estaba en la misma fila y sólo lo protegía la costumbre de no hacer `select *`
   (hallazgo H-3). Con la separación física, un endpoint de perfiles no puede filtrarlo aunque
   alguien escriba una consulta nueva sin pensarlo, y sin RLS de red de seguridad eso importa.
+- **Las fechas se manejan con date-fns**, en el backend y en el frontend (`date-fns` y
+  `@date-fns/tz`). Tres reglas que van con ello: una fecha civil —un día del calendario laboral,
+  un feriado— viaja como `yyyy-MM-dd` y se guarda como `date`, nunca como instante, porque
+  convertirla a UTC es lo que la corre de día; una hora de reloj viaja como `HH:mm` y se guarda
+  como `time`; y **la zona horaria es explícita en cada conversión instante ↔ hora local**, la del
+  departamento o la global, jamás la del proceso (spec 07 RN-07.2) — dentro de un contenedor el
+  servidor es UTC y eso no dice nada de la planta. Los formatos de la interfaz están en
+  `apps/frontend/src/lib/dates.ts`, uno por caso, para que no convivan tres maneras de escribir
+  la misma fecha.
+- **Una regla de negocio que también necesita el formulario se escribe en `validations`**, no dos
+  veces: `checkoutModeIssue` (spec 06) y `scheduleIssue`/`describeMarkWindow` (spec 07) son las
+  mismas funciones en el servidor y en el navegador. Es lo que hace que el aviso salga al teclear
+  y que diga exactamente lo que el servidor va a exigir.
 - **La comprobación de ámbito es una única función tipada** (`hasScope`,
   `requireScope`, `canManage` en `middleware/auth.ts`), nunca repetida por endpoint:
   en el legacy se llamó con los argumentos invertidos en varias migraciones y falló

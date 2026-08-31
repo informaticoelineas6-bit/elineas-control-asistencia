@@ -20,6 +20,12 @@ export const notificationTypeSchema = z.enum([
 	"profile.incomplete",
 	/** Tu perfil quedó completo: ya puedes marcar (spec 02 §5.1 paso 2). */
 	"profile.department_changed",
+	/**
+	 * El horario del departamento cambió (spec 07 RN-07.10). Lleva `dedupeKey` por
+	 * departamento: dos ajustes seguidos actualizan el mismo aviso en vez de
+	 * apilar dos, que es lo que pasa cuando alguien corrige una hora mal puesta.
+	 */
+	"schedule.changed",
 ]);
 
 export const notificationSchema = z.object({

@@ -17,9 +17,11 @@
     "test": "bun test --env-file=.env.local"
   },
   "dependencies": {
+    "@date-fns/tz": "^1.5.0",
     "@elineas/contracts": "workspace:*",
     "@elineas/validations": "workspace:*",
     "@hono/zod-validator": "latest",
+    "date-fns": "^4.4.0",
     "drizzle-orm": "^0.45.1",
     "hono": "latest",
     "jose": "^6.1.0",

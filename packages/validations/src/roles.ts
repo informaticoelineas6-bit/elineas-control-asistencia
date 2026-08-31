@@ -45,6 +45,27 @@ export function roleAtLeast(role: AppRole | null, minimum: AppRole): boolean {
 }
 
 /**
+ * RN-03.4 — Los roles que **no** registran asistencia.
+ *
+ * Se expresa como exclusión y no acortando la lista de quienes sí marcan: "todos
+ * menos el gestor global" es lo que dice la regla, y enumerar a los demás haría
+ * que un rol nuevo entrara por descuido (mismo criterio que el guard de la spec
+ * 04 §6). `superadmin` sí marca, porque hereda todo lo anterior (spec 03 §2).
+ *
+ * Vive aquí, y no en el backend ni en el menú, porque lo consultan los tres: la
+ * validación del marcaje (spec 07 §4), el filtrado del aside y la vista del
+ * horario propio (RN-07.12).
+ */
+export const ROLES_THAT_DO_NOT_MARK = [
+	"global_manager",
+] as const satisfies readonly AppRole[];
+
+export function roleCanMark(role: AppRole | null | undefined): boolean {
+	if (role == null) return false;
+	return !(ROLES_THAT_DO_NOT_MARK as readonly AppRole[]).includes(role);
+}
+
+/**
  * Ámbito de un perfil (RN-03.2): su propio departamento más los **adicionales**
  * que gestiona.
  *

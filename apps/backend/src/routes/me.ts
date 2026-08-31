@@ -1,10 +1,14 @@
-import { authSpec, usersSpec } from "@elineas/contracts";
-import { updateOwnProfileInputSchema } from "@elineas/validations";
+import { authSpec, schedulesSpec, usersSpec } from "@elineas/contracts";
+import {
+	myScheduleQuerySchema,
+	updateOwnProfileInputSchema,
+} from "@elineas/validations";
 import { Hono } from "hono";
 import { clientIp } from "#/lib/request.ts";
 import { validate } from "#/lib/validate.ts";
 import { getAuth, requireAuth } from "#/middleware/auth";
 import { departmentNameOf, toSessionProfile } from "#/services/profiles";
+import { getMySchedule } from "#/services/schedules.ts";
 import { getOwnProfile, updateOwnProfile } from "#/services/users.ts";
 
 export const me = new Hono();
@@ -60,4 +64,22 @@ me.get("/permissions", async (c) => {
 			managedDepartmentIds: auth.managedDepartmentIds,
 		}),
 	);
+});
+
+/**
+ * `GET /api/me/schedule` (spec 07 §5): el horario que le aplica hoy a quien
+ * pregunta, con los días no laborables de su departamento.
+ *
+ * Sin parámetro de usuario: como en el resto de `/me`, no hay forma de pedir el de
+ * otra persona. `?from=&to=` acota el calendario que se devuelve; sin él, el mes en
+ * curso **en la zona del horario** (RN-07.2).
+ */
+me.get("/schedule", validate("query", myScheduleQuerySchema), async (c) => {
+	const auth = getAuth(c);
+	const mine = await getMySchedule(
+		auth.profile,
+		auth.effectiveRole,
+		c.req.valid("query"),
+	);
+	return c.json(schedulesSpec.mine.response.parse(mine));
 });

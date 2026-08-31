@@ -1,11 +1,14 @@
 import { relations, sql } from "drizzle-orm";
 import {
 	boolean,
+	date,
 	index,
+	integer,
 	jsonb,
 	numeric,
 	pgTable,
 	text,
+	time,
 	timestamp,
 	unique,
 	uniqueIndex,
@@ -123,9 +126,12 @@ export const userDepartmentResponsibilities = pgTable(
 	(table) => [unique().on(table.userId, table.departmentId)],
 );
 
-export const departmentsRelations = relations(departments, ({ many }) => ({
+export const departmentsRelations = relations(departments, ({ many, one }) => ({
 	profiles: many(profiles),
 	responsibilities: many(userDepartmentResponsibilities),
+	/** Uno como máximo (RN-07.1). */
+	schedule: one(departmentSchedules),
+	workCalendar: many(workCalendar),
 }));
 
 export const profilesRelations = relations(profiles, ({ one, many }) => ({
@@ -295,5 +301,122 @@ export const notificationsRelations = relations(notifications, ({ one }) => ({
 	profile: one(profiles, {
 		fields: [notifications.userId],
 		references: [profiles.id],
+	}),
+}));
+
+/**
+ * Spec 07 §2. La ventana diaria del departamento: desde y hasta cuándo se acepta
+ * una entrada, y desde y hasta cuándo una salida.
+ *
+ * `department_id` es **único**: un horario vigente por departamento, sin turnos
+ * múltiples ni horarios por persona (RN-07.1, decisión 1 de la §8 cerrada). Si
+ * algún día el negocio necesita turnos, es una tabla nueva con su vigencia, no una
+ * columna que se deje preparada aquí "por si acaso".
+ *
+ * Las cuatro horas son `time` **sin zona**: son horas de reloj de pared, y la zona
+ * en la que hay que leerlas está en su propia columna. Guardarlas como
+ * `timestamptz` es lo que hace que un horario se corra una hora al cambiar el
+ * horario de verano.
+ *
+ * Se borra con el departamento (`cascade`) porque un horario sin departamento no
+ * significa nada; el borrado del departamento, además, está bloqueado mientras
+ * exista horario (spec 01 §5.2).
+ */
+export const departmentSchedules = pgTable("department_schedules", {
+	id: uuid().primaryKey().defaultRandom(),
+	departmentId: uuid("department_id")
+		.notNull()
+		.unique()
+		.references(() => departments.id, { onDelete: "cascade" }),
+	/** Ventana de entrada (RN-07.3). */
+	checkinStartTime: time("checkin_start_time").notNull(),
+	checkinEndTime: time("checkin_end_time").notNull(),
+	/** Ventana de salida (RN-07.4). Puede terminar al día siguiente (RN-07.5). */
+	checkoutStartTime: time("checkout_start_time").notNull(),
+	checkoutEndTime: time("checkout_end_time").notNull(),
+	/**
+	 * Zona IANA del departamento. Gana sobre `global_timezone` (RN-06.6) y es la
+	 * que se usa en cada conversión instante → hora local: **nunca la del
+	 * servidor** (RN-07.2), que en un contenedor es UTC.
+	 */
+	timezone: text().notNull(),
+	allowEarlyCheckin: boolean("allow_early_checkin").notNull().default(false),
+	allowLateCheckout: boolean("allow_late_checkout").notNull().default(false),
+	createdAt: timestamp("created_at", { withTimezone: true })
+		.notNull()
+		.defaultNow(),
+	updatedAt: timestamp("updated_at", { withTimezone: true })
+		.notNull()
+		.defaultNow(),
+});
+
+/**
+ * Spec 07 §2. Qué fechas concretas son laborables para un departamento, con su
+ * tolerancia de tardanza propia.
+ *
+ * **Ausencia de fila significa algo**: la fecha es laborable con la tolerancia
+ * global (RN-07.7, RN-07.8). Por eso la tabla no se siembra con los 365 días del
+ * año — sólo guarda las excepciones—, y por eso el `PUT` del calendario admite
+ * borrar filas y no sólo escribirlas.
+ *
+ * `date` es tipo `date` y no `timestamptz`: un feriado es un día del calendario de
+ * pared, el mismo para todo el departamento, y convertirlo a instante es lo que
+ * hace que se corra de día.
+ */
+export const workCalendar = pgTable(
+	"work_calendar",
+	{
+		id: uuid().primaryKey().defaultRandom(),
+		departmentId: uuid("department_id")
+			.notNull()
+			.references(() => departments.id, { onDelete: "cascade" }),
+		date: date().notNull(),
+		isWorkday: boolean("is_workday").notNull(),
+		/** Nulo = manda la tolerancia global de la spec 06 (RN-07.8). */
+		lateToleranceMinutes: integer("late_tolerance_minutes"),
+		/**
+		 * Por qué esta fecha es distinta: "Feriado: 1 de mayo", "Inventario".
+		 *
+		 * No está en la §2 de la spec y se añade por criterio: el calendario existe
+		 * para feriados y jornadas especiales, y un día marcado sin etiqueta no dice
+		 * de qué se trataba ni en la pantalla ni medio año después, revisando por qué
+		 * a alguien no se le exigió asistencia.
+		 */
+		note: text(),
+		createdAt: timestamp("created_at", { withTimezone: true })
+			.notNull()
+			.defaultNow(),
+		updatedAt: timestamp("updated_at", { withTimezone: true })
+			.notNull()
+			.defaultNow(),
+	},
+	(table) => [
+		/** Un día no puede ser laborable y no laborable a la vez (spec 07 §2). */
+		unique("work_calendar_department_date_key").on(
+			table.departmentId,
+			table.date,
+		),
+		/** La consulta real es siempre "el rango de fechas de este departamento". */
+		index("work_calendar_department_date_idx").on(
+			table.departmentId,
+			table.date,
+		),
+	],
+);
+
+export const departmentSchedulesRelations = relations(
+	departmentSchedules,
+	({ one }) => ({
+		department: one(departments, {
+			fields: [departmentSchedules.departmentId],
+			references: [departments.id],
+		}),
+	}),
+);
+
+export const workCalendarRelations = relations(workCalendar, ({ one }) => ({
+	department: one(departments, {
+		fields: [workCalendar.departmentId],
+		references: [departments.id],
 	}),
 }));

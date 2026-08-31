@@ -1,4 +1,5 @@
 import { z } from "zod";
+import { timeOfDaySchema, timezoneSchema } from "./time.ts";
 
 /**
  * Configuración global (spec 06).
@@ -17,30 +18,6 @@ import { z } from "zod";
  * se notan enseguida y se corrigen; una inventada se queda ahí produciendo
  * cálculos equivocados que nadie revisa.
  */
-
-/** `HH:mm` en 24 horas. */
-const timeOfDaySchema = z
-	.string()
-	.regex(/^([01]\d|2[0-3]):[0-5]\d$/, "La hora debe tener el formato HH:mm");
-
-/**
- * Zona horaria IANA. Se valida preguntándole al propio motor en vez de contra una
- * lista escrita a mano: la lista envejece y un identificador válido rechazado es
- * más difícil de diagnosticar que uno inválido aceptado.
- */
-const timezoneSchema = z.string().refine(
-	(value) => {
-		try {
-			new Intl.DateTimeFormat("en-US", { timeZone: value });
-			return true;
-		} catch {
-			return false;
-		}
-	},
-	{
-		message: "No es una zona horaria IANA válida (por ejemplo: America/Havana)",
-	},
-);
 
 /** Modo de cierre de la jornada (spec 06 §3.2, consumido por la spec 09 RN-09.13). */
 export const checkoutModeSchema = z.enum([

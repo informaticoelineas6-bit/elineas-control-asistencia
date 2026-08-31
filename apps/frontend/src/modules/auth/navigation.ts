@@ -1,4 +1,4 @@
-import type { AppRole } from "@elineas/validations";
+import { type AppRole, ROLES_THAT_DO_NOT_MARK } from "@elineas/validations";
 import {
 	BadgeDollarSign,
 	Building2,
@@ -31,12 +31,14 @@ const EMPLOYEE_AND_UP = [
 /**
  * `global_manager` no marca asistencia (RN-03.4).
  *
- * Se expresa como **exclusión** y no acortando la lista de admitidos a propósito
- * (spec 04 §6): "todos menos el gestor global" es lo que dice la regla, y
- * enumerar a los demás haría que un rol nuevo entrara por descuido. `superadmin`
- * sí marca, porque hereda todo lo anterior (spec 03 §2).
+ * La lista vive en `@elineas/validations` (`ROLES_THAT_DO_NOT_MARK`) porque la
+ * consultan también la validación del marcaje (spec 07 §4) y la vista del horario
+ * propio: la regla se escribe una vez o acaba divergiendo entre el menú y el
+ * servidor. Se expresa como **exclusión** y no acortando la lista de admitidos a
+ * propósito (spec 04 §6): "todos menos el gestor global" es lo que dice la regla,
+ * y enumerar a los demás haría que un rol nuevo entrara por descuido.
  */
-const MARKS_EXCLUDED = ["global_manager"] as const satisfies readonly AppRole[];
+const MARKS_EXCLUDED = ROLES_THAT_DO_NOT_MARK;
 
 const HEAD_AND_UP = [
 	"department_head",

@@ -9,6 +9,7 @@ import { asc, eq, getTableColumns, sql } from "drizzle-orm";
 import { HTTPException } from "hono/http-exception";
 import { db } from "#/db";
 import {
+	departmentSchedules,
 	departments,
 	profiles,
 	userDepartmentResponsibilities,
@@ -109,7 +110,7 @@ export async function getDepartmentSummary(
 }
 
 /** 404 en un solo sitio, con el mismo mensaje en todas las operaciones. */
-async function requireDepartment(id: string): Promise<DepartmentRow> {
+export async function requireDepartment(id: string): Promise<DepartmentRow> {
 	const row = await db.query.departments.findFirst({
 		where: eq(departments.id, id),
 	});
@@ -272,8 +273,12 @@ export async function updateDepartment(
 	});
 }
 
-/** Miembros activos: los que hay que avisar de una pausa o una reanudación. */
-async function activeMemberIds(
+/**
+ * Miembros activos: los que hay que avisar de una pausa, de una reanudación o de
+ * un cambio de horario (RN-07.10). Lo usa también `services/schedules.ts`, y por
+ * eso se exporta: la consulta de "a quién hay que avisar" se escribe una vez.
+ */
+export async function activeMemberIds(
 	tx: Database,
 	departmentId: string,
 ): Promise<string[]> {
@@ -411,8 +416,11 @@ export async function resumeDepartment(
  * `profiles.department_id` lo impediría igualmente. Antes que borrar, se
  * reasigna.
  *
- * Cuando existan horarios (spec 07) y grupos de descanso (spec 10), sus
- * comprobaciones van aquí: el flujo §5.2 las pide explícitamente.
+ * El flujo §5.2 pide comprobar además lo que cuelga del departamento: el
+ * **horario** (spec 07) bloquea el borrado, y los grupos de descanso lo harán
+ * cuando exista la spec 10. Las filas del **calendario laboral** no bloquean y se
+ * van en cascada: son datos de fechas, no una regla, y sin departamento ni
+ * horario no significan nada — quedan en la bitácora del cambio que las creó.
  */
 export async function deleteDepartment(
 	id: string,
@@ -443,6 +451,24 @@ export async function deleteDepartment(
 		throw new HTTPException(409, {
 			message:
 				"No se puede eliminar: hay jefes con responsabilidad sobre este departamento. Quítasela antes de borrarlo.",
+		});
+	}
+
+	// Spec 01 §5.2 paso 2: tampoco se borra con un horario colgando (spec 07). El
+	// bloqueo no es por integridad —la clave ajena es `on delete cascade`— sino
+	// porque un horario es una regla que alguien configuró y que al borrarse
+	// desaparecería sin dejar más rastro que esta entrada de bitácora. Para eso
+	// existe `DELETE /departments/:id/schedule`: primero se quita el horario a
+	// propósito, y entonces el departamento se puede borrar.
+	const [{ count: scheduleCount } = { count: 0 }] = await db
+		.select({ count: sql<number>`count(*)::int` })
+		.from(departmentSchedules)
+		.where(eq(departmentSchedules.departmentId, id));
+
+	if (scheduleCount > 0) {
+		throw new HTTPException(409, {
+			message:
+				"No se puede eliminar: este departamento tiene un horario configurado. Quítalo antes de borrarlo.",
 		});
 	}
 

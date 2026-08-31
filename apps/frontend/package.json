@@ -13,6 +13,7 @@
     "preview": "vite preview --port 3004"
   },
   "dependencies": {
+    "@date-fns/tz": "^1.5.0",
     "@elineas/contracts": "workspace:*",
     "@elineas/validations": "workspace:*",
     "@tailwindcss/vite": "^4.1.18",
@@ -28,6 +29,7 @@
     "@tanstack/react-table": "latest",
     "class-variance-authority": "^0.7.1",
     "clsx": "^2.1.1",
+    "date-fns": "^4.4.0",
     "libphonenumber-js": "^1.13.11",
     "lucide-react": "^0.577.0",
     "radix-ui": "^1.6.7",

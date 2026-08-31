@@ -96,6 +96,15 @@ Administración— queda como referencia histórica, no como estado inicial.
 2. Validar que no haya horarios, grupos de descanso ni responsabilidades colgando; ofrecer
    reasignación antes que borrado.
 
+> **Estado:** implementado para perfiles, responsabilidades, referencias de la configuración
+> ([06](./06-configuracion-global.md) RN-06.8) y **horario**
+> ([07](./07-horarios-y-calendario.md)): con horario configurado el borrado responde 409 y hay
+> que quitarlo antes, con `DELETE /departments/:id/schedule`. El bloqueo no es por integridad
+> —la clave ajena es `on delete cascade`— sino porque un horario es una regla que alguien
+> configuró y no debe desaparecer de rebote. Las filas del **calendario laboral** sí se van en
+> cascada: son fechas, no una regla, y quedan en la bitácora del cambio que las creó. Los grupos
+> de descanso, con la [10](./10-descansos.md).
+
 ## 6. API propuesta (`packages/contracts`)
 
 | Método | Path | Descripción |

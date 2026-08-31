@@ -1,3 +1,4 @@
+export * from "./attendance.ts";
 export * from "./audit.ts";
 export * from "./auth.ts";
 export * from "./config.ts";
@@ -6,4 +7,6 @@ export * from "./departments.ts";
 export * from "./notifications.ts";
 export * from "./phone.ts";
 export * from "./roles.ts";
+export * from "./schedules.ts";
+export * from "./time.ts";
 export * from "./users.ts";

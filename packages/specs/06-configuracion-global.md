@@ -7,8 +7,10 @@
 > escribir (RN-06.7), auditoría del cambio (RN-06.3), validación cruzada del modo de salida
 > (RN-06.5), `GET`/`PATCH /api/config` restringidos a `global_manager+` (RN-06.1) y
 > `GET /api/config/public` con la lista blanca de §5. La pestaña *General* está en
-> `apps/frontend/src/modules/config/config-form.tsx`; las de horarios y sedes llegan con las
-> specs 07 y 08. Pruebas en `apps/backend/src/routes/config.test.ts`.
+> `apps/frontend/src/modules/config/config-form.tsx` y la de *Horarios y calendario* en
+> `apps/frontend/src/modules/schedules/` ([07](./07-horarios-y-calendario.md)); la de sedes
+> llega con la [08](./08-sedes-y-geocerca.md). Pruebas en
+> `apps/backend/src/routes/config.test.ts`.
 > **Depende de:** [03-roles-y-autorizacion](./03-roles-y-autorizacion.md).
 > **Habilita:** casi todas las reglas de asistencia leen de aquí.
 
@@ -118,7 +120,10 @@ todas dependen de estos valores.
 - **RN-06.6** — La zona horaria es **una sola global**, pero cada departamento tiene además
   la suya en su horario ([07](./07-horarios-y-calendario.md)). Precedencia: la del
   departamento gana; la global es el default al crear un horario nuevo. *Confirmar que este
-  era el comportamiento real del legacy.* **Decisión abierta.**
+  era el comportamiento real del legacy.* **Decisión abierta.** Implementado así en la
+  [07](./07-horarios-y-calendario.md): omitir la zona al crear un horario toma la global, y
+  omitirla al actualizar **conserva la que tenía** — tratar la omisión como "vuelve a la global"
+  movería de zona a un departamento por no repetir un campo que nadie tocó.
 - **RN-06.7** — La configuración se cachea en el backend; una escritura invalida la caché de
   forma inmediata. ⚠️ Con la implementación actual la caché es **de proceso** (TTL de 30 s):
   con una sola instancia del backend la invalidación es efectivamente inmediata, pero con

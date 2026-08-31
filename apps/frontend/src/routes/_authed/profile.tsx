@@ -10,6 +10,7 @@ import { Skeleton } from "#/components/ui/skeleton.tsx";
 import { ROLE_LABELS } from "#/modules/auth/navigation.ts";
 import { sessionQueryOptions } from "#/modules/auth/session.ts";
 import { InlineError } from "#/modules/errors/inline-error.tsx";
+import { MyScheduleCard } from "#/modules/schedules/my-schedule-card.tsx";
 import {
 	ownProfileQueryOptions,
 	useUpdateOwnProfile,
@@ -146,6 +147,14 @@ function OwnProfilePage() {
 							</p>
 						)}
 					</section>
+
+					{/*
+					 * Spec 07 §5: el horario que le aplica y los días no laborables de su
+					 * departamento. Es el único sitio donde un empleado los ve — el
+					 * calendario del departamento pide ámbito de jefe, y éste sale de
+					 * `/me/schedule`, que sólo devuelve lo suyo.
+					 */}
+					<MyScheduleCard />
 				</div>
 
 				<form onSubmit={onSubmit} className="space-y-4 rounded-xl border p-4">

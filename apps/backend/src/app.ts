@@ -7,6 +7,7 @@ import { config as configRoutes } from "#/routes/config.ts";
 import { departments } from "#/routes/departments.ts";
 import { me } from "#/routes/me";
 import { notifications } from "#/routes/notifications.ts";
+import { schedules } from "#/routes/schedules.ts";
 import { users } from "#/routes/users.ts";
 
 /**
@@ -42,6 +43,10 @@ export function createApp() {
 	app.route("/api/auth", auth);
 	app.route("/api/me", me);
 	app.route("/api/departments", departments);
+	// Dos routers sobre el mismo prefijo: los horarios y el calendario (spec 07)
+	// cuelgan del departamento pero son otro dominio, con su propio servicio y sus
+	// propias reglas de rol. Los paths no se solapan.
+	app.route("/api/departments", schedules);
 	app.route("/api/notifications", notifications);
 	app.route("/api/config", configRoutes);
 	app.route("/api/users", users);

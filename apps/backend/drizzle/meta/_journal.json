@@ -43,6 +43,13 @@
       "when": 1787080822668,
       "tag": "0005_shallow_millenium_guard",
       "breakpoints": true
+    },
+    {
+      "idx": 6,
+      "version": "7",
+      "when": 1787147519837,
+      "tag": "0006_petite_toad",
+      "breakpoints": true
     }
   ]
 }
