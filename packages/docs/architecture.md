@@ -114,6 +114,9 @@ exigir el rol y llamarlo. La primera implementada así es la de departamentos
 | Reglas de tiempo **puras** (spec 07 §4) | `apps/backend/src/services/schedule-rules.ts` |
 | Aritmética de la ventana, compartida con el formulario | `packages/validations/src/schedules.ts` |
 | Calendario de la interfaz (único del proyecto) | `apps/frontend/src/components/ui/calendar.tsx` |
+| Validación de un marcaje, **pura y compuesta** (spec 09 §4) | `apps/backend/src/services/attendance-rules.ts` |
+| Estado diario de una persona (spec 15 §2) | `apps/backend/src/services/daily-status.ts` |
+| **Única** puerta de escritura de `attendance_marks` | `apps/backend/src/services/attendance.ts` |
 | Reglas de ubicación **puras** (spec 08 §3) | `apps/backend/src/services/location-rules.ts` |
 | Geometría de la geocerca, compartida con la interfaz | `packages/validations/src/locations.ts` |
 | Capa de ubicación del cliente (spec 08 §4) | `apps/frontend/src/modules/geolocation/` |
@@ -150,10 +153,6 @@ Convenciones que sostienen esto:
   servidor es UTC y eso no dice nada de la planta. Los formatos de la interfaz están en
   `apps/frontend/src/lib/dates.ts`, uno por caso, para que no convivan tres maneras de escribir
   la misma fecha.
-- **Una regla de negocio que también necesita el formulario se escribe en `validations`**, no dos
-  veces: `checkoutModeIssue` (spec 06) y `scheduleIssue`/`describeMarkWindow` (spec 07) son las
-  mismas funciones en el servidor y en el navegador. Es lo que hace que el aviso salga al teclear
-  y que diga exactamente lo que el servidor va a exigir.
 - **Las dependencias de la interfaz se eligen por lo que cuesta equivocarse.** El calendario
   (spec 07) es propio porque lo que hacía falta era espacio para pintar marcas, no un motor de
   fechas; el mapa (spec 08) es **Leaflet** con mosaicos de OpenStreetMap porque el círculo en
@@ -167,6 +166,21 @@ Convenciones que sostienen esto:
   **siempre recalcula** a partir de lat/lng y jamás acepta un `insideGeofence` venido de fuera
   (spec 08 RN-08.2) — el esquema de la petición ni siquiera tiene ese campo, para que nadie lo
   añada por comodidad. Compartir la función es compartir la regla, no la confianza.
+- **Una regla de negocio que también necesita el formulario se escribe en `validations`**, no dos
+  veces: `checkoutModeIssue` (spec 06) y `scheduleIssue`/`describeMarkWindow` (spec 07) son las
+  mismas funciones en el servidor y en el navegador. Es lo que hace que el aviso salga al teclear
+  y que diga exactamente lo que el servidor va a exigir.
+- **Las reglas de dominio se escriben como funciones puras y se componen.** Las tres del
+  marcaje —horario (07), ubicación (08) y el conjunto (09)— no tocan la base ni el reloj:
+  reciben el contexto ya cargado y devuelven un veredicto con motivo tipado. Eso es lo que
+  permite probar la medianoche, una zona horaria ajena, el borde del minuto y el doble toque sin
+  montar un escenario en base, y es la respuesta al punto 71 de la deuda del legacy — la función
+  que decidía si un marcaje valía no tenía una sola prueba. El servicio de al lado carga datos y
+  escribe; no decide.
+- **Un rechazo de negocio no es un error de HTTP.** `POST /api/attendance/marks` responde 200
+  con `{ accepted: false, reason, message }` cuando la regla no se cumple: es un hecho, queda
+  registrado, y la interfaz necesita el motivo para reaccionar distinto a cada uno. El 4xx queda
+  para lo que sí es un fallo de la petición.
 - **La comprobación de ámbito es una única función tipada** (`hasScope`,
   `requireScope`, `canManage` en `middleware/auth.ts`), nunca repetida por endpoint:
   en el legacy se llamó con los argumentos invertidos en varias migraciones y falló

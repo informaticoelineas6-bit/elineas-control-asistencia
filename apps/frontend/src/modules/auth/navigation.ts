@@ -9,6 +9,7 @@ import {
 	Satellite,
 	ScrollText,
 	Settings,
+	Timer,
 	UserRound,
 	Users,
 } from "lucide-react";
@@ -63,6 +64,13 @@ export const NAV_SECTIONS = [
 				label: "Inicio",
 				icon: LayoutDashboard,
 				roles: EMPLOYEE_AND_UP,
+			},
+			{
+				to: "/clock-in",
+				label: "Marcar",
+				icon: Timer,
+				roles: EMPLOYEE_AND_UP,
+				excludedRoles: MARKS_EXCLUDED,
 			},
 			{
 				to: "/attendance",

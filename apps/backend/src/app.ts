@@ -2,6 +2,7 @@ import { Hono } from "hono";
 import { cors } from "hono/cors";
 import { HTTPException } from "hono/http-exception";
 import { config as appConfig } from "#/lib/config";
+import { attendance } from "#/routes/attendance.ts";
 import { auth } from "#/routes/auth";
 import { config as configRoutes } from "#/routes/config.ts";
 import { departments } from "#/routes/departments.ts";
@@ -49,6 +50,7 @@ export function createApp() {
 	// propias reglas de rol. Los paths no se solapan.
 	app.route("/api/departments", schedules);
 	app.route("/api/work-locations", locations);
+	app.route("/api/attendance", attendance);
 	app.route("/api/notifications", notifications);
 	app.route("/api/config", configRoutes);
 	app.route("/api/users", users);

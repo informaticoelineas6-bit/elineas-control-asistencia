@@ -66,7 +66,7 @@ Barra lateral con navegación **agrupada** y filtrada por rol. Agrupación imple
 
 | Grupo | Ítems | Quién lo ve |
 |---|---|---|
-| **Personal** | Inicio · Mi asistencia¹ · Mi perfil · Diagnóstico GPS² | todos |
+| **Personal** | Inicio · Marcar¹ · Mi asistencia¹ · Mi perfil · Diagnóstico GPS² | todos |
 | **Gestión** | Mi equipo · Reportes | `department_head` y por encima |
 | **Administración** | Usuarios · Departamentos · Nómina · Configuración | `global_manager` y por encima |
 | | Logs | sólo `superadmin` |
@@ -145,7 +145,8 @@ pueda ver desde ahí.
 | `/login` | Entrar | ✅ |
 | `/pending-account` | Cuenta pendiente | ✅ |
 | `/dashboard` | Inicio | ✅ |
-| `/attendance` | Mi asistencia | marcador ([09](./09-marcaje-asistencia.md)) |
+| `/clock-in` | Marcar | ✅ ([09](./09-marcaje-asistencia.md)) |
+| `/attendance` | Mi asistencia | ✅ ([09](./09-marcaje-asistencia.md)) |
 | `/profile` | Mi perfil | ✅ |
 | `/gps` | Diagnóstico GPS | ✅ ([08](./08-sedes-y-geocerca.md) §6) |
 | `/team` | Mi equipo | marcador |
@@ -156,7 +157,10 @@ pueda ver desde ahí.
 | `/settings` | Configuración | ✅ ([06](./06-configuracion-global.md)) |
 | `/logs` | Logs | marcador ([18](./18-auditoria.md)) |
 
-Rutas previstas que aún no existen: `/clock-in`, `/my-week`, `/issues` (§3).
+Rutas previstas que aún no existen: `/my-week` y `/issues` (§3). `/clock-in` ya existe
+—llegó con la [09](./09-marcaje-asistencia.md)— pero vive **dentro del AdminShell**: está
+hecha en columna estrecha y con el botón grande, así que al construir el EmployeeShell se
+monta sin rehacerla.
 
 > La sección que la [18](./18-auditoria.md) llama **bitácora** se presenta en la interfaz como
 > **Logs**, en `/logs`. Es la única etiqueta de menú que no está en español: "Logs" es como la

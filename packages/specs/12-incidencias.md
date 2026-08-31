@@ -2,7 +2,10 @@
 
 > **Origen:** `old-docs.md` §3.4, puntos 41, 42, 43, 45.
 > **Estado en el sistema legacy:** ✅ implementado.
-> **Estado en el monorepo nuevo:** ❌ no existe.
+> **Estado en el monorepo nuevo:** ❌ no existe. Cuenta ya con su materia prima: la
+> [09](./09-marcaje-asistencia.md) **guarda los intentos de marcaje rechazados** (`blocked` con
+> su motivo tipado y la distancia recalculada), así que una incidencia del tipo "intenté marcar
+> y no me dejó" se podrá abrir con la fila delante en vez de con un relato.
 > **Depende de:** [09-marcaje-asistencia](./09-marcaje-asistencia.md), [03-roles-y-autorizacion](./03-roles-y-autorizacion.md).
 > **No confundir con:** [13-justificacion-ausencias](./13-justificacion-ausencias.md) — es un flujo **distinto**.
 

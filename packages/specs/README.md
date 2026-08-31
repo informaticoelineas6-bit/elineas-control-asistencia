@@ -61,23 +61,38 @@ que la spec pide; cada cabecera detalla qué falta y por qué.
 | 06 | [Configuración global](./06-configuracion-global.md) | ✅ | ✅ | 03 |
 
 Lo único que queda abierto en los cimientos es el **EmployeeShell** de la
-[05](./05-shells-y-navegacion.md) §3: tres de sus cuatro destinos (`/clock-in`, `/my-week`,
-`/issues`) pertenecen a las specs 09 y 12, así que se construye con ellas. La regla de
-resolución de shell (§2) espera por lo mismo — hoy sólo existe un shell entre el que elegir.
+[05](./05-shells-y-navegacion.md) §3. Dos de sus cuatro destinos ya existen —`/clock-in` y
+`/profile`— y las pantallas de marcaje e historial están hechas en columna estrecha y con el
+botón grande, así que montarlas en una barra inferior no obliga a rehacerlas; faltan `/my-week`
+(reutiliza el historial de la [09](./09-marcaje-asistencia.md)) e `/issues`
+([12](./12-incidencias.md)), y la regla de resolución de shell (§2), que hoy no tiene entre qué
+elegir.
 
 ### Reglas de trabajo — el marco que hace válido un marcaje
 
-| # | Spec | Estado legacy | Depende de |
-|---|---|---|---|
-| 07 | [Horarios y calendario laboral](./07-horarios-y-calendario.md) | ✅ | 01, 06 |
-| 08 | [Sedes, geocerca y geolocalización](./08-sedes-y-geocerca.md) | ⚠️ | 03, 06 |
-| 10 | [Descansos](./10-descansos.md) | ✅ | 01, 06 |
+| # | Spec | Legacy | Monorepo | Depende de |
+|---|---|---|---|---|
+| 07 | [Horarios y calendario laboral](./07-horarios-y-calendario.md) | ✅ | ✅ | 01, 06 |
+| 08 | [Sedes, geocerca y geolocalización](./08-sedes-y-geocerca.md) | ⚠️ | ✅ | 03, 06 |
+| 10 | [Descansos](./10-descansos.md) | ✅ | ❌ | 01, 06 |
+
+Las specs [07](./07-horarios-y-calendario.md) y [08](./08-sedes-y-geocerca.md) dejaron construidas
+**las dos mitades de la validación de un marcaje** —`validateMarkTime` (¿toca marcar ahora?) y
+`validateMarkLocation` (¿desde aquí?)—, más los dos componentes que reutilizan las specs 09, 10 y
+11: el **calendario** y el **mapa**. La [09](./09-marcaje-asistencia.md) las compone, y por eso su
+núcleo de reglas cabe en unas decenas de líneas en vez de en las seiscientas del hook del legacy.
+Lo que falta de este bloque es la [10](./10-descansos.md).
 
 ### Núcleo
 
-| # | Spec | Estado legacy | Depende de |
-|---|---|---|---|
-| 09 | [Marcaje de asistencia](./09-marcaje-asistencia.md) | ✅ | 07, 08, 10, 11 |
+| # | Spec | Legacy | Monorepo | Depende de |
+|---|---|---|---|---|
+| 09 | [Marcaje de asistencia](./09-marcaje-asistencia.md) | ✅ | ✅ | 07, 08, 10, 11 |
+
+Construida **antes** que las specs 10 y 11, de las que depende, dejando en su lugar dos costuras
+probadas: los descansos entran por un predicado y las vacaciones por una bandera. Es el orden que
+el índice ya sugería (09 antes de 11) y evita tener el núcleo del producto esperando por dos
+specs que no cambian su forma.
 
 ### Excepciones — lo que pasa cuando no se marca
 

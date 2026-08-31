@@ -1,3 +1,4 @@
+export * from "./attendance.ts";
 export * from "./auth.ts";
 export * from "./config.ts";
 export * from "./departments.ts";

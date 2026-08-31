@@ -492,3 +492,126 @@ export const workLocations = pgTable(
 export const workLocationsRelations = relations(workLocations, ({ many }) => ({
 	profiles: many(profiles),
 }));
+
+/**
+ * Spec 09 §2. **La única escritura crítica del sistema**: todo lo demás lee de aquí.
+ *
+ * Sólo se escribe desde el handler de `POST /api/attendance/marks` (spec 09 §4).
+ * No hay `UPDATE` ni `DELETE` desde la aplicación (RN-09.12): una corrección es una
+ * incidencia (spec 12), no una edición.
+ *
+ * Cuatro campos no están en la §2 de la spec y se añaden por criterio, todos por el
+ * mismo motivo — **lo que se puede recalcular hoy no se podrá recalcular mañana**,
+ * porque el horario, la tolerancia y la geocerca cambian y los cambios no son
+ * retroactivos (RN-06.4):
+ *
+ * - `work_date`: a qué jornada pertenece la marca (RN-07.5, jornada nocturna).
+ * - `is_late` / `late_minutes`: la tardanza con la tolerancia **de entonces** (RN-09.7).
+ * - `source`: quién puso la marca, persona o sistema (RN-09.14).
+ * - `department_id`: foto del departamento al marcar. Es la denormalización que la
+ *   §2 pedía evaluar: la reportería filtra por departamento constantemente, y el
+ *   valor correcto para un reporte histórico es el de entonces, no el de hoy.
+ */
+export const attendanceMarks = pgTable(
+	"attendance_marks",
+	{
+		id: uuid().primaryKey().defaultRandom(),
+		/**
+		 * Con `cascade`: el borrado real de un perfil sólo lo puede hacer un
+		 * `superadmin` (RN-02.8), es excepcional y queda en bitácora. Un historial de
+		 * asistencia sin la persona a la que pertenece no le sirve a nadie.
+		 */
+		userId: uuid("user_id")
+			.notNull()
+			.references(() => profiles.id, { onDelete: "cascade" }),
+		/** `IN` o `OUT`, del vocabulario cerrado de `@elineas/validations`. */
+		markType: text("mark_type").notNull(),
+		/** Instante según el servidor (RN-09.11). La columna de la spec se llamaba
+		 * `timestamp`; aquí es `marked_at` para no llamar a una columna igual que un
+		 * tipo de SQL. */
+		markedAt: timestamp("marked_at", { withTimezone: true })
+			.notNull()
+			.defaultNow(),
+		/** Nulo sólo en un intento rechazado antes de poder resolver la jornada. */
+		workDate: date("work_date"),
+		latitude: doublePrecision().notNull(),
+		longitude: doublePrecision().notNull(),
+		accuracy: doublePrecision().notNull(),
+		/** Recalculados en el servidor a partir de lat/lng (RN-08.2). */
+		distanceToCenter: doublePrecision("distance_to_center"),
+		insideGeofence: boolean("inside_geofence"),
+		workLocationId: uuid("work_location_id").references(
+			() => workLocations.id,
+			{ onDelete: "set null" },
+		),
+		departmentId: uuid("department_id").references(() => departments.id, {
+			onDelete: "set null",
+		}),
+		/** RN-09.8 y decisión 2 de la §8: los intentos rechazados también se guardan. */
+		blocked: boolean().notNull().default(false),
+		blockReason: text("block_reason"),
+		isLate: boolean("is_late").notNull().default(false),
+		lateMinutes: integer("late_minutes").notNull().default(0),
+		source: text().notNull().default("manual"),
+		createdAt: timestamp("created_at", { withTimezone: true })
+			.notNull()
+			.defaultNow(),
+	},
+	(table) => [
+		index("attendance_marks_user_time_idx").on(
+			table.userId,
+			table.markedAt.desc(),
+		),
+		index("attendance_marks_time_idx").on(table.markedAt.desc()),
+		/** La consulta de la agregación diaria: la jornada de una persona. */
+		index("attendance_marks_user_workdate_idx").on(
+			table.userId,
+			table.workDate,
+		),
+		/** La de los paneles de departamento (specs 15 y 16). */
+		index("attendance_marks_department_workdate_idx").on(
+			table.departmentId,
+			table.workDate,
+		),
+		/**
+		 * RN-09.10 — Antirrebote **en la base**, que es donde se gana la carrera del
+		 * doble toque: dos peticiones simultáneas no se detectan comprobando antes de
+		 * insertar, sólo con una restricción.
+		 *
+		 * Son dos índices y no uno porque válidos y rechazados no compiten: un intento
+		 * rechazado a las 08:00:10 no puede impedir que el marcaje válido de las
+		 * 08:00:40 —la persona entró en la geocerca entretanto— entre en la misma
+		 * minuto. El truncado va con la zona explícita (`at time zone 'UTC'`) porque
+		 * sin ella la expresión depende de la sesión y PostgreSQL no la admite en un
+		 * índice.
+		 */
+		uniqueIndex("attendance_marks_valid_minute_idx")
+			.on(
+				table.userId,
+				table.markType,
+				sql`date_trunc('minute', ${table.markedAt} at time zone 'UTC')`,
+			)
+			.where(sql`not blocked`),
+		uniqueIndex("attendance_marks_blocked_minute_idx")
+			.on(
+				table.userId,
+				table.markType,
+				sql`date_trunc('minute', ${table.markedAt} at time zone 'UTC')`,
+			)
+			.where(sql`blocked`),
+	],
+);
+
+export const attendanceMarksRelations = relations(
+	attendanceMarks,
+	({ one }) => ({
+		profile: one(profiles, {
+			fields: [attendanceMarks.userId],
+			references: [profiles.id],
+		}),
+		workLocation: one(workLocations, {
+			fields: [attendanceMarks.workLocationId],
+			references: [workLocations.id],
+		}),
+	}),
+);

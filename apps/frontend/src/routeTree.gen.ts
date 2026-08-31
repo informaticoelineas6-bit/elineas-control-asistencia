@@ -14,6 +14,7 @@ import { Route as AuthedRouteImport } from './routes/_authed'
 import { Route as LoginRouteImport } from './routes/login'
 import { Route as PendingAccountRouteImport } from './routes/pending-account'
 import { Route as AuthedAttendanceRouteImport } from './routes/_authed/attendance'
+import { Route as AuthedClockInRouteImport } from './routes/_authed/clock-in'
 import { Route as AuthedDashboardRouteImport } from './routes/_authed/dashboard'
 import { Route as AuthedDepartmentsRouteImport } from './routes/_authed/departments'
 import { Route as AuthedGpsRouteImport } from './routes/_authed/gps'
@@ -47,6 +48,11 @@ const PendingAccountRoute = PendingAccountRouteImport.update({
 const AuthedAttendanceRoute = AuthedAttendanceRouteImport.update({
   id: '/attendance',
   path: '/attendance',
+  getParentRoute: () => AuthedRoute,
+} as any)
+const AuthedClockInRoute = AuthedClockInRouteImport.update({
+  id: '/clock-in',
+  path: '/clock-in',
   getParentRoute: () => AuthedRoute,
 } as any)
 const AuthedDashboardRoute = AuthedDashboardRouteImport.update({
@@ -105,6 +111,7 @@ export interface FileRoutesByFullPath {
   '/login': typeof LoginRoute
   '/pending-account': typeof PendingAccountRoute
   '/attendance': typeof AuthedAttendanceRoute
+  '/clock-in': typeof AuthedClockInRoute
   '/dashboard': typeof AuthedDashboardRoute
   '/departments': typeof AuthedDepartmentsRoute
   '/gps': typeof AuthedGpsRoute
@@ -121,6 +128,7 @@ export interface FileRoutesByTo {
   '/login': typeof LoginRoute
   '/pending-account': typeof PendingAccountRoute
   '/attendance': typeof AuthedAttendanceRoute
+  '/clock-in': typeof AuthedClockInRoute
   '/dashboard': typeof AuthedDashboardRoute
   '/departments': typeof AuthedDepartmentsRoute
   '/gps': typeof AuthedGpsRoute
@@ -139,6 +147,7 @@ export interface FileRoutesById {
   '/login': typeof LoginRoute
   '/pending-account': typeof PendingAccountRoute
   '/_authed/attendance': typeof AuthedAttendanceRoute
+  '/_authed/clock-in': typeof AuthedClockInRoute
   '/_authed/dashboard': typeof AuthedDashboardRoute
   '/_authed/departments': typeof AuthedDepartmentsRoute
   '/_authed/gps': typeof AuthedGpsRoute
@@ -157,6 +166,7 @@ export interface FileRouteTypes {
     | '/login'
     | '/pending-account'
     | '/attendance'
+    | '/clock-in'
     | '/dashboard'
     | '/departments'
     | '/gps'
@@ -173,6 +183,7 @@ export interface FileRouteTypes {
     | '/login'
     | '/pending-account'
     | '/attendance'
+    | '/clock-in'
     | '/dashboard'
     | '/departments'
     | '/gps'
@@ -190,6 +201,7 @@ export interface FileRouteTypes {
     | '/login'
     | '/pending-account'
     | '/_authed/attendance'
+    | '/_authed/clock-in'
     | '/_authed/dashboard'
     | '/_authed/departments'
     | '/_authed/gps'
@@ -244,6 +256,13 @@ declare module '@tanstack/react-router' {
       path: '/attendance'
       fullPath: '/attendance'
       preLoaderRoute: typeof AuthedAttendanceRouteImport
+      parentRoute: typeof AuthedRoute
+    }
+    '/_authed/clock-in': {
+      id: '/_authed/clock-in'
+      path: '/clock-in'
+      fullPath: '/clock-in'
+      preLoaderRoute: typeof AuthedClockInRouteImport
       parentRoute: typeof AuthedRoute
     }
     '/_authed/dashboard': {
@@ -321,6 +340,7 @@ declare module '@tanstack/react-router' {
 
 interface AuthedRouteChildren {
   AuthedAttendanceRoute: typeof AuthedAttendanceRoute
+  AuthedClockInRoute: typeof AuthedClockInRoute
   AuthedDashboardRoute: typeof AuthedDashboardRoute
   AuthedDepartmentsRoute: typeof AuthedDepartmentsRoute
   AuthedGpsRoute: typeof AuthedGpsRoute
@@ -335,6 +355,7 @@ interface AuthedRouteChildren {
 
 const AuthedRouteChildren: AuthedRouteChildren = {
   AuthedAttendanceRoute: AuthedAttendanceRoute,
+  AuthedClockInRoute: AuthedClockInRoute,
   AuthedDashboardRoute: AuthedDashboardRoute,
   AuthedDepartmentsRoute: AuthedDepartmentsRoute,
   AuthedGpsRoute: AuthedGpsRoute,

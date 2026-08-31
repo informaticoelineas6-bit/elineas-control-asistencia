@@ -3,7 +3,11 @@
 > **Origen:** `old-docs.md` §3.4, puntos 37, 38, 39, 40.
 > **Estado en el sistema legacy:** ✅ implementado y completo
 > (el documento `plan-implementacion-vacaciones.md` que lo daba por pendiente estaba desactualizado).
-> **Estado en el monorepo nuevo:** ❌ no existe.
+> **Estado en el monorepo nuevo:** ❌ no existe. La costura del marcaje ya está puesta: la
+> validación de la [09](./09-marcaje-asistencia.md) recibe una bandera `onVacation` y devuelve
+> `ON_VACATION` (RN-11.9), con su prueba; hoy nadie la pone en `true` porque no hay tabla de
+> solicitudes. En la agregación diaria, `VACACIONES` es una **superposición** con precedencia 2
+> ([15](./15-paneles-y-dashboard.md) RN-15.1), no un estado más de la lista.
 > **Depende de:** [09-marcaje-asistencia](./09-marcaje-asistencia.md) (los días trabajados salen de ahí), [06-configuracion-global](./06-configuracion-global.md).
 
 ---
