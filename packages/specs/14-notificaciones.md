@@ -65,7 +65,7 @@ de horario, un recordatorio pendiente.
 | Nueva incidencia reportada | Jefe(s) del ámbito | [12](./12-incidencias.md) |
 | Incidencia aprobada / rechazada | Empleado | [12](./12-incidencias.md) |
 | Cambio de horario del departamento | Todos los miembros | [07](./07-horarios-y-calendario.md) RN-07.10 ✅ |
-| Recordatorio de configurar descansos | Empleado / jefe | [10](./10-descansos.md) §5 |
+| Recordatorio de configurar descansos | Empleado / jefe | [10](./10-descansos.md) §5 — ✅ `rest_schedule.missing`, evaluado al iniciar sesión |
 | Ausencia clasificada (AJ/ANJ) | Empleado | [13](./13-justificacion-ausencias.md) RN-13.7 ⚠️ *nuevo* |
 | Ajuste de nómina aplicado o revertido | Empleado | [17](./17-nomina.md) ⚠️ *nuevo, punto 76* |
 | Reporte mensual listo | Quien lo solicitó | [16](./16-reporteria-mensual.md) |
@@ -115,7 +115,10 @@ hace upsert.
 
 - [ ] Un usuario no puede leer ni marcar notificaciones de otro (test de autorización).
 - [ ] Ningún endpoint permite a un cliente crear una notificación.
-- [ ] El recordatorio de descansos genera una sola notificación viva por semana y persona.
+- [x] El recordatorio de descansos genera una sola notificación viva por semana y persona.
+      (`dedupeKey` por persona; se retira en cuanto configura sus días. Hoy se evalúa **al
+      iniciar sesión**, así que quien no entre en una semana no lo recibe: pasa a proceso
+      programado cuando exista uno — [10](./10-descansos.md) §10.)
 - [ ] Con la entrega en vivo caída, el sondeo de respaldo sigue actualizando el contador.
 - [ ] Aprobar unas vacaciones notifica al solicitante en la misma transacción.
 - [ ] Un ajuste de nómina notifica al empleado afectado.

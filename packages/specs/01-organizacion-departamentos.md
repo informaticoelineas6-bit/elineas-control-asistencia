@@ -102,8 +102,12 @@ Administración— queda como referencia histórica, no como estado inicial.
 > que quitarlo antes, con `DELETE /departments/:id/schedule`. El bloqueo no es por integridad
 > —la clave ajena es `on delete cascade`— sino porque un horario es una regla que alguien
 > configuró y no debe desaparecer de rebote. Las filas del **calendario laboral** sí se van en
-> cascada: son fechas, no una regla, y quedan en la bitácora del cambio que las creó. Los grupos
-> de descanso, con la [10](./10-descansos.md).
+> cascada: son fechas, no una regla, y quedan en la bitácora del cambio que las creó.
+>
+> Los **grupos de descanso** ([10](./10-descansos.md)) bloquean también: el borrado responde 409
+> mientras el departamento tenga alguno. Además de ser reglas configuradas, su historial de
+> asignaciones sostiene reportes ya cerrados (RN-10.1), y la cascada los llevaría por delante sin
+> más rastro que la entrada de bitácora del borrado.
 
 ## 6. API propuesta (`packages/contracts`)
 
@@ -128,8 +132,9 @@ Esquemas Zod en `packages/validations`: `departmentSchema`, `createDepartmentInp
 - La pantalla legacy (`DepartmentsManagement.tsx`) mezclaba tres cosas: CRUD de
   departamentos, grupos de descanso y asignación de responsabilidades multi-depto.
   **Decidido: se separan en tres vistas.** Esta spec cubre sólo el CRUD de departamentos
-  (`/departments`); los grupos de descanso van con la [10](./10-descansos.md) y las
-  responsabilidades multi-departamento con la [02](./02-usuarios-y-perfiles.md) / [03](./03-roles-y-autorizacion.md).
+  (`/departments`); los grupos de descanso viven en `/rest-days` con la
+  [10](./10-descansos.md) —ya construida— y las responsabilidades multi-departamento con la
+  [02](./02-usuarios-y-perfiles.md) / [03](./03-roles-y-autorizacion.md).
 - Las acciones de cada fila van en un **desplegable**, no como botones sueltos en la celda.
 
 ## 8. Criterios de aceptación

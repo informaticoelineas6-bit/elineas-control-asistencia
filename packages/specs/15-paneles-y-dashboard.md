@@ -45,7 +45,7 @@ edge function de exportación. **No repetir eso.**
 | `PRESENTE` | Hay marcaje de entrada válido dentro de tolerancia |
 | `TARDE` | Hay entrada, pero pasada la tolerancia ([07](./07-horarios-y-calendario.md) RN-07.8) |
 | `AUSENTE` | Día laborable, no es descanso, no hay entrada |
-| `DESCANSO` | Día de descanso de la persona ([10](./10-descansos.md)) |
+| `DESCANSO` | Día de descanso de la persona ([10](./10-descansos.md), ya construida: `computeDailyStatus` recibe el `isRestDay` real) |
 | `NO_LABORABLE` | El calendario del departamento lo marca así ([07](./07-horarios-y-calendario.md)) |
 
 Y **superpuesto** (no excluyente con los anteriores en el cálculo, pero sí en la

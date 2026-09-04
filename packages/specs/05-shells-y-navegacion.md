@@ -52,7 +52,7 @@ Navegación inferior de cuatro destinos:
 | Marcar | `/clock-in` | Botón de marcaje + estado de geocerca ([09](./09-marcaje-asistencia.md)) |
 | Mi semana | `/my-week` | Historial propio de la semana ([09](./09-marcaje-asistencia.md) §historial) |
 | Incidencias | `/issues` | Propias, con contador de pendientes ([12](./12-incidencias.md)) |
-| Perfil | `/profile` | Datos, descansos, vacaciones, cerrar sesión |
+| Perfil | `/profile` | Datos, descansos ([10](./10-descansos.md), ✅), vacaciones, cerrar sesión |
 
 - **RN-05.4** — El destino por defecto tras iniciar sesión es *Marcar*.
 - **RN-05.5** — Los badges de la barra inferior (incidencias pendientes, notificaciones) se
@@ -67,7 +67,7 @@ Barra lateral con navegación **agrupada** y filtrada por rol. Agrupación imple
 | Grupo | Ítems | Quién lo ve |
 |---|---|---|
 | **Personal** | Inicio · Marcar¹ · Mi asistencia¹ · Mi perfil · Diagnóstico GPS² | todos |
-| **Gestión** | Mi equipo · Reportes | `department_head` y por encima |
+| **Gestión** | Mi equipo · Descansos³ · Reportes | `department_head` y por encima |
 | **Administración** | Usuarios · Departamentos · Nómina · Configuración | `global_manager` y por encima |
 | | Logs | sólo `superadmin` |
 
@@ -77,6 +77,11 @@ todo lo anterior.
 ² lo ve **cualquier rol**, incluido el gestor global que no marca ([08](./08-sedes-y-geocerca.md)
 §6): quien la usa de verdad es el jefe en planta con el teléfono de otro en la mano, resolviendo
 un "dice que estoy fuera y estoy dentro".
+
+³ empieza en `department_head` y **no** en *Administración* porque asignar personas a un grupo de
+descanso es su operación ([10](./10-descansos.md) §4): los grupos los define un gestor, pero
+quien organiza el turno de su gente es el jefe. Los descansos **propios** no están ahí, están en
+*Mi perfil*.
 
 > **Esta agrupación sustituye a la del borrador** (*Asistencia · Gestión · Sistema*), que
 > mezclaba en un mismo grupo lo que uno hace consigo mismo y lo que hace con su equipo. La
@@ -150,6 +155,7 @@ pueda ver desde ahí.
 | `/profile` | Mi perfil | ✅ |
 | `/gps` | Diagnóstico GPS | ✅ ([08](./08-sedes-y-geocerca.md) §6) |
 | `/team` | Mi equipo | marcador |
+| `/rest-days` | Descansos | ✅ ([10](./10-descansos.md)) |
 | `/reports` | Reportes | marcador ([16](./16-reporteria-mensual.md)) |
 | `/users` | Usuarios | ✅ ([02](./02-usuarios-y-perfiles.md)) |
 | `/departments` | Departamentos | ✅ ([01](./01-organizacion-departamentos.md)) |

@@ -2,10 +2,11 @@
 
 > **Origen:** `old-docs.md` §3.4, puntos 26–32, 40.
 > **Estado en el sistema legacy:** ✅ implementado.
-> **Estado en el monorepo nuevo:** ✅ implementado, con dos costuras abiertas por
-> dependencia: **descansos** (spec 10, entra por el predicado `isRestDay`) y
-> **vacaciones** (spec 11, entra por la bandera `onVacation` y el motivo `ON_VACATION`,
-> que ya existen y están probados). Tabla `attendance_marks` con los dos índices únicos
+> **Estado en el monorepo nuevo:** ✅ implementado. De las dos costuras que quedaban abiertas por
+> dependencia, **los descansos ya están conectados** ([10](./10-descansos.md)): `isRestDay`
+> recibe el predicado real, un intento en día de descanso se rechaza con `REST_DAY` y queda
+> registrado. Sigue abierta la de **vacaciones** (spec 11, por la bandera `onVacation` y el
+> motivo `ON_VACATION`, que ya existen y están probados). Tabla `attendance_marks` con los dos índices únicos
 > por minuto del antirrebote; **la función pura de la §4** en
 > `apps/backend/src/services/attendance-rules.ts`, que compone la horaria de la
 > [07](./07-horarios-y-calendario.md) y la de ubicación de la
@@ -295,9 +296,11 @@ interfaz lo muestra tal cual; no reescribe mensajes.
 
 Lo que queda pendiente **por dependencia**, no por decisión:
 
-- **Descansos** ([10](./10-descansos.md)): el predicado `isRestDay` está en la firma y
-  probado; hoy nadie descansa porque no hay tabla.
-- **Vacaciones** ([11](./11-vacaciones.md)): igual con `onVacation` y `ON_VACATION`.
+- ~~**Descansos** ([10](./10-descansos.md))~~ — **conectado.** Como esta spec anticipaba, fue
+  pasar un argumento: el servicio carga el predicado con `restDayResolverFor` y `GET
+  /attendance/status` lo aplica también, para que el estado no ofrezca un botón que el `POST`
+  va a rechazar.
+- **Vacaciones** ([11](./11-vacaciones.md)): sigue abierta, con `onVacation` y `ON_VACATION`.
 - **Cierre automático de jornada** (RN-09.13, modos `schedule` y `geofence_exit`): necesita un
   proceso programado. El campo `source` ya lo espera.
 - **Borrado administrativo de una marca** (RN-09.12): no hay endpoint. Cuando lo haya, va con

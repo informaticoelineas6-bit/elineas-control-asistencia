@@ -74,14 +74,19 @@ elegir.
 |---|---|---|---|---|
 | 07 | [Horarios y calendario laboral](./07-horarios-y-calendario.md) | ✅ | ✅ | 01, 06 |
 | 08 | [Sedes, geocerca y geolocalización](./08-sedes-y-geocerca.md) | ⚠️ | ✅ | 03, 06 |
-| 10 | [Descansos](./10-descansos.md) | ✅ | ❌ | 01, 06 |
+| 10 | [Descansos](./10-descansos.md) | ✅ | ✅ | 01, 06 |
 
 Las specs [07](./07-horarios-y-calendario.md) y [08](./08-sedes-y-geocerca.md) dejaron construidas
 **las dos mitades de la validación de un marcaje** —`validateMarkTime` (¿toca marcar ahora?) y
 `validateMarkLocation` (¿desde aquí?)—, más los dos componentes que reutilizan las specs 09, 10 y
 11: el **calendario** y el **mapa**. La [09](./09-marcaje-asistencia.md) las compone, y por eso su
 núcleo de reglas cabe en unas decenas de líneas en vez de en las seiscientas del hook del legacy.
-Lo que falta de este bloque es la [10](./10-descansos.md).
+
+Este bloque está **completo**. La [10](./10-descansos.md) añadió la tercera pieza reutilizable
+—`resolveRestDays`, una sola implementación para el marcaje, la agregación diaria y la
+reportería— y cerró sus cuatro decisiones abiertas, incluida la convención de `days_of_week`
+(0 = domingo, la de `getDay()` y `extract(dow)`) que la 07 había dejado a propósito sin elegir
+recibiendo los descansos por predicado.
 
 ### Núcleo
 
@@ -92,7 +97,9 @@ Lo que falta de este bloque es la [10](./10-descansos.md).
 Construida **antes** que las specs 10 y 11, de las que depende, dejando en su lugar dos costuras
 probadas: los descansos entran por un predicado y las vacaciones por una bandera. Es el orden que
 el índice ya sugería (09 antes de 11) y evita tener el núcleo del producto esperando por dos
-specs que no cambian su forma.
+specs que no cambian su forma. La apuesta salió: **conectar la [10](./10-descansos.md) fue pasar
+un argumento**, sin tocar una línea de las reglas del marcaje. Queda la bandera de la
+[11](./11-vacaciones.md).
 
 ### Excepciones — lo que pasa cuando no se marca
 
@@ -159,6 +166,20 @@ construye todo lo demás y la 21 condiciona el modelo de datos.
   crean de una vez.
 
 Todas en [00](./00-migracion-datos-e-identidad.md).
+
+De la [10](./10-descansos.md), que cerró sus cuatro decisiones abiertas:
+
+- **`days_of_week` es 0 = domingo … 6 = sábado**, la convención de `Date.getDay()` y de
+  `extract(dow from …)`. Cualquier otra obliga a convertir en cada frontera.
+- **La lista vacía de `rest_days_min_separation_departments` significa "a todos"**: el
+  interruptor de la regla es el número, la lista sólo la acota.
+- **El mínimo y el máximo de descansos semanales son configuración**, con defaults que dejan la
+  regla inerte: la cifra es laboral y la pone el negocio.
+- **El empleado elige sus descansos**, no los propone; las validaciones de servidor son el freno.
+
+Y una consecuencia del modelo que conviene saber antes de tocar los grupos: **cambiar los días de
+un grupo alcanza al pasado de sus miembros** ([10](./10-descansos.md) §9, decisión 5). Rotar
+turnos se hace creando otro grupo y reasignando.
 
 Y dos de forma:
 

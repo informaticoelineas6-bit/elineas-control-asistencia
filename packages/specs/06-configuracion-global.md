@@ -73,11 +73,19 @@ todas dependen de estos valores.
 | Clave | Tipo | Default | Consumido por |
 |---|---|---|---|
 | `rest_days_min_separation` | int 0–31 (días) | `0` (regla desactivada) | [10](./10-descansos.md) RN-10.5 |
-| `rest_days_min_separation_departments` | uuid[] | `[]` | acota a qué departamentos aplica la regla anterior |
+| `rest_days_min_separation_departments` | uuid[] | `[]` = **todos** | acota a qué departamentos aplica la regla anterior |
+| `rest_days_min_per_week` | int 0–7 | `0` (sin mínimo) | [10](./10-descansos.md) RN-10.9 |
+| `rest_days_max_per_week` | int 0–7 | `7` (sin máximo) | [10](./10-descansos.md) RN-10.9 |
 
-> Qué significa la lista vacía sigue sin decidirse ([10](./10-descansos.md), decisión abierta 2).
-> Por eso el default de `rest_days_min_separation` es 0: con la regla desactivada la ambigüedad
-> no llega a aplicarse.
+> **La lista vacía significa "a todos"** ([10](./10-descansos.md), decisión 2, cerrada): el
+> interruptor de la regla es el número —0 la desactiva— y la lista sólo la acota. Con el criterio
+> contrario habría dos formas de decir "a nadie" y ninguna de decir "a todos" sin enumerar los
+> departamentos y acordarse de añadir cada uno nuevo.
+>
+> Los límites semanales son **configuración y no un número en el código** porque la cifra es una
+> regla laboral que pone el negocio; los defaults dejan la regla inerte, siguiendo el criterio de
+> esta spec. Un mínimo por encima del máximo se rechaza al guardar (RN-06.5): no invalidaría una
+> elección concreta de días, sino todas.
 
 ### 3.4 Vacaciones
 
