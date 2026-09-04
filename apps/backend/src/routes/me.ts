@@ -1,14 +1,17 @@
 import {
 	authSpec,
 	locationsSpec,
+	restSpec,
 	schedulesSpec,
 	usersSpec,
 } from "@elineas/contracts";
 import {
 	devicePositionSchema,
 	myScheduleQuerySchema,
+	restScheduleQuerySchema,
 	selectWorkLocationInputSchema,
 	updateOwnProfileInputSchema,
+	updateRestScheduleInputSchema,
 } from "@elineas/validations";
 import { Hono } from "hono";
 import { clientIp } from "#/lib/request.ts";
@@ -20,6 +23,10 @@ import {
 	selectMyWorkLocation,
 } from "#/services/locations.ts";
 import { departmentNameOf, toSessionProfile } from "#/services/profiles";
+import {
+	getRestScheduleView,
+	setRestSchedule,
+} from "#/services/rest-schedules.ts";
 import { getMySchedule } from "#/services/schedules.ts";
 import { getOwnProfile, updateOwnProfile } from "#/services/users.ts";
 
@@ -95,6 +102,43 @@ me.get("/schedule", validate("query", myScheduleQuerySchema), async (c) => {
 	);
 	return c.json(schedulesSpec.mine.response.parse(mine));
 });
+
+/**
+ * `GET`/`PUT /api/me/rest-schedule` (spec 10 §6): los días de descanso propios,
+ * resueltos para la fecha pedida (RN-10.1).
+ *
+ * Sin parámetro de usuario, como todo `/me`. El `PUT` sólo es válido en modo
+ * individual: si el departamento gestiona los descansos por grupos, la
+ * configuración propia no aplicaría (RN-10.2) y el servicio responde 409 en vez de
+ * aceptar un cambio que no cambia nada.
+ */
+me.get(
+	"/rest-schedule",
+	validate("query", restScheduleQuerySchema),
+	async (c) => {
+		const auth = getAuth(c);
+		const view = await getRestScheduleView(
+			auth.profile.id,
+			{ role: auth.effectiveRole, isSelf: true },
+			c.req.valid("query").date,
+		);
+		return c.json(restSpec.mine.response.parse(view));
+	},
+);
+
+me.put(
+	"/rest-schedule",
+	validate("json", updateRestScheduleInputSchema),
+	async (c) => {
+		const auth = getAuth(c);
+		const view = await setRestSchedule(auth.profile.id, c.req.valid("json"), {
+			profileId: auth.profile.id,
+			sourceIp: clientIp(c),
+			role: auth.effectiveRole,
+		});
+		return c.json(restSpec.updateMine.response.parse(view));
+	},
+);
 
 /**
  * `GET`/`PUT /api/me/work-location` (spec 08 §7): la sede contra la que se validan

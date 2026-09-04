@@ -19,6 +19,7 @@ import {
 	toSessionProfile,
 	touchLastConnection,
 } from "#/services/profiles";
+import { remindMissingRestSchedule } from "#/services/rest-schedules.ts";
 
 export const auth = new Hono();
 
@@ -72,6 +73,13 @@ auth.post("/login", validate("json", authSpec.login.body), async (c) => {
 	// RN-03.6, antes de responder: si a este perfil le toca el departamento de los
 	// gestores globales, la sesión ya sale con él y no con el anterior.
 	const scopedProfile = await enforceGlobalManagerDepartment(profile, roles);
+
+	// RN-10.10 — El recordatorio de descansos sin configurar se evalúa **aquí, en
+	// el servidor**, que es una de las dos formas que admite la spec 10 §5. En el
+	// legacy vivía en el contexto de notificaciones del frontend (hallazgo H-4), así
+	// que sólo existía mientras alguien tuviera la aplicación abierta. La función no
+	// lanza: un aviso no puede impedir un inicio de sesión.
+	await remindMissingRestSchedule(scopedProfile, effectiveRole);
 
 	return c.json(
 		authSpec.login.response.parse({

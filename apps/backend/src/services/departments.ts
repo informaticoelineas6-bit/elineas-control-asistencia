@@ -12,6 +12,7 @@ import {
 	departmentSchedules,
 	departments,
 	profiles,
+	restGroups,
 	userDepartmentResponsibilities,
 } from "#/db/schema";
 import { type Actor, audit, type Database } from "#/services/audit.ts";
@@ -415,8 +416,8 @@ export async function resumeDepartment(
  * reasigna.
  *
  * El flujo §5.2 pide comprobar además lo que cuelga del departamento: el
- * **horario** (spec 07) bloquea el borrado, y los grupos de descanso lo harán
- * cuando exista la spec 10. Las filas del **calendario laboral** no bloquean y se
+ * **horario** (spec 07) y los **grupos de descanso** (spec 10) bloquean el
+ * borrado. Las filas del **calendario laboral** no bloquean y se
  * van en cascada: son datos de fechas, no una regla, y sin departamento ni
  * horario no significan nada — quedan en la bitácora del cambio que las creó.
  */
@@ -470,6 +471,20 @@ export async function deleteDepartment(
 		});
 	}
 
+	// Spec 01 §5.2 y spec 10: los grupos de descanso son reglas configuradas, igual
+	// que el horario, y además su historial de asignaciones sostiene reportes ya
+	// cerrados (RN-10.1). La cascada los borraría sin más rastro que esta entrada de
+	// bitácora, así que primero se retiran a propósito.
+	const restGroupCount = await countDepartmentRestGroups(id);
+	if (restGroupCount > 0) {
+		throw new HTTPException(409, {
+			message:
+				restGroupCount === 1
+					? "No se puede eliminar: este departamento tiene 1 grupo de descanso. Retíralo antes de borrarlo."
+					: `No se puede eliminar: este departamento tiene ${restGroupCount} grupos de descanso. Retíralos antes de borrarlo.`,
+		});
+	}
+
 	// Spec 01 §3: un departamento al que apunta la configuración no puede
 	// eliminarse mientras lo haga (RN-03.6, RN-10.5). Con las referencias
 	// guardadas por id, borrarlo dejaría esas reglas apuntando al vacío.
@@ -495,6 +510,23 @@ export async function deleteDepartment(
 			sourceIp: actor.sourceIp,
 		});
 	});
+}
+
+/**
+ * Grupos de descanso que cuelgan del departamento (spec 10 §2).
+ *
+ * La consulta vive aquí y no se pide al servicio de descansos a propósito: ese
+ * servicio necesita `requireDepartment` de este módulo, y cruzar las dos
+ * dependencias por una cuenta de filas dejaría un ciclo de imports por comodidad.
+ */
+async function countDepartmentRestGroups(
+	departmentId: string,
+): Promise<number> {
+	const [row] = await db
+		.select({ count: sql<number>`count(*)::int` })
+		.from(restGroups)
+		.where(eq(restGroups.departmentId, departmentId));
+	return row?.count ?? 0;
 }
 
 /**

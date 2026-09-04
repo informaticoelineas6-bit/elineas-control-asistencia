@@ -27,6 +27,7 @@ import {
 import { getConfig } from "#/services/config.ts";
 import { computeDailyStatus, type DailyMark } from "#/services/daily-status.ts";
 import { listWorkLocations } from "#/services/locations.ts";
+import { restDayResolverFor } from "#/services/rest-schedules.ts";
 import {
 	previousDate,
 	todayIn,
@@ -129,6 +130,13 @@ type LoadedContext = {
 	selectedLocation: WorkLocation | null;
 	activeLocations: WorkLocation[];
 	recentMarks: RecentMark[];
+	/**
+	 * Spec 10: los descansos de esta persona, ya resueltos como predicado sobre el
+	 * día laboral. Es la costura que la spec 09 dejó preparada —recibía los
+	 * descansos por predicado para no elegir la convención de `days_of_week` antes
+	 * de tiempo— y conectarla es literalmente pasar este argumento.
+	 */
+	isRestDay: (workDate: string) => boolean;
 };
 
 /**
@@ -178,6 +186,8 @@ async function loadContext(
 		: [];
 
 	const activeLocations = await listWorkLocations({ includeInactive: false });
+
+	const isRestDay = await restDayResolverFor(profile);
 
 	const recentRows = await db
 		.select({
@@ -230,6 +240,7 @@ async function loadContext(
 			markedAt: row.markedAt,
 			workDate: row.workDate,
 		})),
+		isRestDay,
 	};
 }
 
@@ -269,9 +280,11 @@ export async function createMark(
 		department: context.department,
 		schedule: context.schedule,
 		calendarByDate: context.calendarByDate,
-		// Descansos (spec 10) y vacaciones (spec 11) son las dos costuras que quedan:
-		// mientras no existan sus tablas, nadie descansa ni está de vacaciones.
-		isRestDay: undefined,
+		// Los descansos ya están conectados (spec 10 RN-10.4): un intento en día de
+		// descanso se rechaza con `REST_DAY` y queda registrado como los demás.
+		isRestDay: context.isRestDay,
+		// Las vacaciones (spec 11) siguen siendo una costura: mientras no exista su
+		// tabla, nadie está de vacaciones.
 		onVacation: undefined,
 		globalToleranceMinutes: context.globalToleranceMinutes,
 		requestedLocationId: input.workLocationId,
@@ -386,6 +399,10 @@ function resolveActiveWorkDate(
 		},
 		schedule: context.schedule,
 		calendarByDate: context.calendarByDate,
+		// Sin esto, `GET /attendance/status` diría "puedes registrar tu entrada" en
+		// un día de descanso y el `POST` lo rechazaría a continuación: el estado
+		// tiene que aplicar las mismas reglas que la escritura (spec 09 §6).
+		isRestDay: context.isRestDay,
 		globalToleranceMinutes: context.globalToleranceMinutes,
 	} as const;
 
@@ -500,6 +517,10 @@ export async function getMyDays(
 		: null;
 	const timezone = schedule?.timezone ?? config.global_timezone;
 	const today = todayIn(timezone);
+	// Se resuelve **por fecha** dentro del rango (RN-10.1): un historial de un mes
+	// puede atravesar un cambio de descansos, y un único conjunto de días para todo
+	// el rango daría el mismo estado al día 1 y al 30.
+	const isRestDay = await restDayResolverFor(profile);
 
 	const marks = await selectMarks(
 		and(
@@ -533,8 +554,9 @@ export async function getMyDays(
 				}),
 			),
 			isWorkday: calendarByDate.get(date)?.isWorkday ?? true,
-			// Spec 10: mientras no exista la tabla, nadie tiene descansos (RN-10.3).
-			isRestDay: false,
+			// Spec 10 RN-10.4: un día de descanso clasifica `DESCANSO`, nunca
+			// `AUSENTE`.
+			isRestDay: isRestDay(date),
 			isOpen: date >= today,
 		});
 

@@ -9,6 +9,7 @@ import { departments } from "#/routes/departments.ts";
 import { locations } from "#/routes/locations.ts";
 import { me } from "#/routes/me";
 import { notifications } from "#/routes/notifications.ts";
+import { departmentRest, restGroupsRouter } from "#/routes/rest.ts";
 import { schedules } from "#/routes/schedules.ts";
 import { users } from "#/routes/users.ts";
 
@@ -49,9 +50,13 @@ export function createApp() {
 	// cuelgan del departamento pero son otro dominio, con su propio servicio y sus
 	// propias reglas de rol. Los paths no se solapan.
 	app.route("/api/departments", schedules);
+	// Y un tercero: los grupos de descanso (spec 10) también cuelgan del
+	// departamento. Los paths no se solapan y cada dominio conserva su servicio.
+	app.route("/api/departments", departmentRest);
 	app.route("/api/work-locations", locations);
 	app.route("/api/attendance", attendance);
 	app.route("/api/notifications", notifications);
+	app.route("/api/rest-groups", restGroupsRouter);
 	app.route("/api/config", configRoutes);
 	app.route("/api/users", users);
 

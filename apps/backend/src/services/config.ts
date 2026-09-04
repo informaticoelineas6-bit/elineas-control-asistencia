@@ -7,6 +7,7 @@ import {
 	configValueSchemas,
 	PUBLIC_CONFIG_KEYS,
 	type PublicConfigValues,
+	restLimitsIssue,
 	type UpdateConfigInput,
 } from "@elineas/validations";
 import { inArray } from "drizzle-orm";
@@ -99,7 +100,7 @@ export async function getPublicConfig(): Promise<PublicConfigValues> {
 async function assertConsistent(patch: UpdateConfigInput): Promise<void> {
 	const effective = { ...(await getConfig()), ...patch };
 
-	const issue = checkoutModeIssue(effective);
+	const issue = checkoutModeIssue(effective) ?? restLimitsIssue(effective);
 	if (issue) throw new ConfigValidationError(issue);
 
 	const referenced = [

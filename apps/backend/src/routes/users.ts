@@ -1,10 +1,12 @@
-import { usersSpec } from "@elineas/contracts";
+import { restSpec, usersSpec } from "@elineas/contracts";
 import {
 	deactivateUserInputSchema,
 	listUsersQuerySchema,
+	restScheduleQuerySchema,
 	roleAtLeast,
 	updateCompensationInputSchema,
 	updateDepartmentResponsibilitiesInputSchema,
+	updateRestScheduleInputSchema,
 	updateUserInputSchema,
 } from "@elineas/validations";
 import { type Context, Hono } from "hono";
@@ -23,6 +25,10 @@ import {
 	getResponsibilities,
 	setResponsibilities,
 } from "#/services/responsibilities.ts";
+import {
+	getRestScheduleView,
+	setRestSchedule,
+} from "#/services/rest-schedules.ts";
 import {
 	deactivateUser,
 	deleteUser,
@@ -54,6 +60,28 @@ const actorOf = (c: Context) => ({
 	profileId: getAuth(c).profile.id,
 	sourceIp: clientIp(c),
 });
+
+/**
+ * El perfil de destino, comprobado contra el ámbito de quien pregunta (RN-03.2).
+ *
+ * El ámbito se resuelve **contra el departamento del perfil de destino**, no
+ * contra lo que diga el cliente. Está en una función porque lo piden ya tres
+ * endpoints, y repetirlo por endpoint es como el legacy acabó invirtiendo los
+ * argumentos de la comprobación (hallazgo H-1).
+ *
+ * Un perfil sin departamento queda fuera para un jefe y dentro para un gestor
+ * global, que es exactamente lo que hace `canManage`: sin departamento no hay
+ * ámbito que alcance.
+ */
+async function requireManageable(c: Context, id: string) {
+	const target = await getProfileRow(id);
+	if (!canManage(getAuth(c), target.departmentId)) {
+		throw new HTTPException(403, {
+			message: "Ese perfil está fuera de tu ámbito.",
+		});
+	}
+	return target;
+}
 
 /**
  * Listado acotado al ámbito (RN-03.2). Un `global_manager` ve todo; un
@@ -99,13 +127,7 @@ users.get(
 	validate("param", idParam),
 	async (c) => {
 		const { id } = c.req.valid("param");
-		const target = await getProfileRow(id);
-
-		if (!canManage(getAuth(c), target.departmentId)) {
-			throw new HTTPException(403, {
-				message: "Ese perfil está fuera de tu ámbito.",
-			});
-		}
+		await requireManageable(c, id);
 
 		const user = await getUser(id);
 		if (!user) {
@@ -227,5 +249,44 @@ users.put(
 		return c.json(
 			usersSpec.updateResponsibilities.response.parse(responsibilities),
 		);
+	},
+);
+
+/**
+ * Descansos de otra persona (spec 10 §6, matriz de la §4): un `department_head`
+ * ve y edita los de su ámbito. La configuración propia va por `/api/me`.
+ */
+users.get(
+	"/:id/rest-schedule",
+	requireRole("department_head"),
+	validate("param", idParam),
+	validate("query", restScheduleQuerySchema),
+	async (c) => {
+		const { id } = c.req.valid("param");
+		await requireManageable(c, id);
+
+		const view = await getRestScheduleView(
+			id,
+			{ role: getAuth(c).effectiveRole, isSelf: getAuth(c).profile.id === id },
+			c.req.valid("query").date,
+		);
+		return c.json(restSpec.ofUser.response.parse(view));
+	},
+);
+
+users.put(
+	"/:id/rest-schedule",
+	requireRole("department_head"),
+	validate("param", idParam),
+	validate("json", updateRestScheduleInputSchema),
+	async (c) => {
+		const { id } = c.req.valid("param");
+		await requireManageable(c, id);
+
+		const view = await setRestSchedule(id, c.req.valid("json"), {
+			...actorOf(c),
+			role: getAuth(c).effectiveRole,
+		});
+		return c.json(restSpec.updateOfUser.response.parse(view));
 	},
 );
