@@ -615,3 +615,170 @@ export const attendanceMarksRelations = relations(
 		}),
 	}),
 );
+
+/**
+ * Spec 10 §2. Descansos **individuales**: qué días de la semana no trabaja una
+ * persona, desde cuándo.
+ *
+ * `days_of_week` es `integer[]` con la convención 0 = domingo … 6 = sábado
+ * (decisión 1 de la §9, cerrada en `@elineas/validations/rest`): la de
+ * `Date.getDay()` y la de `extract(dow from …)`, que son los dos motores por los
+ * que pasa el dato.
+ *
+ * **`effective_from` es lo que hace correcta la reportería histórica** (RN-10.1):
+ * la configuración no se sobrescribe, se apila, y para una fecha D manda la fila
+ * más reciente con `effective_from ≤ D`. Un `UPDATE` en su lugar reescribiría el
+ * pasado, y el reporte del mes cerrado cambiaría al día siguiente de que alguien
+ * mueva su descanso.
+ */
+export const userRestSchedule = pgTable(
+	"user_rest_schedule",
+	{
+		id: uuid().primaryKey().defaultRandom(),
+		userId: uuid("user_id")
+			.notNull()
+			.references(() => profiles.id, { onDelete: "cascade" }),
+		daysOfWeek: integer("days_of_week").array().notNull(),
+		effectiveFrom: date("effective_from").notNull(),
+		createdAt: timestamp("created_at", { withTimezone: true })
+			.notNull()
+			.defaultNow(),
+		updatedAt: timestamp("updated_at", { withTimezone: true })
+			.notNull()
+			.defaultNow(),
+	},
+	(table) => [
+		/**
+		 * Una configuración por persona y fecha de vigencia. Sin esta restricción,
+		 * dos filas con el mismo `effective_from` dejarían RN-10.1 sin respuesta
+		 * única, y cuál gana dependería del plan de consulta.
+		 */
+		unique("user_rest_schedule_user_from_key").on(
+			table.userId,
+			table.effectiveFrom,
+		),
+		/** La consulta real es siempre "las filas de esta persona, la última primero". */
+		index("user_rest_schedule_user_from_idx").on(
+			table.userId,
+			table.effectiveFrom.desc(),
+		),
+	],
+);
+
+/**
+ * Spec 10 §2. Grupos de descanso de un departamento, para operaciones que rotan
+ * turnos. Aplican sólo si `departments.rest_groups_enabled` (RN-10.2).
+ *
+ * `is_active` no está en la §2 y se añade por el mismo criterio que las sedes
+ * (RN-08.10): un grupo con historial detrás **no se borra**, porque los reportes
+ * de meses cerrados necesitan seguir sabiendo con qué días descansaba su gente.
+ * El `DELETE` queda para el grupo que nunca tuvo miembros, que es el que se creó
+ * por error.
+ */
+export const restGroups = pgTable(
+	"rest_groups",
+	{
+		id: uuid().primaryKey().defaultRandom(),
+		departmentId: uuid("department_id")
+			.notNull()
+			.references(() => departments.id, { onDelete: "cascade" }),
+		name: text().notNull(),
+		daysOfWeek: integer("days_of_week").array().notNull(),
+		isActive: boolean("is_active").notNull().default(true),
+		createdAt: timestamp("created_at", { withTimezone: true })
+			.notNull()
+			.defaultNow(),
+		updatedAt: timestamp("updated_at", { withTimezone: true })
+			.notNull()
+			.defaultNow(),
+	},
+	(table) => [
+		/**
+		 * "Grupo A" y "grupo a" son el mismo grupo para quien los lee en un selector
+		 * — mismo criterio que departamentos (RN-01.1) y sedes. Único **dentro del
+		 * departamento**: dos departamentos pueden tener cada uno su Grupo A.
+		 */
+		uniqueIndex("rest_groups_department_name_lower_idx").on(
+			table.departmentId,
+			sql`lower(${table.name})`,
+		),
+		index("rest_groups_department_idx").on(table.departmentId, table.isActive),
+	],
+);
+
+/**
+ * Spec 10 §2. A qué grupo pertenece una persona, desde cuándo.
+ *
+ * **`group_id` admite nulo**, y ésa es la decisión de diseño de esta tabla: es la
+ * fila que dice "esta persona salió de su grupo en esta fecha". Sin ella, sacar a
+ * alguien de un grupo obligaría a borrar sus filas —reescribiendo el pasado, justo
+ * lo que RN-10.1 impide— o a dejarla dentro para siempre. Con ella, la tabla es un
+ * historial de asignaciones donde "sin grupo" es un hecho fechado como cualquier
+ * otro, y la resolución es la misma para todos los casos: la fila más reciente con
+ * `effective_from ≤ D`.
+ */
+export const restGroupMembers = pgTable(
+	"rest_group_members",
+	{
+		id: uuid().primaryKey().defaultRandom(),
+		/** Nulo = salió de todo grupo en esa fecha. */
+		groupId: uuid("group_id").references(() => restGroups.id, {
+			onDelete: "restrict",
+		}),
+		userId: uuid("user_id")
+			.notNull()
+			.references(() => profiles.id, { onDelete: "cascade" }),
+		effectiveFrom: date("effective_from").notNull(),
+		createdAt: timestamp("created_at", { withTimezone: true })
+			.notNull()
+			.defaultNow(),
+	},
+	(table) => [
+		/**
+		 * Una asignación por persona y fecha, **en toda la tabla** y no por grupo:
+		 * nadie pertenece a dos grupos el mismo día, y si lo hiciera RN-10.1 no
+		 * tendría respuesta única.
+		 */
+		unique("rest_group_members_user_from_key").on(
+			table.userId,
+			table.effectiveFrom,
+		),
+		index("rest_group_members_user_from_idx").on(
+			table.userId,
+			table.effectiveFrom.desc(),
+		),
+		index("rest_group_members_group_idx").on(table.groupId),
+	],
+);
+
+export const userRestScheduleRelations = relations(
+	userRestSchedule,
+	({ one }) => ({
+		profile: one(profiles, {
+			fields: [userRestSchedule.userId],
+			references: [profiles.id],
+		}),
+	}),
+);
+
+export const restGroupsRelations = relations(restGroups, ({ one, many }) => ({
+	department: one(departments, {
+		fields: [restGroups.departmentId],
+		references: [departments.id],
+	}),
+	members: many(restGroupMembers),
+}));
+
+export const restGroupMembersRelations = relations(
+	restGroupMembers,
+	({ one }) => ({
+		group: one(restGroups, {
+			fields: [restGroupMembers.groupId],
+			references: [restGroups.id],
+		}),
+		profile: one(profiles, {
+			fields: [restGroupMembers.userId],
+			references: [profiles.id],
+		}),
+	}),
+);
