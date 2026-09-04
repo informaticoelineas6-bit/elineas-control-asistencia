@@ -22,6 +22,7 @@ import { Route as AuthedLogsRouteImport } from './routes/_authed/logs'
 import { Route as AuthedPayrollRouteImport } from './routes/_authed/payroll'
 import { Route as AuthedProfileRouteImport } from './routes/_authed/profile'
 import { Route as AuthedReportsRouteImport } from './routes/_authed/reports'
+import { Route as AuthedRestDaysRouteImport } from './routes/_authed/rest-days'
 import { Route as AuthedSettingsRouteImport } from './routes/_authed/settings'
 import { Route as AuthedTeamRouteImport } from './routes/_authed/team'
 import { Route as AuthedUsersRouteImport } from './routes/_authed/users'
@@ -90,6 +91,11 @@ const AuthedReportsRoute = AuthedReportsRouteImport.update({
   path: '/reports',
   getParentRoute: () => AuthedRoute,
 } as any)
+const AuthedRestDaysRoute = AuthedRestDaysRouteImport.update({
+  id: '/rest-days',
+  path: '/rest-days',
+  getParentRoute: () => AuthedRoute,
+} as any)
 const AuthedSettingsRoute = AuthedSettingsRouteImport.update({
   id: '/settings',
   path: '/settings',
@@ -119,6 +125,7 @@ export interface FileRoutesByFullPath {
   '/payroll': typeof AuthedPayrollRoute
   '/profile': typeof AuthedProfileRoute
   '/reports': typeof AuthedReportsRoute
+  '/rest-days': typeof AuthedRestDaysRoute
   '/settings': typeof AuthedSettingsRoute
   '/team': typeof AuthedTeamRoute
   '/users': typeof AuthedUsersRoute
@@ -136,6 +143,7 @@ export interface FileRoutesByTo {
   '/payroll': typeof AuthedPayrollRoute
   '/profile': typeof AuthedProfileRoute
   '/reports': typeof AuthedReportsRoute
+  '/rest-days': typeof AuthedRestDaysRoute
   '/settings': typeof AuthedSettingsRoute
   '/team': typeof AuthedTeamRoute
   '/users': typeof AuthedUsersRoute
@@ -155,6 +163,7 @@ export interface FileRoutesById {
   '/_authed/payroll': typeof AuthedPayrollRoute
   '/_authed/profile': typeof AuthedProfileRoute
   '/_authed/reports': typeof AuthedReportsRoute
+  '/_authed/rest-days': typeof AuthedRestDaysRoute
   '/_authed/settings': typeof AuthedSettingsRoute
   '/_authed/team': typeof AuthedTeamRoute
   '/_authed/users': typeof AuthedUsersRoute
@@ -174,6 +183,7 @@ export interface FileRouteTypes {
     | '/payroll'
     | '/profile'
     | '/reports'
+    | '/rest-days'
     | '/settings'
     | '/team'
     | '/users'
@@ -191,6 +201,7 @@ export interface FileRouteTypes {
     | '/payroll'
     | '/profile'
     | '/reports'
+    | '/rest-days'
     | '/settings'
     | '/team'
     | '/users'
@@ -209,6 +220,7 @@ export interface FileRouteTypes {
     | '/_authed/payroll'
     | '/_authed/profile'
     | '/_authed/reports'
+    | '/_authed/rest-days'
     | '/_authed/settings'
     | '/_authed/team'
     | '/_authed/users'
@@ -314,6 +326,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AuthedReportsRouteImport
       parentRoute: typeof AuthedRoute
     }
+    '/_authed/rest-days': {
+      id: '/_authed/rest-days'
+      path: '/rest-days'
+      fullPath: '/rest-days'
+      preLoaderRoute: typeof AuthedRestDaysRouteImport
+      parentRoute: typeof AuthedRoute
+    }
     '/_authed/settings': {
       id: '/_authed/settings'
       path: '/settings'
@@ -348,6 +367,7 @@ interface AuthedRouteChildren {
   AuthedPayrollRoute: typeof AuthedPayrollRoute
   AuthedProfileRoute: typeof AuthedProfileRoute
   AuthedReportsRoute: typeof AuthedReportsRoute
+  AuthedRestDaysRoute: typeof AuthedRestDaysRoute
   AuthedSettingsRoute: typeof AuthedSettingsRoute
   AuthedTeamRoute: typeof AuthedTeamRoute
   AuthedUsersRoute: typeof AuthedUsersRoute
@@ -363,6 +383,7 @@ const AuthedRouteChildren: AuthedRouteChildren = {
   AuthedPayrollRoute: AuthedPayrollRoute,
   AuthedProfileRoute: AuthedProfileRoute,
   AuthedReportsRoute: AuthedReportsRoute,
+  AuthedRestDaysRoute: AuthedRestDaysRoute,
   AuthedSettingsRoute: AuthedSettingsRoute,
   AuthedTeamRoute: AuthedTeamRoute,
   AuthedUsersRoute: AuthedUsersRoute,

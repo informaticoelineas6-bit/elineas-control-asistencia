@@ -11,6 +11,7 @@ import { ROLE_LABELS } from "#/modules/auth/navigation.ts";
 import { sessionQueryOptions } from "#/modules/auth/session.ts";
 import { InlineError } from "#/modules/errors/inline-error.tsx";
 import { MyLocationCard } from "#/modules/locations/my-location-card.tsx";
+import { MyRestCard } from "#/modules/rest/my-rest-card.tsx";
 import { MyScheduleCard } from "#/modules/schedules/my-schedule-card.tsx";
 import {
 	ownProfileQueryOptions,
@@ -156,6 +157,13 @@ function OwnProfilePage() {
 					 * `/me/schedule`, que sólo devuelve lo suyo.
 					 */}
 					<MyScheduleCard />
+
+					{/*
+					 * Spec 10 §7 y spec 05 §3, que pone los descansos en el perfil. Va
+					 * justo debajo del horario porque responden la misma pregunta en dos
+					 * escalas: el horario dice a qué hora, los descansos qué días.
+					 */}
+					<MyRestCard />
 
 					{/*
 					 * Spec 08 RN-08.7/RN-08.8: la sede contra la que se validan sus

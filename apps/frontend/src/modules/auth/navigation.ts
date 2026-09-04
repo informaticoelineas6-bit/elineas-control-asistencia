@@ -1,6 +1,7 @@
 import { type AppRole, ROLES_THAT_DO_NOT_MARK } from "@elineas/validations";
 import {
 	BadgeDollarSign,
+	BedDouble,
 	Building2,
 	CalendarClock,
 	ClipboardList,
@@ -105,6 +106,19 @@ export const NAV_SECTIONS = [
 				to: "/team",
 				label: "Mi equipo",
 				icon: ClipboardList,
+				roles: HEAD_AND_UP,
+			},
+			/*
+			 * Spec 10 §4. Empieza en `department_head` y no en `global_manager`
+			 * porque **asignar personas a un grupo de descanso es su operación**:
+			 * los grupos los define un gestor, pero quien organiza el turno de su
+			 * gente es el jefe. Los descansos propios no están aquí, están en Mi
+			 * perfil (spec 05 §3).
+			 */
+			{
+				to: "/rest-days",
+				label: "Descansos",
+				icon: BedDouble,
 				roles: HEAD_AND_UP,
 			},
 			{

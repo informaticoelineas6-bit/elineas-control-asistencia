@@ -1,8 +1,10 @@
-import type {
-	AppConfigValues,
-	DepartmentSummary,
-	WorkCalendarEntry,
-	WorkCalendarEntryInput,
+import {
+	type AppConfigValues,
+	DAY_OF_WEEK_SHORT_NAMES,
+	DAYS_OF_WEEK_DISPLAY_ORDER,
+	type DepartmentSummary,
+	type WorkCalendarEntry,
+	type WorkCalendarEntryInput,
 } from "@elineas/validations";
 import { useQuery } from "@tanstack/react-query";
 import {
@@ -82,16 +84,6 @@ const toState = (entry: WorkCalendarEntry): DayState => ({
 	lateToleranceMinutes: entry.lateToleranceMinutes,
 	note: entry.note,
 });
-
-const WEEKDAY_LABELS = [
-	{ key: 1, label: "Lun" },
-	{ key: 2, label: "Mar" },
-	{ key: 3, label: "Mié" },
-	{ key: 4, label: "Jue" },
-	{ key: 5, label: "Vie" },
-	{ key: 6, label: "Sáb" },
-	{ key: 0, label: "Dom" },
-];
 
 export function WorkCalendarEditor({
 	department,
@@ -555,18 +547,26 @@ export function WorkCalendarEditor({
 						/>
 
 						<div className="flex flex-wrap gap-1.5">
-							{WEEKDAY_LABELS.map((weekday) => {
-								const active = weekdayFilter.includes(weekday.key);
+							{/*
+							 * Los días salen de `@elineas/validations` (spec 10): el orden de
+							 * presentación empieza en lunes y los valores conservan la
+							 * convención de almacenamiento —0 = domingo—, que es la de
+							 * `getDay()`. La lista estaba escrita a mano aquí; tenerla en un
+							 * sitio es lo que evita que este filtro y el selector de descansos
+							 * discrepen en el índice de un día.
+							 */}
+							{DAYS_OF_WEEK_DISPLAY_ORDER.map((weekday) => {
+								const active = weekdayFilter.includes(weekday);
 								return (
 									<button
-										key={weekday.key}
+										key={weekday}
 										type="button"
 										aria-pressed={active}
 										onClick={() =>
 											setWeekdayFilter((current) =>
 												active
-													? current.filter((each) => each !== weekday.key)
-													: [...current, weekday.key],
+													? current.filter((each) => each !== weekday)
+													: [...current, weekday],
 											)
 										}
 										className={`rounded-md border px-2.5 py-1 text-xs ${
@@ -575,7 +575,7 @@ export function WorkCalendarEditor({
 												: "border-input hover:bg-accent/60"
 										}`}
 									>
-										{weekday.label}
+										{DAY_OF_WEEK_SHORT_NAMES[weekday]}
 									</button>
 								);
 							})}
