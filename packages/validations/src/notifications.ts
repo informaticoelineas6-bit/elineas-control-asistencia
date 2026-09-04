@@ -32,6 +32,16 @@ export const notificationTypeSchema = z.enum([
 	 * persona tiene que enterarse antes de plantarse en la puerta a marcar.
 	 */
 	"work_location.deactivated",
+	/**
+	 * No tienes descansos configurados para la semana en curso (spec 10 RN-10.10).
+	 * Lleva `dedupeKey` por persona: es un recordatorio, y tres copias del mismo
+	 * recordatorio en la campana no recuerdan más, sólo tapan lo demás.
+	 *
+	 * ⚠️ Hallazgo H-4: en el legacy esta regla vivía en el contexto de
+	 * notificaciones del **frontend**, así que sólo se disparaba si la persona
+	 * abría la aplicación. Aquí la evalúa el servidor al iniciar sesión.
+	 */
+	"rest_schedule.missing",
 ]);
 
 export const notificationSchema = z.object({

@@ -8,6 +8,7 @@ export * from "./geo.ts";
 export * from "./locations.ts";
 export * from "./notifications.ts";
 export * from "./phone.ts";
+export * from "./rest.ts";
 export * from "./roles.ts";
 export * from "./schedules.ts";
 export * from "./time.ts";

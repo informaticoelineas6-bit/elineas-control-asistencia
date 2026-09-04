@@ -51,15 +51,31 @@ export const configValueSchemas = {
 	attendance_geofence_exit_minutes: z.number().int().min(1).max(720).nullable(),
 
 	// ── 3.3 Descansos ───────────────────────────────────────────────────────
-	/** Días mínimos entre dos descansos de la misma persona (spec 10 RN-10.5). */
+	/**
+	 * Días mínimos entre dos descansos de la misma persona (spec 10 RN-10.5).
+	 * **0 desactiva la regla**: es el interruptor, y por eso es el default.
+	 */
 	rest_days_min_separation: z.number().int().min(0).max(31),
 	/**
-	 * Departamentos a los que se acota la regla anterior. Qué significa la lista
-	 * vacía sigue sin decidirse (spec 10, decisión abierta 2), y por eso el
-	 * default de `rest_days_min_separation` es 0: con la regla desactivada la
-	 * ambigüedad no llega a aplicarse.
+	 * Departamentos a los que se **acota** la regla anterior. La **lista vacía
+	 * significa "todos"** (spec 10, decisión 2, cerrada): el interruptor es el
+	 * número, y la lista sólo estrecha su alcance. Con el criterio contrario
+	 * habría dos formas de decir "a nadie" —el 0 y la lista vacía— y ninguna de
+	 * decir "a todos" sin enumerar los departamentos y acordarse de añadir cada
+	 * uno nuevo.
 	 */
 	rest_days_min_separation_departments: z.array(z.uuid()),
+	/**
+	 * Mínimo y máximo de días de descanso por semana (spec 10 RN-10.9).
+	 *
+	 * La cifra es una regla laboral y la pone el negocio, no el código; lo que sí
+	 * tiene que existir ya es **el sitio donde ponerla**, o el día que se decida
+	 * será un despliegue en vez de un cambio de configuración. Los defaults dejan
+	 * la regla inerte —0 y 7 no excluyen ningún conjunto de días—, siguiendo el
+	 * criterio de esta spec: el default se comporta como si la clave no estuviera.
+	 */
+	rest_days_min_per_week: z.number().int().min(0).max(7),
+	rest_days_max_per_week: z.number().int().min(0).max(7),
 
 	// ── 3.4 Vacaciones ──────────────────────────────────────────────────────
 	/**
@@ -107,6 +123,8 @@ export const CONFIG_DEFAULTS: AppConfigValues = {
 	attendance_geofence_exit_minutes: null,
 	rest_days_min_separation: 0,
 	rest_days_min_separation_departments: [],
+	rest_days_min_per_week: 0,
+	rest_days_max_per_week: 7,
 	vacation_days_per_worked_day: 0,
 	include_heads_in_global_reports: true,
 	report_slo_error_rate_pct: 1,
@@ -160,6 +178,22 @@ export function checkoutModeIssue(values: AppConfigValues): string | null {
 		!values.attendance_geofence_exit_minutes
 	) {
 		return "Con el modo de salida «por salida de geocerca» hay que indicar cuántos minutos fuera cierran la jornada.";
+	}
+	return null;
+}
+
+/**
+ * Coherencia de los límites de descansos (spec 10 RN-10.9).
+ *
+ * Se valida el resultado **efectivo** por el mismo motivo que el modo de salida:
+ * alguien puede subir el mínimo hoy y bajar el máximo mañana, y lo que tiene que
+ * quedar coherente es lo guardado. Un mínimo por encima del máximo no rechaza una
+ * configuración concreta: rechaza **todas**, y deja a la plantilla sin poder
+ * guardar sus descansos sin que nadie relacione las dos claves.
+ */
+export function restLimitsIssue(values: AppConfigValues): string | null {
+	if (values.rest_days_min_per_week > values.rest_days_max_per_week) {
+		return "El mínimo de descansos por semana no puede ser mayor que el máximo.";
 	}
 	return null;
 }

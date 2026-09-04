@@ -34,6 +34,12 @@ export const auditActionSchema = z.enum([
 	"schedule.created",
 	"schedule.updated",
 	"work_calendar.updated",
+	// Descansos (spec 10)
+	"rest_schedule.updated",
+	"rest_group.created",
+	"rest_group.updated",
+	"rest_group.deleted",
+	"rest_group.members_changed",
 	// Sedes y geocerca (spec 08)
 	"work_location.created",
 	"work_location.updated",
