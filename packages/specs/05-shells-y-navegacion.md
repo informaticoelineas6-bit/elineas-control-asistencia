@@ -6,9 +6,12 @@
 > filtrado por rol, cabecera con campana de notificaciones, guard de página y pantalla de cuenta
 > pendiente (`apps/frontend/src/routes/_authed.tsx`, `components/app-sidebar.tsx`,
 > `modules/auth/navigation.ts`), y las **tres capas de contención de errores** de §5
-> (`modules/errors/`, declaradas en `router.tsx` y en `routes/__root.tsx`). Falta el
-> **EmployeeShell** entero (§3), la regla de resolución de shell (§2) y los badges de pendientes
-> (RN-05.8). Las secciones que aún no tienen spec implementada son marcadores.
+> (`modules/errors/`, declaradas en `router.tsx` y en `routes/__root.tsx`). Los **badges de
+> pendientes** (RN-05.8) existen desde la [12](./12-incidencias.md): la tabla de navegación
+> declara *qué* contar y el aside resuelve *cuánto*, así que añadir el de vacaciones por aprobar
+> o el de ausencias sin justificar es una línea en `NAV_SECTIONS`. Falta el **EmployeeShell**
+> entero (§3) y la regla de resolución de shell (§2). Las secciones que aún no tienen spec
+> implementada son marcadores.
 > **Depende de:** [04-autenticacion](./04-autenticacion.md), [03-roles-y-autorizacion](./03-roles-y-autorizacion.md).
 
 ---
@@ -51,12 +54,13 @@ Navegación inferior de cuatro destinos:
 |---|---|---|
 | Marcar | `/clock-in` | Botón de marcaje + estado de geocerca ([09](./09-marcaje-asistencia.md)) |
 | Mi semana | `/my-week` | Historial propio de la semana ([09](./09-marcaje-asistencia.md) §historial) |
-| Incidencias | `/issues` | Propias, con contador de pendientes ([12](./12-incidencias.md)) |
+| Incidencias | `/incidents` | Propias, con contador de pendientes ([12](./12-incidencias.md), ✅) |
 | Perfil | `/profile` | Datos, descansos ([10](./10-descansos.md), ✅), vacaciones ([11](./11-vacaciones.md), ✅), cerrar sesión |
 
 - **RN-05.4** — El destino por defecto tras iniciar sesión es *Marcar*.
 - **RN-05.5** — Los badges de la barra inferior (incidencias pendientes, notificaciones) se
-  actualizan sin recargar.
+  actualizan sin recargar. *(En el AdminShell ya se cumple: toda mutación de incidencias
+  invalida su conteo y el de notificaciones.)*
 - **RN-05.6** — Debe funcionar con una sola mano y sin scroll para la acción principal.
 
 ## 4. AdminShell
@@ -87,9 +91,12 @@ quien organiza el turno de su gente es el jefe. Los descansos **propios** no est
 > mezclaba en un mismo grupo lo que uno hace consigo mismo y lo que hace con su equipo. La
 > división real es por **de quién son los datos**: los míos, los de mi gente, los de la empresa.
 >
-> Del borrador quedan por colocar, cuando existan sus specs: *Historial* y *Mi semana*
-> ([09](./09-marcaje-asistencia.md)), *Incidencias* ([12](./12-incidencias.md)), *Panel global*
+> Del borrador quedan por colocar, cuando existan sus specs: *Mi semana*
+> ([09](./09-marcaje-asistencia.md)), *Panel global*
 > ([15](./15-paneles-y-dashboard.md)) y *Superadmin* ([19](./19-panel-superadmin.md)).
+> *Incidencias* ya está, en *Personal* y con badge: la ve cualquier rol porque la
+> [12](./12-incidencias.md) §7 dice "autenticado" y no invoca RN-03.4 como sí hace la
+> [11](./11-vacaciones.md) con las vacaciones.
 > *Notificaciones* no es un ítem de menú: es la **campana de la cabecera**, que es donde se
 > mira sin abandonar lo que se está haciendo.
 
@@ -97,8 +104,18 @@ quien organiza el turno de su gente es el jefe. Los descansos **propios** no est
   muestran deshabilitados. El filtrado y el guard de página salen de **la misma tabla**
   (`ROUTE_ACCESS`, spec 04 §6): si un enlace no se ofrece, su ruta tampoco se abre
   escribiéndola a mano.
+  > ⚠️ **Se cumplía a medias hasta la [12](./12-incidencias.md).** El aside filtraba
+  > comparando `item.roles` a mano en vez de llamar a `canAccess`, y con eso se perdía la
+  > **lista de exclusión**: a un `global_manager` se le ofrecían *Marcar* y *Mi asistencia*
+  > para que el guard lo echara acto seguido. Es exactamente el fallo que esta regla describe,
+  > y sólo podía pasar por tener la comprobación escrita dos veces. Corregido: el aside llama a
+  > `canAccess`, la misma función que el guard.
 - **RN-05.8** — Los grupos con pendientes muestran badge con el conteo (incidencias por
-  revisar, vacaciones por aprobar, ausencias sin justificar).
+  revisar, vacaciones por aprobar, ausencias sin justificar). *Implementado con la
+  [12](./12-incidencias.md): hoy hay dos, las incidencias propias sin revisar y las que esperan
+  por quien mira. El badge se declara en la tabla de navegación como un identificador
+  (`badge: "incidents-own"`), no como un número, para que `navigation.ts` siga siendo datos
+  puros y el guard pueda leerla sin arrastrar consultas.*
 - **RN-05.9** — En viewport móvil el AdminShell conserva una barra inferior de respaldo con
   los destinos principales; la barra lateral pasa a ser un panel desplegable.
 
@@ -154,7 +171,8 @@ pueda ver desde ahí.
 | `/attendance` | Mi asistencia | ✅ ([09](./09-marcaje-asistencia.md)) |
 | `/profile` | Mi perfil | ✅ |
 | `/gps` | Diagnóstico GPS | ✅ ([08](./08-sedes-y-geocerca.md) §6) |
-| `/team` | Mi equipo | ✅ ([11](./11-vacaciones.md); crece con las specs 12 y 13) |
+| `/incidents` | Incidencias | ✅ ([12](./12-incidencias.md)) |
+| `/team` | Mi equipo | ✅ ([11](./11-vacaciones.md) y [12](./12-incidencias.md); crece con la spec 13) |
 | `/rest-days` | Descansos | ✅ ([10](./10-descansos.md)) |
 | `/reports` | Reportes | marcador ([16](./16-reporteria-mensual.md)) |
 | `/users` | Usuarios | ✅ ([02](./02-usuarios-y-perfiles.md)) |
@@ -163,7 +181,11 @@ pueda ver desde ahí.
 | `/settings` | Configuración | ✅ ([06](./06-configuracion-global.md)) |
 | `/logs` | Logs | marcador ([18](./18-auditoria.md)) |
 
-Rutas previstas que aún no existen: `/my-week` y `/issues` (§3). `/clock-in` ya existe
+Ruta prevista que aún no existe: `/my-week` (§3). La otra que faltaba, la de incidencias, ya
+está — pero como **`/incidents`** y no como el `/issues` que decía la §3: eran dos palabras
+inglesas para la misma cosa, y la tabla, el tipo, el servicio y el módulo de la
+[12](./12-incidencias.md) ya se llaman *incident*. La etiqueta sigue siendo *Incidencias*, que
+es lo que lee una persona. `/clock-in` ya existe
 —llegó con la [09](./09-marcaje-asistencia.md)— pero vive **dentro del AdminShell**: está
 hecha en columna estrecha y con el botón grande, así que al construir el EmployeeShell se
 monta sin rehacerla.

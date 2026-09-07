@@ -6,7 +6,10 @@
 > quedaban por dependencia están conectadas — los descansos ([10](./10-descansos.md), `isRestDay`
 > recibe el predicado real y un intento en día de descanso se rechaza con `REST_DAY`) y las
 > vacaciones ([11](./11-vacaciones.md), `onVacation` con datos reales y `ON_VACATION` en el
-> rechazo). Las dos quedan registradas como cualquier otro intento (RN-09.8). Tabla `attendance_marks` con los dos índices únicos
+> rechazo). Las dos quedan registradas como cualquier otro intento (RN-09.8) — y desde la
+> [12](./12-incidencias.md) **esos intentos rechazados se leen**: son la evidencia con la que se
+> abre y se revisa una incidencia, que es lo que RN-09.12 quería decir con "una corrección es una
+> incidencia, no una edición". Tabla `attendance_marks` con los dos índices únicos
 > por minuto del antirrebote; **la función pura de la §4** en
 > `apps/backend/src/services/attendance-rules.ts`, que compone la horaria de la
 > [07](./07-horarios-y-calendario.md) y la de ubicación de la

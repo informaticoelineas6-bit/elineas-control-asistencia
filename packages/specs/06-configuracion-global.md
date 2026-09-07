@@ -97,7 +97,20 @@ todas dependen de estos valores.
 > nómina** (punto 75), que hoy está fijo en `/30` dentro de la función SQL. Son **dos cosas
 > distintas**: no reutilizar la misma clave. Ver [17-nomina](./17-nomina.md) §7.
 
-### 3.5 Reportería
+### 3.5 Incidencias
+
+| Clave | Tipo | Default | Consumido por |
+|---|---|---|---|
+| `incident_report_window_days` | int 0–365 | `0` (sin plazo) | [12](./12-incidencias.md) RN-12.4 |
+
+> **`0` desactiva el plazo**, y por eso es el default: el interruptor es el número, igual que en
+> `rest_days_min_separation`. La spec 12 proponía 7 días; la cifra es una regla laboral —¿hasta
+> cuándo se admite un reclamo sobre un mes ya pagado?— y la pone el negocio. Sin plazo, alguien
+> puede reclamar un día de hace seis meses; con uno mal elegido, alguien de baja médica pierde
+> la vía formal de reportar. Ninguna de las dos la decide el código, y lo que tenía que existir
+> ya es el sitio donde ponerla.
+
+### 3.6 Reportería
 
 | Clave | Tipo | Default | Consumido por |
 |---|---|---|---|
@@ -106,7 +119,7 @@ todas dependen de estos valores.
 | `report_slo_availability_pct` | number 0–100 | `99` | idem |
 | `google_sheets_report_spreadsheet_id` | string \| null | `null` | [16](./16-reporteria-mensual.md) §Sheets |
 
-### 3.6 Ámbito
+### 3.7 Ámbito
 
 | Clave | Tipo | Default | Consumido por |
 |---|---|---|---|
@@ -157,7 +170,11 @@ todas dependen de estos valores.
 
 El subconjunto público es una **lista blanca explícita** (`PUBLIC_CONFIG_KEYS`), no un "todo
 menos X": añadir una clave al catálogo no debe exponerla por descuido. Hoy son
-`global_timezone`, `late_tolerance_minutes` y las tres del modo de salida.
+`global_timezone`, `late_tolerance_minutes`, las tres del modo de salida y
+`incident_report_window_days` — esta última porque el formulario de incidencias tiene que
+poder decir "esa fecha ya quedó fuera de plazo" antes de enviar, con la misma cifra que aplica
+el servidor ([12](./12-incidencias.md) RN-12.4). Es un plazo, igual que la tolerancia: no
+revela nada.
 
 ## 6. UI
 

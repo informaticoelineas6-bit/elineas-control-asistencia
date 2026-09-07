@@ -5,7 +5,12 @@
 > **Estado en el monorepo nuevo:** ❌ no existe.
 > **Depende de:** [09-marcaje-asistencia](./09-marcaje-asistencia.md), [03-roles-y-autorizacion](./03-roles-y-autorizacion.md).
 > **Dispara:** [17-nomina](./17-nomina.md) — el descuento automático nace aquí.
-> **No confundir con:** [12-incidencias](./12-incidencias.md).
+> **No confundir con:** [12-incidencias](./12-incidencias.md) — que ya está construida y **deja
+> una decisión esperando por esta spec**: si aprobar una incidencia debe justificar
+> automáticamente la ausencia del día, y por tanto evitar el descuento
+> ([12](./12-incidencias.md) §9, decisión 1). Es la decisión más importante de esa spec y no se
+> puede cerrar sin lo que se construya aquí. La costura está lista por el lado de allá:
+> `reviewIncident` es el único sitio por el que pasa una aprobación.
 
 ---
 

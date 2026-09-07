@@ -63,10 +63,11 @@ que la spec pide; cada cabecera detalla qué falta y por qué.
 Lo único que queda abierto en los cimientos es el **EmployeeShell** de la
 [05](./05-shells-y-navegacion.md) §3. Dos de sus cuatro destinos ya existen —`/clock-in` y
 `/profile`— y las pantallas de marcaje e historial están hechas en columna estrecha y con el
-botón grande, así que montarlas en una barra inferior no obliga a rehacerlas; faltan `/my-week`
-(reutiliza el historial de la [09](./09-marcaje-asistencia.md)) e `/issues`
-([12](./12-incidencias.md)), y la regla de resolución de shell (§2), que hoy no tiene entre qué
-elegir.
+botón grande, así que montarlas en una barra inferior no obliga a rehacerlas; el tercero,
+*Incidencias*, existe desde la [12](./12-incidencias.md) —como `/incidents`, no como el
+`/issues` que decía la spec— y falta `/my-week` (reutiliza el historial de la
+[09](./09-marcaje-asistencia.md)) y la regla de resolución de shell (§2), que hoy no tiene entre
+qué elegir.
 
 ### Reglas de trabajo — el marco que hace válido un marcaje
 
@@ -106,7 +107,7 @@ marcaje. Ya no queda ninguna costura abierta en el núcleo.
 | # | Spec | Legacy | Monorepo | Depende de |
 |---|---|---|---|---|
 | 11 | [Vacaciones](./11-vacaciones.md) | ✅ | ✅ | 06, 09 |
-| 12 | [Incidencias](./12-incidencias.md) | ✅ | ❌ | 03, 09 |
+| 12 | [Incidencias](./12-incidencias.md) | ✅ | ✅ | 03, 09 |
 | 13 | [Justificación de ausencias](./13-justificacion-ausencias.md) | ✅ | ❌ | 03, 09 |
 
 La [11](./11-vacaciones.md) cerró **la última costura del núcleo**: la 09 ya no espera por nadie.
@@ -116,6 +117,18 @@ resolver porque el sistema no conoce el rol de un perfil ajeno sin que esa perso
 ([11](./11-vacaciones.md) §9, decisión 3). Es el primer sitio donde el corte de la
 [00](./00-migracion-datos-e-identidad.md) —los roles viven en el Identity Server— se nota como
 una limitación concreta.
+
+La [12](./12-incidencias.md) **usa por fin la materia prima que la 09 venía guardando**: los
+intentos de marcaje rechazados, con su motivo tipado y su distancia recalculada, se ofrecen en
+el formulario y la incidencia se abre enlazada a uno (RN-12.2), así que el revisor la ve con la
+fila delante en vez de con un relato. Cerró tres de sus cuatro decisiones abiertas y dejó la
+cuarta —la más importante— **esperando por la [13](./13-justificacion-ausencias.md)**: si
+aprobar una incidencia debe justificar la ausencia del día y evitar el descuento. No se puede
+cerrar sin ella, porque no hay nada que enlazar; la costura sí está lista. Y trajo dos piezas
+que se estrenan aquí y sirven a lo que viene: el **badge de pendientes** del aside
+([05](./05-shells-y-navegacion.md) RN-05.8, declarativo — añadir el de vacaciones por aprobar es
+una línea) y `additionalHeadsOf` en `services/responsibilities.ts`, la única lista de jefes que
+este sistema puede leer, ahora en un solo sitio para las specs 11, 12 y 13.
 
 ### Salidas — lo que el sistema produce
 
@@ -198,6 +211,23 @@ De la [11](./11-vacaciones.md):
 - **Las vacaciones sólo se piden a futuro, sin excepción de rol** — al contrario que los
   descansos (RN-10.7): una regularización hacia atrás es una incidencia, no una fecha movida.
 
+De la [12](./12-incidencias.md), que cerró tres de sus cuatro decisiones abiertas:
+
+- **El plazo para reportar una incidencia es configuración, y `0` significa "sin plazo"**
+  (`incident_report_window_days`, default 0). Mismo criterio que los límites de descansos: la
+  cifra es laboral y la pone el negocio; el default deja la regla inerte.
+- **Aprobar una incidencia no crea ni corrige ningún marcaje** (RN-12.9), y "olvidé marcar"
+  tampoco: la incidencia no captura una hora declarada, así que no hay de dónde sacar el
+  instante de la marca. Cambiarlo es un cambio de modelo, no un cambio de la aprobación.
+- **No hay adjuntos.** Este sistema no almacena archivos, y el caso técnico ya trae su prueba
+  dentro: el marcaje bloqueado con su motivo.
+
+Y una de forma, que corrige una regla que se cumplía a medias: **el aside filtra los enlaces con
+`canAccess`**, la misma función que el guard de página ([05](./05-shells-y-navegacion.md)
+RN-05.7). Con la comprobación escrita dos veces se había perdido la lista de exclusión, y a un
+`global_manager` se le ofrecían *Marcar* y *Mi asistencia* para que el guard lo echara a
+continuación.
+
 Y dos de forma:
 
 - **El código se escribe en inglés; la interfaz, en español.** Rutas incluidas: *Mi asistencia*
@@ -229,8 +259,11 @@ Lo que sigue abierto y bloquea a varias specs a la vez:
    un jefe (spec 03 §3), nunca su departamento propio. Eso deja dos cosas a medias hoy: a quién
    se notifica una solicitud de vacaciones y qué regla protege las vacaciones de un jefe. Pide
    una de dos decisiones de arquitectura — consultar al IS los roles de un usuario cualquiera, o
-   registrar localmente qué perfil es jefe de qué departamento — y va a volver a aparecer en las
-   specs 12 y 13, que también necesitan avisar a un jefe.
+   registrar localmente qué perfil es jefe de qué departamento.
+   **Ya reapareció en la [12](./12-incidencias.md)** (RN-12.10: el aviso de una incidencia nueva
+   sólo llega a los responsables adicionales) y va a reaparecer en la 13. La consulta está ahora
+   en una sola función —`additionalHeadsOf`, en `services/responsibilities.ts`— para que
+   cerrar la decisión sea un cambio en un sitio y no en tres.
 
 Y una de negocio, no técnica, que puede reescribir una spec entera:
 
