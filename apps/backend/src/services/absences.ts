@@ -8,32 +8,22 @@ import {
 	type ReviewAbsenceInput,
 	roleAtLeast,
 } from "@elineas/validations";
-import { eachDayOfInterval, format, parseISO } from "date-fns";
-import { and, asc, eq, gte, inArray, lte, sql } from "drizzle-orm";
+import { and, asc, eq, gte, inArray, lte } from "drizzle-orm";
 import { HTTPException } from "hono/http-exception";
 import { db } from "#/db";
-import {
-	attendanceAbsenceReviews,
-	attendanceMarks,
-	departments,
-	profiles,
-} from "#/db/schema";
+import { attendanceAbsenceReviews, departments, profiles } from "#/db/schema";
 import { type Actor, audit, type Database } from "#/services/audit.ts";
-import { getConfig } from "#/services/config.ts";
-import { computeDailyStatus, type DailyMark } from "#/services/daily-status.ts";
+import {
+	dayKey,
+	loadDailyFacts,
+	peopleInScope,
+	type ScopedProfile,
+} from "#/services/daily-facts.ts";
 import { notify } from "#/services/notifications.ts";
 import {
 	createAbsenceDiscount,
 	revertAbsenceDiscount,
 } from "#/services/payroll.ts";
-import { restDayPredicate } from "#/services/rest-rules.ts";
-import { loadRestContexts } from "#/services/rest-schedules.ts";
-import { todayIn } from "#/services/schedule-rules.ts";
-import { getCalendar, getSchedule } from "#/services/schedules.ts";
-import {
-	loadApprovedVacationRanges,
-	vacationDayPredicate,
-} from "#/services/vacations.ts";
 
 /**
  * Justificación de ausencias (spec 13). El flujo con más impacto económico del
@@ -52,11 +42,10 @@ import {
  *    llevan. Se usa la función **pura** y no `getDaysFor` a propósito: así este
  *    servicio no depende de `attendance.ts`, que sí depende de éste para la
  *    superposición `AJ`/`ANJ` del historial.
- * 3. **La bandeja de la §5 clasifica jornadas por lotes.** Resolver los días
- *    ausentes de un ámbito persona a persona multiplicaría las consultas por el
- *    tamaño del departamento; `loadDailyFacts` las agrupa —una de marcas, una de
- *    revisiones, una de vacaciones y tres por departamento— y la misma función
- *    sirve para la bandeja y para validar un solo día.
+ * 3. **La bandeja de la §5 clasifica jornadas por lotes**, con
+ *    `services/daily-facts.ts` — el servicio de la §4 de la spec 15, que nació
+ *    aquí y se mudó allí cuando le salieron más consumidores. La misma función
+ *    sirve para la bandeja y para validar un solo día en RN-13.1.
  *
  * **Aquí no hay nada de `scope=own`.** El empleado no inicia este flujo (spec 12
  * §2): se entera por la notificación de RN-13.7 y por el código `AJ`/`ANJ` de su
@@ -88,230 +77,6 @@ function toReview(row: ReviewRow, person: ReviewerColumns): AbsenceReview {
 		createdAt: row.createdAt.toISOString(),
 		updatedAt: row.updatedAt.toISOString(),
 	};
-}
-
-// ── Carga por lotes de la clasificación de días ───────────────────────────────
-
-type ScopedProfile = {
-	id: string;
-	fullName: string;
-	email: string;
-	departmentId: string | null;
-	departmentName: string | null;
-};
-
-const key = (userId: string, date: string) => `${userId}|${date}`;
-
-/**
- * La revisión de cada (persona, día) del rango, para la superposición `AJ`/`ANJ`
- * y para saber qué días ya tienen decisión.
- *
- * La exporta este servicio y la consume `attendance.ts`: es la dirección
- * correcta de la dependencia —el historial superpone lo que decide esta spec, no
- * al contrario— y es lo que evita que las dos se importen mutuamente.
- */
-export async function loadAbsenceReviews(
-	userIds: readonly string[],
-	range: { from: string; to: string },
-): Promise<Map<string, { isJustified: boolean; notes: string | null }>> {
-	const reviews = new Map<
-		string,
-		{ isJustified: boolean; notes: string | null }
-	>();
-	const ids = [...new Set(userIds)];
-	if (ids.length === 0) return reviews;
-
-	const rows = await db
-		.select({
-			userId: attendanceAbsenceReviews.userId,
-			date: attendanceAbsenceReviews.date,
-			isJustified: attendanceAbsenceReviews.isJustified,
-			notes: attendanceAbsenceReviews.notes,
-		})
-		.from(attendanceAbsenceReviews)
-		.where(
-			and(
-				inArray(attendanceAbsenceReviews.userId, ids),
-				gte(attendanceAbsenceReviews.date, range.from),
-				lte(attendanceAbsenceReviews.date, range.to),
-			),
-		);
-
-	for (const row of rows) {
-		reviews.set(key(row.userId, row.date), {
-			isJustified: row.isJustified,
-			notes: row.notes,
-		});
-	}
-	return reviews;
-}
-
-/**
- * Clasifica cada jornada de cada persona del rango, agrupando las consultas.
- *
- * Es la misma composición que hace `getDaysFor` para una persona —calendario,
- * descansos, vacaciones, marcas— pero cargada por lotes. Las marcas se piden
- * aquí con una consulta propia y mínima en vez de reutilizar la de
- * `attendance.ts`: ésa resuelve además el nombre de la sede de cada marca, que
- * para clasificar un día no hace falta y multiplica el trabajo por el número de
- * marcas del mes.
- */
-async function loadDailyFacts(
-	people: readonly ScopedProfile[],
-	range: { from: string; to: string },
-): Promise<Map<string, ReturnType<typeof computeDailyStatus>>> {
-	const facts = new Map<string, ReturnType<typeof computeDailyStatus>>();
-	if (people.length === 0) return facts;
-
-	const ids = people.map((person) => person.id);
-	const config = await getConfig();
-
-	const dates = eachDayOfInterval({
-		start: parseISO(range.from),
-		end: parseISO(range.to),
-	}).map((day) => format(day, "yyyy-MM-dd"));
-
-	const marks = await db
-		.select({
-			userId: attendanceMarks.userId,
-			workDate: attendanceMarks.workDate,
-			markType: attendanceMarks.markType,
-			markedAt: attendanceMarks.markedAt,
-			isLate: attendanceMarks.isLate,
-			lateMinutes: attendanceMarks.lateMinutes,
-		})
-		.from(attendanceMarks)
-		.where(
-			and(
-				inArray(attendanceMarks.userId, ids),
-				eq(attendanceMarks.blocked, false),
-				gte(attendanceMarks.workDate, range.from),
-				lte(attendanceMarks.workDate, range.to),
-			),
-		);
-
-	const marksByDay = new Map<string, DailyMark[]>();
-	for (const mark of marks) {
-		if (!mark.workDate) continue;
-		const at = key(mark.userId, mark.workDate);
-		const list = marksByDay.get(at) ?? [];
-		list.push({
-			markType: mark.markType === "OUT" ? "OUT" : "IN",
-			markedAt: new Date(mark.markedAt),
-			isLate: mark.isLate,
-			lateMinutes: mark.lateMinutes,
-		});
-		marksByDay.set(at, list);
-	}
-
-	const reviews = await loadAbsenceReviews(ids, range);
-	const vacations = await loadApprovedVacationRanges(ids);
-
-	// Por departamento: el calendario, la zona y los contextos de descanso. Es lo
-	// único que no se puede pedir de una vez para toda la plantilla, porque cada
-	// departamento tiene su horario y su calendario.
-	const byDepartment = new Map<string | null, ScopedProfile[]>();
-	for (const person of people) {
-		const list = byDepartment.get(person.departmentId) ?? [];
-		list.push(person);
-		byDepartment.set(person.departmentId, list);
-	}
-
-	for (const [departmentId, members] of byDepartment) {
-		const department = departmentId
-			? ((await db.query.departments.findFirst({
-					where: eq(departments.id, departmentId),
-				})) ?? null)
-			: null;
-		const schedule = departmentId ? await getSchedule(departmentId) : null;
-		const timezone = schedule?.timezone ?? config.global_timezone;
-		const today = todayIn(timezone);
-
-		const calendar = departmentId ? await getCalendar(departmentId, range) : [];
-		const calendarByDate = new Map(
-			calendar.map((entry) => [entry.date, entry]),
-		);
-
-		const restContexts = await loadRestContexts(
-			members.map((member) => member.id),
-			department
-				? {
-						id: department.id,
-						name: department.name,
-						restGroupsEnabled: department.restGroupsEnabled,
-					}
-				: null,
-		);
-
-		for (const member of members) {
-			const isRestDay = restDayPredicate(
-				restContexts.get(member.id) ?? {
-					restGroupsEnabled: false,
-					schedules: [],
-					memberships: [],
-					groupsById: {},
-				},
-			);
-			const onVacation = vacationDayPredicate(vacations.get(member.id) ?? []);
-
-			for (const date of dates) {
-				const at = key(member.id, date);
-				facts.set(
-					at,
-					computeDailyStatus({
-						date,
-						marks: marksByDay.get(at) ?? [],
-						isWorkday: calendarByDate.get(date)?.isWorkday ?? true,
-						onVacation: onVacation(date),
-						isRestDay: isRestDay(date),
-						isOpen: date >= today,
-						absenceReview: reviews.get(at) ?? null,
-					}),
-				);
-			}
-		}
-	}
-
-	return facts;
-}
-
-// ── Ámbito ────────────────────────────────────────────────────────────────────
-
-/**
- * Las personas del ámbito de quien pregunta (RN-03.2), activas y con
- * departamento.
- *
- * Sin departamento no hay concepto de día laborable (RN-02.3), así que un perfil
- * incompleto no puede tener ausencias que clasificar; y las bajas quedan fuera
- * porque son historial, no operación — el mismo criterio de `listUsers`.
- */
-async function peopleInScope(
-	scope: { managedDepartmentIds: string[] | "all" },
-	departmentId?: string,
-): Promise<ScopedProfile[]> {
-	const conditions = [
-		eq(profiles.isActive, true),
-		sql`${profiles.departmentId} is not null`,
-	];
-
-	if (scope.managedDepartmentIds !== "all") {
-		if (scope.managedDepartmentIds.length === 0) return [];
-		conditions.push(inArray(profiles.departmentId, scope.managedDepartmentIds));
-	}
-	if (departmentId) conditions.push(eq(profiles.departmentId, departmentId));
-
-	return db
-		.select({
-			id: profiles.id,
-			fullName: profiles.fullName,
-			email: profiles.email,
-			departmentId: profiles.departmentId,
-			departmentName: departments.name,
-		})
-		.from(profiles)
-		.leftJoin(departments, eq(departments.id, profiles.departmentId))
-		.where(and(...conditions))
-		.orderBy(asc(profiles.fullName));
 }
 
 /** Ventana por defecto de la bandeja: lo que un jefe revisa de verdad. */
@@ -482,7 +247,7 @@ export async function reviewAbsence(
 	// la regla exige. Se pregunta a la agregación diaria, que es quien sabe qué
 	// días llevan superposición de ausencia.
 	const facts = await loadDailyFacts([target], { from: date, to: date });
-	const fact = facts.get(key(target.id, date));
+	const fact = facts.get(dayKey(target.id, date));
 
 	if (!fact) {
 		throw new HTTPException(500, {
@@ -642,7 +407,7 @@ export async function justifyAbsenceFromIncident(
 	actor: Actor,
 ): Promise<PayrollAdjustmentEffect | null> {
 	const facts = await loadDailyFacts([target], { from: date, to: date });
-	const fact = facts.get(key(target.id, date));
+	const fact = facts.get(dayKey(target.id, date));
 	if (!fact?.absence) return null;
 
 	const [row] = await tx

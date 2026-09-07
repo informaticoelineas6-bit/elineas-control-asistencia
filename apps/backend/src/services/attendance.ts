@@ -19,14 +19,13 @@ import { eachDayOfInterval, format, parseISO, subDays } from "date-fns";
 import { and, desc, eq, gte, inArray, lte, sql } from "drizzle-orm";
 import { db } from "#/db";
 import { attendanceMarks, departments, workLocations } from "#/db/schema";
-import { loadAbsenceReviews } from "#/services/absences.ts";
 import {
 	type AttendanceMarkContext,
 	type RecentMark,
 	validateAttendanceMark,
 } from "#/services/attendance-rules.ts";
 import { getConfig } from "#/services/config.ts";
-import { computeDailyStatus, type DailyMark } from "#/services/daily-status.ts";
+import { dayKey, loadDailyFacts } from "#/services/daily-facts.ts";
 import { listWorkLocations } from "#/services/locations.ts";
 import { restDayResolverFor } from "#/services/rest-schedules.ts";
 import {
@@ -35,10 +34,7 @@ import {
 	validateMarkTime,
 } from "#/services/schedule-rules.ts";
 import { getCalendar, getSchedule } from "#/services/schedules.ts";
-import {
-	isOnVacationToday,
-	vacationDayResolverFor,
-} from "#/services/vacations.ts";
+import { isOnVacationToday } from "#/services/vacations.ts";
 
 /**
  * Marcaje de asistencia (spec 09).
@@ -550,26 +546,15 @@ export async function getDaysFor(
 	profile: MarkingProfile,
 	range: { from: string; to: string },
 ): Promise<AttendanceDay[]> {
-	const config = await getConfig();
-	const schedule = profile.departmentId
-		? await getSchedule(profile.departmentId)
-		: null;
-	const timezone = schedule?.timezone ?? config.global_timezone;
-	const today = todayIn(timezone);
-	// Se resuelve **por fecha** dentro del rango (RN-10.1): un historial de un mes
-	// puede atravesar un cambio de descansos, y un único conjunto de días para todo
-	// el rango daría el mismo estado al día 1 y al 30.
-	const isRestDay = await restDayResolverFor(profile);
-	// Igual con las vacaciones (spec 11): una sola solicitud aprobada puede cubrir
-	// parte del rango, y el predicado se resuelve fecha a fecha por el mismo
-	// motivo que el de descansos.
-	const onVacation = await vacationDayResolverFor(profile);
-	// Y las clasificaciones de ausencia (spec 13), que superponen `AJ`/`ANJ` sobre
-	// los días ausentes. Es la vía por la que el empleado ve la decisión sobre su
-	// propio día: esta spec no le da ningún endpoint propio, porque no inicia el
-	// flujo (spec 12 §2).
-	const absenceReviews = await loadAbsenceReviews([profile.id], range);
+	// La clasificación sale del servicio de agregación (spec 15 §4), no de una
+	// composición paralela aquí. Antes este cuerpo repetía calendario, descansos,
+	// vacaciones y revisiones de ausencia por su cuenta: dos composiciones del
+	// mismo estado, que es exactamente el error del legacy que la §1 de esa spec
+	// manda no repetir.
+	const facts = await loadDailyFacts([profile], range);
 
+	// Las marcas se piden aparte porque aquí se **presentan**, con su sede y su
+	// motivo de rechazo resueltos; a la agregación le basta con el tipo y la hora.
 	const marks = await selectMarks(
 		and(
 			eq(attendanceMarks.userId, profile.id),
@@ -579,52 +564,26 @@ export async function getDaysFor(
 		),
 	);
 
-	const calendar = profile.departmentId
-		? await getCalendar(profile.departmentId, range)
-		: [];
-	const calendarByDate = new Map(calendar.map((entry) => [entry.date, entry]));
-
 	const days = eachDayOfInterval({
 		start: parseISO(range.from),
 		end: parseISO(range.to),
 	}).map((day) => format(day, "yyyy-MM-dd"));
 
 	return days.map((date) => {
+		const fact = facts.get(dayKey(profile.id, date));
 		const dayMarks = marks.filter((mark) => mark.workDate === date);
-		const fact = computeDailyStatus({
-			date,
-			marks: dayMarks.map(
-				(mark): DailyMark => ({
-					markType: mark.markType,
-					markedAt: new Date(mark.markedAt),
-					isLate: mark.isLate,
-					lateMinutes: mark.lateMinutes,
-				}),
-			),
-			isWorkday: calendarByDate.get(date)?.isWorkday ?? true,
-			// Spec 11 RN-15.1: las vacaciones ganan sobre el descanso en la
-			// precedencia de presentación, y por eso van antes en el objeto — el
-			// orden aquí no cambia el resultado, pero se lee igual que
-			// `computeDailyStatus`.
-			onVacation: onVacation(date),
-			// Spec 10 RN-10.4: un día de descanso clasifica `DESCANSO`, nunca
-			// `AUSENTE`.
-			isRestDay: isRestDay(date),
-			isOpen: date >= today,
-			absenceReview: absenceReviews.get(`${profile.id}|${date}`) ?? null,
-		});
 
 		return {
-			date: fact.date,
-			status: fact.status,
-			firstIn: fact.firstIn?.toISOString() ?? null,
-			lastOut: fact.lastOut?.toISOString() ?? null,
-			workedMinutes: fact.workedMinutes,
-			incomplete: fact.incomplete,
-			pending: fact.pending,
-			isLate: fact.isLate,
-			lateMinutes: fact.lateMinutes,
-			absence: fact.absence,
+			date,
+			status: fact?.status ?? "AUSENTE",
+			firstIn: fact?.firstIn?.toISOString() ?? null,
+			lastOut: fact?.lastOut?.toISOString() ?? null,
+			workedMinutes: fact?.workedMinutes ?? null,
+			incomplete: fact?.incomplete ?? false,
+			pending: fact?.pending ?? false,
+			isLate: fact?.isLate ?? false,
+			lateMinutes: fact?.lateMinutes ?? 0,
+			absence: fact?.absence ?? null,
 			marks: dayMarks,
 		};
 	});
