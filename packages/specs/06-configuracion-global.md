@@ -110,7 +110,25 @@ todas dependen de estos valores.
 > la vía formal de reportar. Ninguna de las dos la decide el código, y lo que tenía que existir
 > ya es el sitio donde ponerla.
 
-### 3.6 Reportería
+### 3.6 Nómina
+
+| Clave | Tipo | Default | Consumido por |
+|---|---|---|---|
+| `payroll_daily_divisor` | int 1–31 | `30` (lo que hacía el legacy) | [17](./17-nomina.md) RN-17.3 |
+
+> Es la **única clave del catálogo cuyo default no deja su regla inerte**, y es deliberado: un
+> divisor no tiene valor neutro —el 0 sería una división por cero—, así que el default reproduce
+> lo que el sistema ya hacía, que es el mismo espíritu del criterio de arriba. El mínimo es 1
+> para que la clave no pueda romper el cálculo desde la configuración.
+>
+> En el legacy este 30 estaba **fijo dentro de una función SQL** (punto 75), que es exactamente
+> el tipo de número que hay que poder cambiar sin despliegue.
+>
+> ⚠️ **No es la tasa de vacaciones.** `old-docs.md` sugería reutilizar
+> `vacation_days_per_worked_day` para esto y es un error: son parámetros distintos (§3.4,
+> [17](./17-nomina.md) §7).
+
+### 3.7 Reportería
 
 | Clave | Tipo | Default | Consumido por |
 |---|---|---|---|
@@ -119,7 +137,7 @@ todas dependen de estos valores.
 | `report_slo_availability_pct` | number 0–100 | `99` | idem |
 | `google_sheets_report_spreadsheet_id` | string \| null | `null` | [16](./16-reporteria-mensual.md) §Sheets |
 
-### 3.7 Ámbito
+### 3.8 Ámbito
 
 | Clave | Tipo | Default | Consumido por |
 |---|---|---|---|

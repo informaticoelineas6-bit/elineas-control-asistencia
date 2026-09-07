@@ -7,11 +7,11 @@
 > pendiente (`apps/frontend/src/routes/_authed.tsx`, `components/app-sidebar.tsx`,
 > `modules/auth/navigation.ts`), y las **tres capas de contención de errores** de §5
 > (`modules/errors/`, declaradas en `router.tsx` y en `routes/__root.tsx`). Los **badges de
-> pendientes** (RN-05.8) existen desde la [12](./12-incidencias.md): la tabla de navegación
-> declara *qué* contar y el aside resuelve *cuánto*, así que añadir el de vacaciones por aprobar
-> o el de ausencias sin justificar es una línea en `NAV_SECTIONS`. Falta el **EmployeeShell**
-> entero (§3) y la regla de resolución de shell (§2). Las secciones que aún no tienen spec
-> implementada son marcadores.
+> pendientes** (RN-05.8) existen desde la [12](./12-incidencias.md) y la
+> [13](./13-justificacion-ausencias.md) ya añadió el suyo sin tocar la mecánica: la tabla de
+> navegación declara *qué* contar y el aside resuelve *cuánto*. Falta el **EmployeeShell** entero
+> (§3) y la regla de resolución de shell (§2). Las secciones que aún no tienen spec implementada
+> son marcadores.
 > **Depende de:** [04-autenticacion](./04-autenticacion.md), [03-roles-y-autorizacion](./03-roles-y-autorizacion.md).
 
 ---
@@ -112,10 +112,15 @@ quien organiza el turno de su gente es el jefe. Los descansos **propios** no est
   > `canAccess`, la misma función que el guard.
 - **RN-05.8** — Los grupos con pendientes muestran badge con el conteo (incidencias por
   revisar, vacaciones por aprobar, ausencias sin justificar). *Implementado con la
-  [12](./12-incidencias.md): hoy hay dos, las incidencias propias sin revisar y las que esperan
-  por quien mira. El badge se declara en la tabla de navegación como un identificador
-  (`badge: "incidents-own"`), no como un número, para que `navigation.ts` siga siendo datos
-  puros y el guard pueda leerla sin arrastrar consultas.*
+  [12](./12-incidencias.md) y extendido por la [13](./13-justificacion-ausencias.md). El badge se
+  declara en la tabla de navegación como un identificador (`badge: "incidents-own"`), no como un
+  número, para que `navigation.ts` siga siendo datos puros y el guard pueda leerla sin arrastrar
+  consultas.*
+  > Hoy son dos: **Incidencias**, con las propias sin revisar, y **Mi equipo**, que **suma** las
+  > incidencias por revisar y las ausencias sin clasificar. Sumarlas y no partirlas es
+  > deliberado: el badge de un ítem de menú responde *"¿tengo algo que hacer ahí?"*, y abrir la
+  > página ya separa de qué se trata. Las vacaciones por aprobar entran igual cuando haga falta,
+  > con una línea.
 - **RN-05.9** — En viewport móvil el AdminShell conserva una barra inferior de respaldo con
   los destinos principales; la barra lateral pasa a ser un panel desplegable.
 
@@ -172,12 +177,12 @@ pueda ver desde ahí.
 | `/profile` | Mi perfil | ✅ |
 | `/gps` | Diagnóstico GPS | ✅ ([08](./08-sedes-y-geocerca.md) §6) |
 | `/incidents` | Incidencias | ✅ ([12](./12-incidencias.md)) |
-| `/team` | Mi equipo | ✅ ([11](./11-vacaciones.md) y [12](./12-incidencias.md); crece con la spec 13) |
+| `/team` | Mi equipo | ✅ ([11](./11-vacaciones.md), [12](./12-incidencias.md) y [13](./13-justificacion-ausencias.md)) |
 | `/rest-days` | Descansos | ✅ ([10](./10-descansos.md)) |
 | `/reports` | Reportes | marcador ([16](./16-reporteria-mensual.md)) |
 | `/users` | Usuarios | ✅ ([02](./02-usuarios-y-perfiles.md)) |
 | `/departments` | Departamentos | ✅ ([01](./01-organizacion-departamentos.md)) |
-| `/payroll` | Nómina | marcador ([17](./17-nomina.md)) |
+| `/payroll` | Nómina | marcador ([17](./17-nomina.md)) — su **backend está a medias a propósito**: el descuento automático existe, la superficie de administración no |
 | `/settings` | Configuración | ✅ ([06](./06-configuracion-global.md)) |
 | `/logs` | Logs | marcador ([18](./18-auditoria.md)) |
 

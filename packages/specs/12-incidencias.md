@@ -17,8 +17,9 @@
 > (RN-05.8, primera vez que existe). Pruebas en `apps/backend/src/routes/incidents.test.ts` (37,
 > de integración) y `apps/backend/src/services/incident-rules.test.ts` (16, puras).
 >
-> **Tres decisiones de la §9 quedan cerradas (2, 3 y 4) y la 1 sigue abierta a propósito**: no
-> se puede cerrar sin la [13](./13-justificacion-ausencias.md), que no existe. Ver §9.
+> **Las cuatro decisiones de la §9 están cerradas.** Las 2, 3 y 4 al construir esta spec; la 1
+> —la más importante— con la [13](./13-justificacion-ausencias.md): aprobar **no** justifica la
+> ausencia automáticamente, pero se puede hacer en el mismo acto (`justifyAbsence`). Ver §9.
 > **Depende de:** [09-marcaje-asistencia](./09-marcaje-asistencia.md), [03-roles-y-autorizacion](./03-roles-y-autorizacion.md).
 > **No confundir con:** [13-justificacion-ausencias](./13-justificacion-ausencias.md) — es un flujo **distinto**.
 
@@ -40,10 +41,20 @@ revisarlas y dejar constancia.
 | Efecto en nómina | **Ninguno** | Genera/revierte descuento automático |
 | Efecto en el reporte | Ninguno directo | Códigos AJ / ANJ |
 
-> ⚠️ **Los dos flujos están desconectados en el legacy.** Aprobar la incidencia de "olvidé
-> marcar" **no** justifica automáticamente la ausencia de ese día, y por tanto **no evita el
-> descuento de nómina**. El jefe tiene que hacer las dos cosas. Esto es casi seguro un
-> defecto de producto. Ver §7, decisión abierta 1.
+> ⚠️ **Los dos flujos estaban desconectados en el legacy.** Aprobar la incidencia de "olvidé
+> marcar" no justificaba la ausencia de ese día, y por tanto **no evitaba el descuento de
+> nómina**. El jefe tenía que hacer las dos cosas, en dos pantallas distintas.
+>
+> **Resuelto, y sin volverlas una sola cosa** (§9, decisión 1, cerrada con la
+> [13](./13-justificacion-ausencias.md)): siguen siendo dos actos, pero la revisión de una
+> incidencia sobre un día ausente **ofrece justificarlo ahí mismo** —casilla marcada por
+> defecto, en la misma transacción—. El defecto no era que existieran las dos acciones: era que
+> la segunda estuviera en otra pantalla y hubiera que acordarse de ella.
+>
+> Automatizarlo habría sido peor: **cuatro de los cinco tipos de incidencia no implican una
+> ausencia** (una tardanza es un día presente), así que "aprobar justifica el día" sería
+> correcto sólo para `forgot_to_mark`. Razonamiento completo en la
+> [13 §4](./13-justificacion-ausencias.md).
 
 ## 3. Modelo de datos
 
@@ -117,8 +128,9 @@ simultáneos del mismo formulario no se detectan leyendo antes de insertar.
   misma incidencia no pueden escribir los dos, y el segundo recibe el 409 en vez de
   sobrescribir el veredicto del primero.
 - **RN-12.9 — Aprobar no corrige el marcaje.** No se crea ni edita ningún
-  `attendance_mark`. La aprobación es un acto documental.
-  **Decisión abierta 1** (§7): ¿debería corregirlo?
+  `attendance_mark`. La aprobación es un acto documental. Sigue siendo así **incluso con
+  `justifyAbsence`**: justificar la ausencia del día no crea marcas, sólo cambia su código
+  `AJ`/`ANJ` y revierte el descuento si había uno.
 - **RN-12.10 — Notificaciones.** Al crear → al jefe. Al revisar → al empleado. ⚠️ El aviso al
   jefe **sólo alcanza a quien gestiona el departamento como responsabilidad *adicional***
   (`additionalHeadsOf`), que es la misma limitación de RN-11.11 y la misma causa: este sistema
@@ -161,8 +173,10 @@ simultáneos del mismo formulario no se detectan leyendo antes de insertar.
 - Acciones de aprobar/rechazar con notas. El diálogo dice en voz alta que aprobar **no crea ni
   corrige ningún marcaje** (RN-12.9): el desacople del legacy no era un problema de código,
   era que nadie sabía que las dos cosas eran dos cosas.
-- La acción combinada *"Aprobar y justificar la ausencia"* **no está**: es la decisión 1 y
-  necesita la [13](./13-justificacion-ausencias.md).
+- La acción combinada *"Aprobar y justificar la ausencia"* **está**, desde la
+  [13](./13-justificacion-ausencias.md): una casilla en el diálogo, marcada por defecto cuando
+  ese día es una ausencia sin justificar y ausente del diálogo cuando no lo es. El botón cambia
+  a *Aprobar y justificar* para que no haya duda de lo que se está a punto de hacer.
 
 ## 7. API propuesta
 
@@ -170,7 +184,7 @@ simultáneos del mismo formulario no se detectan leyendo antes de insertar.
 |---|---|---|
 | `GET` | `/incidents?status=&scope=&departmentId=&incidentType=&search=` | autenticado (`scope=own`, el default) / department_head (`scope=managed`, su ámbito) |
 | `POST` | `/incidents` | autenticado |
-| `POST` | `/incidents/:id/review` | department_head (ámbito) — `{ approved, notes }` |
+| `POST` | `/incidents/:id/review` | department_head (ámbito) — `{ approved, notes, justifyAbsence }` |
 | `GET` | `/incidents/pending-count?scope=` | autenticado (`own`) / department_head (`managed`) |
 | `GET` | `/incidents/blocked-marks?date=` | autenticado — **añadido**, los intentos rechazados propios de un día |
 | `GET` | `/incidents/:id/context` | quien reportó, o department_head del ámbito — **añadido**, §6 |
@@ -207,17 +221,18 @@ regla inventada.
       limitación de RN-12.10.)*
 - [x] Aprobar una incidencia no altera ningún marcaje (comportamiento actual, RN-12.9). *(Se
       comprueba contando y comparando las filas de `attendance_marks` antes y después.)*
+- [x] Aprobar **sin pedirlo** no justifica la ausencia del día. *(Añadido con la decisión 1: es
+      la mitad que hay que poder demostrar para decir que la justificación no es automática.)*
 
 ## 9. Decisiones abiertas
 
-1. **⚠️ Sigue abierta — ¿aprobar una incidencia debe justificar automáticamente la ausencia
-   del día** (y por tanto evitar/revertir el descuento de nómina)? Es la decisión más
-   importante de esta spec y **no se puede cerrar todavía**: la justificación es de la
-   [13](./13-justificacion-ausencias.md) y no existe, así que no hay nada que enlazar. Lo
-   construido es el comportamiento actual del legacy (RN-12.9), con la costura preparada: la
-   incidencia guarda su `user_id`, su `date` y su estado, y `reviewIncident` es el único sitio
-   por el que pasa una aprobación. Cuando se cierre a favor, es ahí donde entra — y en
-   `modules/incidents/api.ts`, que hoy documenta por qué **no** invalida la asistencia.
+1. ~~¿Aprobar una incidencia debe justificar automáticamente la ausencia del día?~~
+   **Cerrada con la [13](./13-justificacion-ausencias.md): no automáticamente, pero se puede en
+   el mismo acto.** Razonamiento en la [13 §4](./13-justificacion-ausencias.md); en resumen, dos
+   razones y la primera es dirimente: cuatro de los cinco tipos no implican una ausencia, y
+   aprobar ("te creo") no dice lo mismo que justificar ("no se te descuenta"). Lo que sí era un
+   defecto —que el jefe tuviera que acordarse de la segunda acción y buscarla en otra pantalla—
+   se arregla ofreciéndola donde ya está mirando.
 2. ~~¿Plazo máximo para reportar?~~ **Cerrada: configurable, `0` = sin plazo, default 0.** Ver
    RN-12.4.
 3. ~~¿Aprobar "olvidé marcar" debería crear el marcaje faltante con la hora declarada?~~

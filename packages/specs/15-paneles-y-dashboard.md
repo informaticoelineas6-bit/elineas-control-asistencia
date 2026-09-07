@@ -8,8 +8,12 @@
 > §2, los datos derivados de §3 y 12 pruebas. Está **en el sitio que esta spec manda** —una sola
 > definición— precisamente para no repetir el error del legacy, donde la lógica vivía en un
 > hook, una función SQL y una edge function a la vez. **Las vacaciones ya entraron** como
-> superposición con la [11](./11-vacaciones.md). Falta lo demás: AJ/ANJ (spec 13), la carga en
-> lote para varios usuarios, los tres paneles y la materialización en
+> superposición con la [11](./11-vacaciones.md), **y `AJ`/`ANJ` con la
+> [13](./13-justificacion-ausencias.md)** — como superposición también, en un campo `absence`,
+> no como estados nuevos de la lista de §2: son la *misma* ausencia con una decisión encima. La
+> **carga en lote** para varias personas también existe ya, construida por la 13 para su bandeja
+> de ausencias pendientes (`loadDailyFacts`): agrupa las consultas por departamento en vez de
+> repetirlas por persona. Falta lo demás: los tres paneles y la materialización en
 > `attendance_daily_facts`.
 >
 > Dos puntos que esta spec dejaba abiertos y la implementación tuvo que resolver para poder
@@ -57,7 +61,7 @@ presentación):
 | Superposición | Definición |
 |---|---|
 | `VACACIONES` | Solicitud aprobada que cubre la fecha ([11](./11-vacaciones.md), ya construida: `computeDailyStatus` recibe el `onVacation` real) |
-| `AJ` / `ANJ` | Ausencia con decisión de justificación ([13](./13-justificacion-ausencias.md)) |
+| `AJ` / `ANJ` | Ausencia con decisión de justificación ([13](./13-justificacion-ausencias.md), ✅) |
 
 ### Orden de precedencia (definir de una vez y respetarlo en todos lados)
 
@@ -67,6 +71,8 @@ presentación):
 3. DESCANSO       (descansos de la persona en esa fecha)
 4. PRESENTE / TARDE  (si hay marcaje)
 5. AUSENTE  →  AJ / ANJ  según la revisión de la ausencia
+                    (✅ y **sin revisión también es ANJ**, RN-13.10, con un campo
+                     `reviewed` que distingue "lo decidió alguien" de "nadie lo miró")
 ```
 
 - **RN-15.1** — Este orden es normativo. Un día de vacaciones que además era descanso sale
@@ -123,7 +129,10 @@ revisar, incidencias pendientes, vacaciones por aprobar, departamentos pausados)
 ### 5.2 Panel de departamento (`department_head`)
 
 - Asistencia del día del equipo, con estado por persona.
-- Acción de justificar ausencias en línea ([13](./13-justificacion-ausencias.md)).
+- Acción de justificar ausencias en línea ([13](./13-justificacion-ausencias.md)). *La 13 la
+  construyó como **bandeja** en `/team` en vez de en línea sobre el panel del día, porque el
+  panel no existe todavía y porque su §5 pedía justamente eso: una vista de pendientes, que el
+  legacy no tenía. Cuando este panel exista, reutiliza el mismo endpoint.*
 - Selector de fecha y de departamento (si gestiona varios — RN-03.2).
 - Exportación acotada a su ámbito.
 

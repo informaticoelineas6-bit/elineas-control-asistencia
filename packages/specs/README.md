@@ -108,7 +108,7 @@ marcaje. Ya no queda ninguna costura abierta en el núcleo.
 |---|---|---|---|---|
 | 11 | [Vacaciones](./11-vacaciones.md) | ✅ | ✅ | 06, 09 |
 | 12 | [Incidencias](./12-incidencias.md) | ✅ | ✅ | 03, 09 |
-| 13 | [Justificación de ausencias](./13-justificacion-ausencias.md) | ✅ | ❌ | 03, 09 |
+| 13 | [Justificación de ausencias](./13-justificacion-ausencias.md) | ✅ | ✅ | 03, 09 |
 
 La [11](./11-vacaciones.md) cerró **la última costura del núcleo**: la 09 ya no espera por nadie.
 Dejó tres decisiones cerradas y **dos abiertas a propósito** — el modelo de acumulación frente a
@@ -122,13 +122,26 @@ La [12](./12-incidencias.md) **usa por fin la materia prima que la 09 venía gua
 intentos de marcaje rechazados, con su motivo tipado y su distancia recalculada, se ofrecen en
 el formulario y la incidencia se abre enlazada a uno (RN-12.2), así que el revisor la ve con la
 fila delante en vez de con un relato. Cerró tres de sus cuatro decisiones abiertas y dejó la
-cuarta —la más importante— **esperando por la [13](./13-justificacion-ausencias.md)**: si
-aprobar una incidencia debe justificar la ausencia del día y evitar el descuento. No se puede
-cerrar sin ella, porque no hay nada que enlazar; la costura sí está lista. Y trajo dos piezas
+cuarta —la más importante— esperando por la [13](./13-justificacion-ausencias.md), que la cerró
+a continuación. Y trajo dos piezas
 que se estrenan aquí y sirven a lo que viene: el **badge de pendientes** del aside
 ([05](./05-shells-y-navegacion.md) RN-05.8, declarativo — añadir el de vacaciones por aprobar es
 una línea) y `additionalHeadsOf` en `services/responsibilities.ts`, la única lista de jefes que
 este sistema puede leer, ahora en un solo sitio para las specs 11, 12 y 13.
+
+Y la [13](./13-justificacion-ausencias.md) **cerró la decisión que la 12 había dejado
+esperando**: aprobar una incidencia no justifica la ausencia automáticamente —cuatro de los
+cinco tipos no implican una ausencia— pero se puede hacer en el mismo acto, con una casilla en
+el mismo diálogo y en la misma transacción. Este bloque queda **completo**, y con eso las tres
+bandejas de decisión de un jefe viven en `/team`.
+
+Para poder construirla hubo que **adelantar parte de la [17](./17-nomina.md)**, y es la
+excepción más grande al orden del índice hasta ahora: la regla crítica de la 13 —RN-13.4, el
+descuento automático— no se puede implementar ni comprobar sin la tabla de ajustes, y cuatro de
+sus ocho criterios de aceptación se habrían quedado sin marcar. Se construyó su **modelo
+entero** y sólo el descuento por ausencia; falta su superficie de administración. La barrera de
+privilegios de RN-13.5 —el jefe justifica pero no toca nómina— es hoy la más simple posible:
+**no existe ningún endpoint de nómina**, y quien justifica llama a `/absences`.
 
 ### Salidas — lo que el sistema produce
 
@@ -137,7 +150,7 @@ este sistema puede leer, ahora en un solo sitio para las specs 11, 12 y 13.
 | 14 | [Notificaciones](./14-notificaciones.md) | ⚠️ | 02, 05 |
 | 15 | [Agregación diaria, dashboard y paneles](./15-paneles-y-dashboard.md) | ✅ | 07, 09, 10, 11, 13 |
 | 16 | [Reportería mensual](./16-reporteria-mensual.md) | ⚠️ | 15 |
-| 17 | [Nómina: ajustes y descuentos](./17-nomina.md) | ⚠️ | 02, 13 |
+| 17 | [Nómina: ajustes y descuentos](./17-nomina.md) | ⚠️ | 02, 13 — **parcial en el monorepo**: hecho el descuento automático, falta la administración |
 | 18 | [Bitácora de auditoría](./18-auditoria.md) | ⚠️ | 03 |
 
 ### Plataforma
@@ -166,7 +179,8 @@ Por dependencia técnica, no por valor de negocio:
 09                             el núcleo del producto
 11 → 12 → 13                   las excepciones
 15 → 16                        agregación y reportes
-17                             nómina (depende de 13)
+17                             nómina (depende de 13) — su descuento automático ya está,
+                               adelantado por la 13 porque RN-13.4 no se podía construir sin él
 14 · 18                        transversales, en paralelo desde temprano
 19 → 20                        plataforma
 ```
@@ -227,6 +241,26 @@ Y una de forma, que corrige una regla que se cumplía a medias: **el aside filtr
 RN-05.7). Con la comprobación escrita dos veces se había perdido la lista de exclusión, y a un
 `global_manager` se le ofrecían *Marcar* y *Mi asistencia* para que el guard lo echara a
 continuación.
+
+De la [13](./13-justificacion-ausencias.md), que cerró tres de sus cinco decisiones abiertas y
+una de la [17](./17-nomina.md):
+
+- **Aprobar una incidencia no justifica la ausencia automáticamente**, pero se puede hacer en el
+  mismo acto. Cierra también la decisión 1 de la [12](./12-incidencias.md).
+- **Una ausencia sin revisar es ANJ en la presentación y no genera descuento.** Las dos mitades
+  tienen el mismo motivo: el descuento exige que alguien lo decida, y el reporte no debe
+  esconder una ausencia que nadie explicó. Un campo `reviewed` hace que convivan.
+- **Notas obligatorias al justificar, opcionales al marcar injustificada.** Es la asimetría
+  inversa a las de las specs 11 y 12, y el criterio es el mismo: se pide la razón de la decisión
+  discrecional — allí, negar algo; aquí, perdonar un descuento.
+- **El descuento diario se calcula en PostgreSQL**, `round(sueldo / divisor, 2)` sobre
+  `numeric`, y el divisor es configuración ([17](./17-nomina.md) RN-17.3 y RN-17.12). Un dato de
+  dinero no pasa por coma flotante.
+
+Y una consecuencia de la barrera de privilegios que la spec no anticipaba: **el jefe que
+clasifica una ausencia no ve el importe del descuento que causa**, porque el importe es el sueldo
+dividido por el divisor y enseñárselo le enseña el sueldo (hallazgo H-3). Ve el hecho; la cifra
+sólo llega a un rol administrativo — y al propio empleado, en su notificación.
 
 Y dos de forma:
 
