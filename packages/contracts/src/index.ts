@@ -2,6 +2,7 @@ export * from "./attendance.ts";
 export * from "./auth.ts";
 export * from "./config.ts";
 export * from "./departments.ts";
+export * from "./incidents.ts";
 export * from "./locations.ts";
 export * from "./notifications.ts";
 export * from "./path.ts";
