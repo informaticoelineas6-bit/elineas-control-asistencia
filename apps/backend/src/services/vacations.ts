@@ -657,6 +657,31 @@ export async function listOwnVacationRequests(
 }
 
 /**
+ * Cuántas solicitudes esperan por una decisión del ámbito — la alerta de la spec
+ * 15 §5.1. Es un `count(*)` y no `listX().length` por lo mismo que en
+ * incidencias: el dashboard lo pide en cada carga y traer las filas para
+ * contarlas sería el trabajo de la bandeja hecho para descartarlo.
+ */
+export async function countPendingVacationRequests(scope: {
+	managedDepartmentIds: string[] | "all";
+}): Promise<number> {
+	const conditions = [eq(vacationRequests.status, "pending")];
+
+	if (scope.managedDepartmentIds !== "all") {
+		if (scope.managedDepartmentIds.length === 0) return 0;
+		conditions.push(inArray(profiles.departmentId, scope.managedDepartmentIds));
+	}
+
+	const [row] = await db
+		.select({ count: sql<number>`count(*)::int` })
+		.from(vacationRequests)
+		.innerJoin(profiles, eq(profiles.id, vacationRequests.userId))
+		.where(and(...conditions));
+
+	return row?.count ?? 0;
+}
+
+/**
  * La bandeja de un `department_head` o `global_manager` sobre su ámbito
  * (RN-03.2), igual que `listUsers`: `managedDepartmentIds: "all"` para un
  * gestor global, o la lista concreta para un jefe.

@@ -5,7 +5,7 @@ import type {
 	DepartmentSummary,
 	UpdateDepartmentInput,
 } from "@elineas/validations";
-import { asc, eq, getTableColumns, sql } from "drizzle-orm";
+import { and, asc, eq, getTableColumns, inArray, sql } from "drizzle-orm";
 import { HTTPException } from "hono/http-exception";
 import { db } from "#/db";
 import {
@@ -90,6 +90,30 @@ export async function listDepartments(options: {
 
 	const config = await getConfig();
 	return rows.map((row) => toSummary(row, config.global_manager_department_id));
+}
+
+/**
+ * Cuántos departamentos del ámbito están en pausa — la alerta de la spec 15
+ * §5.1. Un departamento pausado no admite marcajes (RN-01.4), así que su gente
+ * aparece ausente sin que sea culpa de nadie: es justo lo que un panel tiene que
+ * avisar antes de que alguien lo lea como un problema de asistencia.
+ */
+export async function countPausedDepartments(scope: {
+	managedDepartmentIds: string[] | "all";
+}): Promise<number> {
+	const conditions = [eq(departments.isPaused, true)];
+
+	if (scope.managedDepartmentIds !== "all") {
+		if (scope.managedDepartmentIds.length === 0) return 0;
+		conditions.push(inArray(departments.id, scope.managedDepartmentIds));
+	}
+
+	const [row] = await db
+		.select({ count: sql<number>`count(*)::int` })
+		.from(departments)
+		.where(and(...conditions));
+
+	return row?.count ?? 0;
 }
 
 export async function getDepartmentSummary(
