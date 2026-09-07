@@ -6,6 +6,7 @@ import { attendance } from "#/routes/attendance.ts";
 import { auth } from "#/routes/auth";
 import { config as configRoutes } from "#/routes/config.ts";
 import { departments } from "#/routes/departments.ts";
+import { incidents } from "#/routes/incidents.ts";
 import { locations } from "#/routes/locations.ts";
 import { me } from "#/routes/me";
 import { notifications } from "#/routes/notifications.ts";
@@ -56,6 +57,7 @@ export function createApp() {
 	app.route("/api/departments", departmentRest);
 	app.route("/api/work-locations", locations);
 	app.route("/api/attendance", attendance);
+	app.route("/api/incidents", incidents);
 	app.route("/api/notifications", notifications);
 	app.route("/api/rest-groups", restGroupsRouter);
 	app.route("/api/config", configRoutes);

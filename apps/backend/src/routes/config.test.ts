@@ -173,6 +173,9 @@ describe("subconjunto público (spec 06 §5)", () => {
 				"attendance_checkout_mode",
 				"attendance_geofence_exit_minutes",
 				"global_timezone",
+				// Spec 12 RN-12.4: el formulario de incidencias avisa del plazo
+				// antes de enviar, con la misma cifra que aplica el servidor.
+				"incident_report_window_days",
 				"late_tolerance_minutes",
 			].sort(),
 		);
