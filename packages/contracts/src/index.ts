@@ -8,3 +8,4 @@ export * from "./path.ts";
 export * from "./rest.ts";
 export * from "./schedules.ts";
 export * from "./users.ts";
+export * from "./vacations.ts";
