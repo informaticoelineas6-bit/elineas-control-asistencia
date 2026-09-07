@@ -2,6 +2,7 @@ export * from "./absences.ts";
 export * from "./attendance.ts";
 export * from "./auth.ts";
 export * from "./config.ts";
+export * from "./dashboard.ts";
 export * from "./departments.ts";
 export * from "./incidents.ts";
 export * from "./locations.ts";
