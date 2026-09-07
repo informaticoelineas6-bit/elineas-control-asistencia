@@ -1,4 +1,5 @@
 import type { Permissions } from "@elineas/validations";
+import { useQuery } from "@tanstack/react-query";
 import { Link, useRouterState } from "@tanstack/react-router";
 import { Clock, LogOut } from "lucide-react";
 import { Button } from "#/components/ui/button.tsx";
@@ -11,12 +12,20 @@ import {
 	SidebarGroupLabel,
 	SidebarHeader,
 	SidebarMenu,
+	SidebarMenuBadge,
 	SidebarMenuButton,
 	SidebarMenuItem,
 	SidebarRail,
 } from "#/components/ui/sidebar.tsx";
-import { NAV_SECTIONS, ROLE_LABELS } from "#/modules/auth/navigation.ts";
+import {
+	badgeOf,
+	canAccess,
+	NAV_SECTIONS,
+	type NavBadge,
+	ROLE_LABELS,
+} from "#/modules/auth/navigation.ts";
 import { useLogout } from "#/modules/auth/session.ts";
+import { pendingIncidentsCountQueryOptions } from "#/modules/incidents/api.ts";
 import { ThemeToggle } from "#/modules/theme/theme-toggle.tsx";
 
 /**
@@ -27,8 +36,17 @@ import { ThemeToggle } from "#/modules/theme/theme-toggle.tsx";
  * deslizante. El estado de colapso lo persiste shadcn en la cookie
  * `sidebar_state`.
  *
- * Los enlaces se filtran por el **rol efectivo** (RN-03.1). Es UX: la barrera
- * real está en el backend (RN-03.3).
+ * Los enlaces se filtran por el **rol efectivo** (RN-03.1) con `canAccess`, la
+ * misma función que usa el guard de página: RN-05.7 lo pide explícitamente —"el
+ * filtrado y el guard salen de la misma tabla"— y con la comprobación duplicada
+ * a mano se perdía la lista de exclusión, así que a un `global_manager` se le
+ * ofrecían *Marcar* y *Mi asistencia* para que el guard lo echara acto seguido.
+ * Sigue siendo UX: la barrera real está en el backend (RN-03.3).
+ *
+ * Los badges son RN-05.8: los pendientes que esperan por una acción de quien
+ * mira. Se resuelven aquí y no en la tabla de navegación porque hacen falta
+ * hooks, y `navigation.ts` tiene que seguir siendo datos puros para que el guard
+ * pueda leerla.
  */
 export function AppSidebar({ session }: { session: Permissions }) {
 	const logout = useLogout();
@@ -37,10 +55,30 @@ export function AppSidebar({ session }: { session: Permissions }) {
 
 	const sections = NAV_SECTIONS.map((section) => ({
 		label: section.label,
-		items: section.items.filter((item) =>
-			(item.roles as readonly string[]).includes(effectiveRole),
-		),
+		items: section.items.filter((item) => canAccess(effectiveRole, item.to)),
 	})).filter((section) => section.items.length > 0);
+
+	const shown = new Set(
+		sections.flatMap((section) =>
+			section.items.map((item) => badgeOf(item)).filter(Boolean),
+		),
+	);
+
+	// `enabled` por badge visible: sin esto, un empleado pediría el conteo de
+	// gestión y recibiría un 403 en cada carga del shell.
+	const ownPending = useQuery({
+		...pendingIncidentsCountQueryOptions("own"),
+		enabled: shown.has("incidents-own"),
+	});
+	const managedPending = useQuery({
+		...pendingIncidentsCountQueryOptions("managed"),
+		enabled: shown.has("incidents-managed"),
+	});
+
+	const counts: Record<NavBadge, number> = {
+		"incidents-own": ownPending.data?.count ?? 0,
+		"incidents-managed": managedPending.data?.count ?? 0,
+	};
 
 	return (
 		<Sidebar collapsible="icon">
@@ -72,20 +110,30 @@ export function AppSidebar({ session }: { session: Permissions }) {
 						<SidebarGroupLabel>{section.label}</SidebarGroupLabel>
 						<SidebarGroupContent>
 							<SidebarMenu>
-								{section.items.map((item) => (
-									<SidebarMenuItem key={item.to}>
-										<SidebarMenuButton
-											asChild
-											tooltip={item.label}
-											isActive={pathname === item.to}
-										>
-											<Link to={item.to}>
-												<item.icon />
-												<span>{item.label}</span>
-											</Link>
-										</SidebarMenuButton>
-									</SidebarMenuItem>
-								))}
+								{section.items.map((item) => {
+									const badge = badgeOf(item);
+									const count = badge ? counts[badge] : 0;
+
+									return (
+										<SidebarMenuItem key={item.to}>
+											<SidebarMenuButton
+												asChild
+												tooltip={item.label}
+												isActive={pathname === item.to}
+											>
+												<Link to={item.to}>
+													<item.icon />
+													<span>{item.label}</span>
+												</Link>
+											</SidebarMenuButton>
+											{count > 0 && (
+												<SidebarMenuBadge aria-label={`${count} pendientes`}>
+													{count}
+												</SidebarMenuBadge>
+											)}
+										</SidebarMenuItem>
+									);
+								})}
 							</SidebarMenu>
 						</SidebarGroupContent>
 					</SidebarGroup>

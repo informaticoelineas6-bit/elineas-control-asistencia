@@ -1,5 +1,6 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { RequireRole } from "#/modules/auth/require-role.tsx";
+import { IncidentReviewPanel } from "#/modules/incidents/incident-review-panel.tsx";
 import { VacationReviewPanel } from "#/modules/vacations/vacation-review-panel.tsx";
 
 const PATH = "/team" as const;
@@ -18,11 +19,15 @@ export const Route = createFileRoute("/_authed/team")({
  * que tiene su propia ruta, `/rest-days`, por la misma razón que ésta no la
  * absorbió).
  *
- * Empieza con **una sola pieza**, las vacaciones de la spec 11 — igual que
- * `/settings` empezó con una sola pestaña en la spec 06 y fue creciendo—: las
- * incidencias (spec 12) y la justificación de ausencias (spec 13) se añaden
- * aquí cuando existan, no antes. Por eso no hay pestañas todavía: una pestaña
- * sola no es una pestaña, es la página.
+ * Creció como `/settings`, pieza a pieza: las vacaciones de la spec 11 y ahora
+ * las incidencias de la spec 12. La justificación de ausencias (spec 13) se
+ * añade aquí cuando exista.
+ *
+ * Siguen siendo **secciones apiladas y no pestañas**. Dos pestañas esconderían
+ * la mitad de lo que espera por una decisión, y eso es justo lo contrario de
+ * para qué existe esta página; el mismo criterio que `/profile`, que apila sus
+ * tarjetas. Cuando haya tres o cuatro bandejas y ninguna quepa en pantalla,
+ * entonces sí.
  */
 function TeamPage() {
 	return (
@@ -35,6 +40,7 @@ function TeamPage() {
 			</div>
 
 			<VacationReviewPanel />
+			<IncidentReviewPanel />
 		</div>
 	);
 }

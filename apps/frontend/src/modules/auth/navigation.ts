@@ -6,6 +6,7 @@ import {
 	CalendarClock,
 	ClipboardList,
 	FileBarChart,
+	FileWarning,
 	LayoutDashboard,
 	Satellite,
 	ScrollText,
@@ -80,6 +81,21 @@ export const NAV_SECTIONS = [
 				roles: EMPLOYEE_AND_UP,
 				excludedRoles: MARKS_EXCLUDED,
 			},
+			/*
+			 * Spec 12. Lo ve cualquier rol —la spec 12 §7 dice "autenticado" y no
+			 * invoca RN-03.4 como sí hace la 11 con las vacaciones— y lleva badge
+			 * con las propias sin revisar (§6, RN-05.8).
+			 *
+			 * La spec 05 §3 la llamaba `/issues`; se unificó en `/incidents`, que es
+			 * como se llama el recurso en todo lo demás (ver `routes/_authed/incidents.tsx`).
+			 */
+			{
+				to: "/incidents",
+				label: "Incidencias",
+				icon: FileWarning,
+				roles: EMPLOYEE_AND_UP,
+				badge: "incidents-own",
+			},
 			{
 				to: "/profile",
 				label: "Mi perfil",
@@ -107,6 +123,8 @@ export const NAV_SECTIONS = [
 				label: "Mi equipo",
 				icon: ClipboardList,
 				roles: HEAD_AND_UP,
+				/* RN-05.8: lo que espera por una decisión suya (spec 12 §7). */
+				badge: "incidents-managed",
 			},
 			/*
 			 * Spec 10 §4. Empieza en `department_head` y no en `global_manager`
@@ -167,6 +185,22 @@ export const NAV_SECTIONS = [
 ] as const;
 
 export type NavPath = (typeof NAV_SECTIONS)[number]["items"][number]["to"];
+
+/**
+ * Contadores que un ítem del menú puede mostrar como badge (RN-05.8).
+ *
+ * Es un identificador y no un número: la tabla de navegación describe **qué**
+ * contar, y el aside —que es quien puede usar hooks— resuelve cuánto. Así esta
+ * tabla sigue siendo datos puros y se puede leer desde el guard sin arrastrar
+ * consultas.
+ */
+export type NavBadge = "incidents-own" | "incidents-managed";
+
+export function badgeOf(
+	item: (typeof NAV_SECTIONS)[number]["items"][number],
+): NavBadge | null {
+	return "badge" in item ? (item.badge as NavBadge) : null;
+}
 
 /**
  * Acceso por ruta, con las **dos listas** del guard del legacy (spec 04 §6):
