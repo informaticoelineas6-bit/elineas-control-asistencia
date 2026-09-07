@@ -534,12 +534,18 @@ export async function getTodayMarks(
 }
 
 /**
- * `GET /attendance/me?from=&to=`: el historial propio, ya agregado por día.
+ * El historial de una persona, ya agregado por día. Sirve a
+ * `GET /attendance/me?from=&to=` —donde el perfil es siempre el de la sesión, sin
+ * parámetro de persona posible— y al contexto que la bandeja de incidencias pone
+ * junto a cada una (spec 12 §6), donde el perfil es el de quien reportó y el
+ * ámbito lo comprueba esa ruta.
  *
- * El frontend **no calcula estados** (spec 15 §4): recibe el día resuelto. Y sólo el
- * propio: no hay parámetro de persona en este endpoint.
+ * Se llamaba `getMyDays`; el "my" era del endpoint, no de la función, y con dos
+ * consumidores el nombre habría hecho pensar que la segunda llamada estaba mal.
+ *
+ * El frontend **no calcula estados** (spec 15 §4): recibe el día resuelto.
  */
-export async function getMyDays(
+export async function getDaysFor(
 	profile: MarkingProfile,
 	range: { from: string; to: string },
 ): Promise<AttendanceDay[]> {
@@ -625,6 +631,30 @@ export async function listMarksOfWorkDate(
 		and(
 			eq(attendanceMarks.userId, userId),
 			inArray(attendanceMarks.workDate, [workDate]),
+		),
+	);
+}
+
+/**
+ * Los **intentos rechazados** de una jornada (RN-09.8), que el historial no
+ * devuelve porque sólo cuenta los válidos. Es la evidencia con la que se revisa
+ * una incidencia de "intenté marcar y no me dejó" (spec 12, cabecera).
+ *
+ * Filtra por `work_date`, así que **no alcanza a un intento rechazado antes de
+ * poder resolver la jornada** —sin horario, o con el departamento en pausa: esas
+ * filas nacen con `work_date` nulo (ver el esquema). No es una pérdida
+ * significativa: en esos dos casos no hay jornada con la que correlacionar nada,
+ * y la incidencia que abriría esa persona no es sobre un marcaje concreto.
+ */
+export async function listBlockedMarksOfWorkDate(
+	userId: string,
+	workDate: string,
+): Promise<AttendanceMark[]> {
+	return selectMarks(
+		and(
+			eq(attendanceMarks.userId, userId),
+			eq(attendanceMarks.workDate, workDate),
+			eq(attendanceMarks.blocked, true),
 		),
 	);
 }

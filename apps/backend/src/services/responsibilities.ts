@@ -28,6 +28,31 @@ import type { Actor } from "#/services/users.ts";
  * (`getManagedDepartmentIds`), que es donde debe estar.
  */
 
+/**
+ * Los responsables **adicionales** de un departamento (spec 03 §3): la única
+ * lista de jefes que este sistema puede leer sin depender de que esa persona
+ * esté autenticada ahora mismo.
+ *
+ * **No incluye al jefe "propio" de un departamento**, que es el caso más común:
+ * los roles los otorga el Identity Server y sólo se conocen por *session token*
+ * (RN-00.43), y el departamento propio de un jefe no se guarda en esta tabla a
+ * propósito (ver la nota de cabecera). Es la limitación que la
+ * [spec 11 §9, decisión 3](../../../../packages/specs/11-vacaciones.md) dejó
+ * abierta, y por eso vive aquí y no dentro de un servicio de dominio: la piden
+ * las notificaciones de vacaciones (RN-11.11) y de incidencias (RN-12.10), y va
+ * a volver a pedirla la spec 13. Cuando esa decisión se cierre, se arregla en un
+ * solo sitio.
+ */
+export async function additionalHeadsOf(
+	departmentId: string,
+): Promise<string[]> {
+	const rows = await db
+		.select({ userId: userDepartmentResponsibilities.userId })
+		.from(userDepartmentResponsibilities)
+		.where(eq(userDepartmentResponsibilities.departmentId, departmentId));
+	return rows.map((row) => row.userId);
+}
+
 async function requireProfile(profileId: string) {
 	const profile = await db.query.profiles.findFirst({
 		where: eq(profiles.id, profileId),

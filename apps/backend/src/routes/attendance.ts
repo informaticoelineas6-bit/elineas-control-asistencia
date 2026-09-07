@@ -8,7 +8,7 @@ import { validate } from "#/lib/validate.ts";
 import { getAuth, requireAuth } from "#/middleware/auth";
 import {
 	createMark,
-	getMyDays,
+	getDaysFor,
 	getStatus,
 	getTodayMarks,
 } from "#/services/attendance.ts";
@@ -65,7 +65,7 @@ attendance.get(
 	"/me",
 	validate("query", attendanceRangeQuerySchema),
 	async (c) => {
-		const days = await getMyDays(getAuth(c).profile, c.req.valid("query"));
+		const days = await getDaysFor(getAuth(c).profile, c.req.valid("query"));
 		return c.json(attendanceSpec.mine.response.parse(days));
 	},
 );

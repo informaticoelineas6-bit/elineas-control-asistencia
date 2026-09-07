@@ -17,18 +17,13 @@ import { eachDayOfInterval, format, parseISO } from "date-fns";
 import { and, eq, getTableColumns, inArray, sql } from "drizzle-orm";
 import { HTTPException } from "hono/http-exception";
 import { db } from "#/db";
-import {
-	attendanceMarks,
-	profiles,
-	userDepartmentResponsibilities,
-	vacationRequests,
-} from "#/db/schema";
+import { attendanceMarks, profiles, vacationRequests } from "#/db/schema";
 import { type Actor, audit, type Database } from "#/services/audit.ts";
 import { getConfig } from "#/services/config.ts";
 import { notify } from "#/services/notifications.ts";
+import { additionalHeadsOf } from "#/services/responsibilities.ts";
 import { restDayResolverFor } from "#/services/rest-schedules.ts";
-import { todayIn } from "#/services/schedule-rules.ts";
-import { getCalendar, getSchedule } from "#/services/schedules.ts";
+import { getCalendar, todayForDepartment } from "#/services/schedules.ts";
 
 /**
  * Vacaciones (spec 11). Saldo acumulado por días trabajados, solicitud,
@@ -143,20 +138,6 @@ export async function departmentOfVacationRequest(
 
 /** Perfil tal como lo necesita este servicio. */
 export type VacationProfile = { id: string; departmentId: string | null };
-
-/**
- * Hoy **en la zona del departamento** (RN-07.2), igual que en `rest-schedules.ts`:
- * es contra lo que se mide RN-11.7 (sólo a futuro), y en la del servidor —UTC en
- * un contenedor— alguien a última hora de la tarde en La Habana podría pedir
- * "desde mañana" y que el servidor todavía dijera que es hoy.
- */
-async function todayForDepartment(
-	departmentId: string | null,
-): Promise<string> {
-	const config = await getConfig();
-	const schedule = departmentId ? await getSchedule(departmentId) : null;
-	return todayIn(schedule?.timezone ?? config.global_timezone);
-}
 
 // ── Saldo (§2) ────────────────────────────────────────────────────────────────
 
@@ -326,25 +307,6 @@ export async function isOnVacationToday(
 	return !!row;
 }
 
-// ── Quién avisar cuando entra una solicitud ────────────────────────────────────
-
-/**
- * Los responsables **adicionales** de un departamento (spec 03 §3): la única
- * lista de jefes que este sistema puede leer sin depender de que esa persona
- * esté autenticada ahora mismo. **No incluye al jefe "propio" de un
- * departamento** — ver la nota de cabecera — así que un departamento cuyo
- * único jefe lo gestiona por ser el suyo (el caso más común) no recibe aviso
- * aquí: se entera al abrir su bandeja de revisión, igual que con cualquier
- * pendiente que nadie empujó por notificación.
- */
-async function additionalHeadsOf(departmentId: string): Promise<string[]> {
-	const rows = await db
-		.select({ userId: userDepartmentResponsibilities.userId })
-		.from(userDepartmentResponsibilities)
-		.where(eq(userDepartmentResponsibilities.departmentId, departmentId));
-	return rows.map((row) => row.userId);
-}
-
 // ── Solicitar (§5.1) ────────────────────────────────────────────────────────────
 
 /**
@@ -464,8 +426,9 @@ export async function requestVacation(
 				sourceIp: actor.sourceIp,
 			});
 
-			// §5.1 paso 4. Ver la nota de cabecera: sólo llega a los responsables
-			// adicionales conocidos; el jefe "propio" se entera por su bandeja.
+			// §5.1 paso 4. Ver la nota de cabecera y la de `additionalHeadsOf`:
+			// sólo llega a los responsables adicionales conocidos; el jefe "propio"
+			// se entera por su bandeja.
 			if (profile.departmentId) {
 				await notify(tx, await additionalHeadsOf(profile.departmentId), {
 					type: "vacation.requested",

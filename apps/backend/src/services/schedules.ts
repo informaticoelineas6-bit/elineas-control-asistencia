@@ -90,6 +90,25 @@ export async function hasSchedule(departmentId: string): Promise<boolean> {
 	return (await getSchedule(departmentId)) !== null;
 }
 
+/**
+ * Hoy **en la zona del departamento** (RN-07.2), con la global como respaldo.
+ *
+ * Vive aquí porque la zona sale del horario y este servicio es su dueño, y está
+ * exportada porque la piden todas las reglas que comparan una fecha del usuario
+ * con "hoy": RN-11.7 (vacaciones sólo a futuro) y RN-12.3/RN-12.4 (incidencias
+ * sólo hacia atrás, y dentro de plazo). En la zona del **servidor** —UTC en un
+ * contenedor— alguien a última hora de la tarde en La Habana vería su "hoy"
+ * corrido un día, y la regla se aplicaría sobre una fecha que para esa persona
+ * ya no es hoy.
+ */
+export async function todayForDepartment(
+	departmentId: string | null,
+): Promise<string> {
+	const config = await getConfig();
+	const schedule = departmentId ? await getSchedule(departmentId) : null;
+	return todayIn(schedule?.timezone ?? config.global_timezone);
+}
+
 const sameTimes = (a: ScheduleTimes, b: ScheduleTimes) =>
 	a.checkinStartTime === b.checkinStartTime &&
 	a.checkinEndTime === b.checkinEndTime &&
