@@ -99,6 +99,13 @@
       "when": 1788809222175,
       "tag": "0013_clear_reaper",
       "breakpoints": true
+    },
+    {
+      "idx": 14,
+      "version": "7",
+      "when": 1788811705519,
+      "tag": "0014_goofy_supernaut",
+      "breakpoints": true
     }
   ]
 }

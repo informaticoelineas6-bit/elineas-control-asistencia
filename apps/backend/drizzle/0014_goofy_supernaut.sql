@@ -1,0 +1,1 @@
+ALTER TABLE "payroll_adjustments" ADD COLUMN "revert_reason" text;

@@ -1074,6 +1074,15 @@ export const payrollAdjustments = pgTable(
 		createdBy: uuid("created_by"),
 		revertedBy: uuid("reverted_by"),
 		revertedAt: timestamp("reverted_at", { withTimezone: true }),
+		/**
+		 * Por qué se revirtió (spec 17 §4.3). Nulo mientras el ajuste siga activo, y
+		 * nulo también en las reversiones automáticas de RN-13.4: allí el motivo es
+		 * un hecho —la ausencia se reclasificó como justificada— y la revisión que
+		 * lo cuenta está en `source_id`. Se pide **a mano**, que es donde hace falta:
+		 * la misma asimetría de las specs 11, 12 y 13, la razón se exige a la
+		 * decisión discrecional.
+		 */
+		revertReason: text("revert_reason"),
 		createdAt: timestamp("created_at", { withTimezone: true })
 			.notNull()
 			.defaultNow(),
