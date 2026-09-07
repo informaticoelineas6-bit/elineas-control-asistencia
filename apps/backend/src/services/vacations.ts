@@ -20,10 +20,15 @@ import { db } from "#/db";
 import { attendanceMarks, profiles, vacationRequests } from "#/db/schema";
 import { type Actor, audit, type Database } from "#/services/audit.ts";
 import { getConfig } from "#/services/config.ts";
+import { refreshFactsForUser } from "#/services/daily-facts-store.ts";
 import { notify } from "#/services/notifications.ts";
 import { additionalHeadsOf } from "#/services/responsibilities.ts";
 import { restDayResolverFor } from "#/services/rest-schedules.ts";
 import { getCalendar, todayForDepartment } from "#/services/schedules.ts";
+import {
+	loadApprovedVacationRanges,
+	vacationDayPredicate,
+} from "#/services/vacation-ranges.ts";
 
 /**
  * Vacaciones (spec 11). Saldo acumulado por días trabajados, solicitud,
@@ -267,54 +272,6 @@ export async function vacationDayResolverFor(
 ): Promise<(date: string) => boolean> {
 	const ranges = await loadApprovedVacationRanges([profile.id]);
 	return vacationDayPredicate(ranges.get(profile.id) ?? []);
-}
-
-export type VacationRange = { startDate: string; endDate: string };
-
-/**
- * Los rangos aprobados de **varias personas de un tirón**: una consulta para
- * toda la plantilla de un departamento en vez de una por persona.
- *
- * Existe por lo mismo que `loadRestContexts` en la spec 10: la bandeja de
- * ausencias pendientes (spec 13 §5) tiene que clasificar cada jornada de cada
- * miembro de un ámbito, y hacerlo persona a persona multiplica las consultas por
- * el tamaño del departamento.
- */
-export async function loadApprovedVacationRanges(
-	userIds: readonly string[],
-): Promise<Map<string, VacationRange[]>> {
-	const ranges = new Map<string, VacationRange[]>();
-	const ids = [...new Set(userIds)];
-	if (ids.length === 0) return ranges;
-
-	const rows = await db
-		.select({
-			userId: vacationRequests.userId,
-			startDate: vacationRequests.startDate,
-			endDate: vacationRequests.endDate,
-		})
-		.from(vacationRequests)
-		.where(
-			and(
-				inArray(vacationRequests.userId, ids),
-				eq(vacationRequests.status, "approved"),
-			),
-		);
-
-	for (const row of rows) {
-		const list = ranges.get(row.userId) ?? [];
-		list.push({ startDate: row.startDate, endDate: row.endDate });
-		ranges.set(row.userId, list);
-	}
-	return ranges;
-}
-
-/** El predicado de RN-09.2 / RN-15.1 a partir de unos rangos ya cargados. */
-export function vacationDayPredicate(
-	ranges: readonly VacationRange[],
-): (date: string) => boolean {
-	return (date: string) =>
-		ranges.some((range) => range.startDate <= date && date <= range.endDate);
 }
 
 /**
@@ -581,7 +538,7 @@ export async function reviewVacationRequest(
 	input: ReviewVacationRequestInput,
 	actor: Actor,
 ): Promise<VacationRequest> {
-	const { request, fullName } = await requireRequest(id);
+	const { request, departmentId, fullName } = await requireRequest(id);
 
 	if (request.status !== "pending") {
 		throw new HTTPException(409, {
@@ -598,46 +555,57 @@ export async function reviewVacationRequest(
 		});
 	}
 
-	return db.transaction(async (tx) => {
-		const [row] = await tx
-			.update(vacationRequests)
-			.set({
-				status: input.approved ? "approved" : "rejected",
-				reviewComment: input.comment ?? null,
-				reviewedBy: actor.profileId,
-				reviewedAt: new Date(),
-				updatedAt: new Date(),
-			})
-			.where(eq(vacationRequests.id, id))
-			.returning();
+	return db
+		.transaction(async (tx) => {
+			const [row] = await tx
+				.update(vacationRequests)
+				.set({
+					status: input.approved ? "approved" : "rejected",
+					reviewComment: input.comment ?? null,
+					reviewedBy: actor.profileId,
+					reviewedAt: new Date(),
+					updatedAt: new Date(),
+				})
+				.where(eq(vacationRequests.id, id))
+				.returning();
 
-		if (!row) {
-			throw new HTTPException(404, { message: "Esa solicitud no existe." });
-		}
+			if (!row) {
+				throw new HTTPException(404, { message: "Esa solicitud no existe." });
+			}
 
-		await audit(tx, {
-			actorId: actor.profileId,
-			action: "vacation.reviewed",
-			tableName: "vacation_requests",
-			recordId: id,
-			oldData: { status: request.status },
-			newData: { status: row.status, comment: row.reviewComment },
-			sourceIp: actor.sourceIp,
+			await audit(tx, {
+				actorId: actor.profileId,
+				action: "vacation.reviewed",
+				tableName: "vacation_requests",
+				recordId: id,
+				oldData: { status: request.status },
+				newData: { status: row.status, comment: row.reviewComment },
+				sourceIp: actor.sourceIp,
+			});
+
+			await notify(tx, [request.userId], {
+				type: "vacation.reviewed",
+				title: input.approved
+					? "Tus vacaciones fueron aprobadas"
+					: "Tus vacaciones fueron rechazadas",
+				body: input.approved
+					? `Del ${request.startDate} al ${request.endDate} (${request.requestedDays} ${request.requestedDays === 1 ? "día" : "días"}). Ese periodo no se podrá marcar.`
+					: `Del ${request.startDate} al ${request.endDate}.${input.comment ? ` Motivo: ${input.comment}` : ""}`,
+				actionUrl: "/profile",
+			});
+
+			return toVacationRequest(row, fullName);
+		})
+		.then(async (reviewed) => {
+			// RN-16.11 (spec 16) — Aprobar o rechazar cambia cómo se clasifica cada día
+			// del rango: los hechos diarios de ese periodo quedan obsoletos. Se refresca
+			// tras confirmar, por lo mismo que en la revisión de ausencias.
+			await refreshFactsForUser(
+				{ id: request.userId, departmentId },
+				{ from: request.startDate, to: request.endDate },
+			);
+			return reviewed;
 		});
-
-		await notify(tx, [request.userId], {
-			type: "vacation.reviewed",
-			title: input.approved
-				? "Tus vacaciones fueron aprobadas"
-				: "Tus vacaciones fueron rechazadas",
-			body: input.approved
-				? `Del ${request.startDate} al ${request.endDate} (${request.requestedDays} ${request.requestedDays === 1 ? "día" : "días"}). Ese periodo no se podrá marcar.`
-				: `Del ${request.startDate} al ${request.endDate}.${input.comment ? ` Motivo: ${input.comment}` : ""}`,
-			actionUrl: "/profile",
-		});
-
-		return toVacationRequest(row, fullName);
-	});
 }
 
 // ── Listar (§6) ──────────────────────────────────────────────────────────────────

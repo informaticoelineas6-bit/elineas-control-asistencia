@@ -16,7 +16,7 @@ import { getCalendar, getSchedule } from "#/services/schedules.ts";
 import {
 	loadApprovedVacationRanges,
 	vacationDayPredicate,
-} from "#/services/vacations.ts";
+} from "#/services/vacation-ranges.ts";
 
 /**
  * **El servicio de la §4 de la spec 15**: carga el contexto de varias personas y
