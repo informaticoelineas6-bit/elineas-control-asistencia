@@ -52,7 +52,7 @@ Navegación inferior de cuatro destinos:
 | Marcar | `/clock-in` | Botón de marcaje + estado de geocerca ([09](./09-marcaje-asistencia.md)) |
 | Mi semana | `/my-week` | Historial propio de la semana ([09](./09-marcaje-asistencia.md) §historial) |
 | Incidencias | `/issues` | Propias, con contador de pendientes ([12](./12-incidencias.md)) |
-| Perfil | `/profile` | Datos, descansos ([10](./10-descansos.md), ✅), vacaciones, cerrar sesión |
+| Perfil | `/profile` | Datos, descansos ([10](./10-descansos.md), ✅), vacaciones ([11](./11-vacaciones.md), ✅), cerrar sesión |
 
 - **RN-05.4** — El destino por defecto tras iniciar sesión es *Marcar*.
 - **RN-05.5** — Los badges de la barra inferior (incidencias pendientes, notificaciones) se
@@ -154,7 +154,7 @@ pueda ver desde ahí.
 | `/attendance` | Mi asistencia | ✅ ([09](./09-marcaje-asistencia.md)) |
 | `/profile` | Mi perfil | ✅ |
 | `/gps` | Diagnóstico GPS | ✅ ([08](./08-sedes-y-geocerca.md) §6) |
-| `/team` | Mi equipo | marcador |
+| `/team` | Mi equipo | ✅ ([11](./11-vacaciones.md); crece con las specs 12 y 13) |
 | `/rest-days` | Descansos | ✅ ([10](./10-descansos.md)) |
 | `/reports` | Reportes | marcador ([16](./16-reporteria-mensual.md)) |
 | `/users` | Usuarios | ✅ ([02](./02-usuarios-y-perfiles.md)) |

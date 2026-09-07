@@ -91,7 +91,7 @@ todas dependen de estos valores.
 
 | Clave | Tipo | Default | Consumido por |
 |---|---|---|---|
-| `vacation_days_per_worked_day` | number 0–1 | `0` (nadie acumula) | [11](./11-vacaciones.md) RN-11.2 |
+| `vacation_days_per_worked_day` | number 0–1 | `0` (nadie acumula) | [11](./11-vacaciones.md) RN-11.2 — ya en uso: multiplica los días trabajados para dar `earned` |
 
 > ⚠️ En el legacy esta clave aparece además citada como candidata para el **divisor de
 > nómina** (punto 75), que hoy está fijo en `/30` dentro de la función SQL. Son **dos cosas

@@ -2,11 +2,11 @@
 
 > **Origen:** `old-docs.md` §3.4, puntos 26–32, 40.
 > **Estado en el sistema legacy:** ✅ implementado.
-> **Estado en el monorepo nuevo:** ✅ implementado. De las dos costuras que quedaban abiertas por
-> dependencia, **los descansos ya están conectados** ([10](./10-descansos.md)): `isRestDay`
-> recibe el predicado real, un intento en día de descanso se rechaza con `REST_DAY` y queda
-> registrado. Sigue abierta la de **vacaciones** (spec 11, por la bandera `onVacation` y el
-> motivo `ON_VACATION`, que ya existen y están probados). Tabla `attendance_marks` con los dos índices únicos
+> **Estado en el monorepo nuevo:** ✅ implementado, **y sin costuras abiertas**: las dos que
+> quedaban por dependencia están conectadas — los descansos ([10](./10-descansos.md), `isRestDay`
+> recibe el predicado real y un intento en día de descanso se rechaza con `REST_DAY`) y las
+> vacaciones ([11](./11-vacaciones.md), `onVacation` con datos reales y `ON_VACATION` en el
+> rechazo). Las dos quedan registradas como cualquier otro intento (RN-09.8). Tabla `attendance_marks` con los dos índices únicos
 > por minuto del antirrebote; **la función pura de la §4** en
 > `apps/backend/src/services/attendance-rules.ts`, que compone la horaria de la
 > [07](./07-horarios-y-calendario.md) y la de ubicación de la
@@ -300,7 +300,13 @@ Lo que queda pendiente **por dependencia**, no por decisión:
   pasar un argumento: el servicio carga el predicado con `restDayResolverFor` y `GET
   /attendance/status` lo aplica también, para que el estado no ofrezca un botón que el `POST`
   va a rechazar.
-- **Vacaciones** ([11](./11-vacaciones.md)): sigue abierta, con `onVacation` y `ON_VACATION`.
+- ~~**Vacaciones** ([11](./11-vacaciones.md))~~ — **conectado.** `onVacation` sale de
+  `isOnVacationToday`. Un detalle del orden de esta spec que la 11 tuvo que respetar: RN-09.2 se
+  evalúa **en segundo lugar**, antes de que `validateMarkTime` resuelva a qué jornada pertenece
+  la marca, así que la vacación se comprueba contra **hoy** y no contra el `workDate` — la
+  simplificación que ese orden implica, y que en una jornada nocturna sólo se nota en el minuto
+  del cambio de día. `GET /attendance/status` lo aplica como un gate externo, igual que
+  `canMark`: `validateMarkTime` es de la spec 07 y no tiene por qué conocer las vacaciones.
 - **Cierre automático de jornada** (RN-09.13, modos `schedule` y `geofence_exit`): necesita un
   proceso programado. El campo `source` ya lo espera.
 - **Borrado administrativo de una marca** (RN-09.12): no hay endpoint. Cuando lo haya, va con

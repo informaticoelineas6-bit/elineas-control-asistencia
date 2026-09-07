@@ -7,16 +7,19 @@
 > `computeDailyStatus` en `apps/backend/src/services/daily-status.ts`, con los cinco estados de
 > §2, los datos derivados de §3 y 12 pruebas. Está **en el sitio que esta spec manda** —una sola
 > definición— precisamente para no repetir el error del legacy, donde la lógica vivía en un
-> hook, una función SQL y una edge function a la vez. Falta lo demás: vacaciones y AJ/ANJ como
-> superposiciones (specs 11 y 13), la carga en lote para varios usuarios, los tres paneles y la
-> materialización en `attendance_daily_facts`.
+> hook, una función SQL y una edge function a la vez. **Las vacaciones ya entraron** como
+> superposición con la [11](./11-vacaciones.md). Falta lo demás: AJ/ANJ (spec 13), la carga en
+> lote para varios usuarios, los tres paneles y la materialización en
+> `attendance_daily_facts`.
 >
 > Dos puntos que esta spec dejaba abiertos y la implementación tuvo que resolver para poder
 > pintar el historial; **conviene confirmarlos aquí**:
 >
 > - **RN-15.2 aplicada tal cual:** un día con marcas sale `PRESENTE`/`TARDE` aunque el
->   calendario lo diera por no laborable o fuera descanso. Esconder trabajo que existió es peor
->   que contradecir la precedencia de presentación.
+>   calendario lo diera por no laborable, fuera descanso **o hubiera vacaciones aprobadas**.
+>   Esconder trabajo que existió es peor que contradecir la precedencia de presentación, y en
+>   vivo no puede ocurrir —el marcaje se rechaza antes en los tres casos—, así que sólo llega
+>   por importación histórica.
 > - **`worked_minutes` suma los pares entrada→salida**, no `última salida − primera entrada`:
 >   con la alternancia impuesta (RN-09.9) los pares son inequívocos y así el almuerzo no cuenta
 >   como trabajado. Con un solo par da exactamente lo que describe §3.
@@ -53,7 +56,7 @@ presentación):
 
 | Superposición | Definición |
 |---|---|
-| `VACACIONES` | Solicitud aprobada que cubre la fecha ([11](./11-vacaciones.md)) |
+| `VACACIONES` | Solicitud aprobada que cubre la fecha ([11](./11-vacaciones.md), ya construida: `computeDailyStatus` recibe el `onVacation` real) |
 | `AJ` / `ANJ` | Ausencia con decisión de justificación ([13](./13-justificacion-ausencias.md)) |
 
 ### Orden de precedencia (definir de una vez y respetarlo en todos lados)
@@ -67,8 +70,10 @@ presentación):
 ```
 
 - **RN-15.1** — Este orden es normativo. Un día de vacaciones que además era descanso sale
-  como `VACACIONES` (y **decisión abierta**: ¿debería consumir saldo? Ver
-  [11](./11-vacaciones.md) RN-11.5).
+  como `VACACIONES`, y **no consume saldo** — la pregunta que esta regla dejaba abierta la
+  cerró la [11](./11-vacaciones.md) (decisión 2 de su §9): sólo consumen los días laborables que
+  además no son descanso. Presentación y consumo son dos cosas distintas, y ésta es la única
+  combinación donde se nota la diferencia.
 - **RN-15.2** — Un marcaje en un día que debía ser descanso o no laborable: no debería
   existir (se rechaza en origen), pero si existe por importación histórica, gana `PRESENTE`.
   **Confirmar.**

@@ -60,8 +60,9 @@ de horario, un recordatorio pendiente.
 
 | Evento | Destinatario | Origen |
 |---|---|---|
-| Nueva solicitud de vacaciones | Jefe(s) del ámbito | [11](./11-vacaciones.md) |
-| Vacaciones aprobadas / rechazadas | Solicitante | [11](./11-vacaciones.md) |
+| Nueva solicitud de vacaciones | Jefe(s) del ámbito | [11](./11-vacaciones.md) — ✅ `vacation.requested`, con la limitación de §10 de esa spec: sólo llega a los jefes con responsabilidad **adicional** |
+| Vacaciones aprobadas / rechazadas | Solicitante | [11](./11-vacaciones.md) — ✅ `vacation.reviewed` |
+| Vacaciones canceladas por otro | Solicitante | [11](./11-vacaciones.md) RN-11.10 — ✅ `vacation.cancelled`, sólo si no las canceló él mismo |
 | Nueva incidencia reportada | Jefe(s) del ámbito | [12](./12-incidencias.md) |
 | Incidencia aprobada / rechazada | Empleado | [12](./12-incidencias.md) |
 | Cambio de horario del departamento | Todos los miembros | [07](./07-horarios-y-calendario.md) RN-07.10 ✅ |
@@ -120,7 +121,7 @@ hace upsert.
       iniciar sesión**, así que quien no entre en una semana no lo recibe: pasa a proceso
       programado cuando exista uno — [10](./10-descansos.md) §10.)
 - [ ] Con la entrega en vivo caída, el sondeo de respaldo sigue actualizando el contador.
-- [ ] Aprobar unas vacaciones notifica al solicitante en la misma transacción.
+- [x] Aprobar unas vacaciones notifica al solicitante en la misma transacción.
 - [ ] Un ajuste de nómina notifica al empleado afectado.
 
 ## 10. Decisiones abiertas

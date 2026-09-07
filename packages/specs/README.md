@@ -97,17 +97,25 @@ recibiendo los descansos por predicado.
 Construida **antes** que las specs 10 y 11, de las que depende, dejando en su lugar dos costuras
 probadas: los descansos entran por un predicado y las vacaciones por una bandera. Es el orden que
 el índice ya sugería (09 antes de 11) y evita tener el núcleo del producto esperando por dos
-specs que no cambian su forma. La apuesta salió: **conectar la [10](./10-descansos.md) fue pasar
-un argumento**, sin tocar una línea de las reglas del marcaje. Queda la bandera de la
-[11](./11-vacaciones.md).
+specs que no cambian su forma. La apuesta salió: **conectar la [10](./10-descansos.md) y la
+[11](./11-vacaciones.md) fue pasar dos argumentos**, sin tocar una línea de las reglas del
+marcaje. Ya no queda ninguna costura abierta en el núcleo.
 
 ### Excepciones — lo que pasa cuando no se marca
 
-| # | Spec | Estado legacy | Depende de |
-|---|---|---|---|
-| 11 | [Vacaciones](./11-vacaciones.md) | ✅ | 06, 09 |
-| 12 | [Incidencias](./12-incidencias.md) | ✅ | 03, 09 |
-| 13 | [Justificación de ausencias](./13-justificacion-ausencias.md) | ✅ | 03, 09 |
+| # | Spec | Legacy | Monorepo | Depende de |
+|---|---|---|---|---|
+| 11 | [Vacaciones](./11-vacaciones.md) | ✅ | ✅ | 06, 09 |
+| 12 | [Incidencias](./12-incidencias.md) | ✅ | ❌ | 03, 09 |
+| 13 | [Justificación de ausencias](./13-justificacion-ausencias.md) | ✅ | ❌ | 03, 09 |
+
+La [11](./11-vacaciones.md) cerró **la última costura del núcleo**: la 09 ya no espera por nadie.
+Dejó tres decisiones cerradas y **dos abiertas a propósito** — el modelo de acumulación frente a
+la normativa cubana (de negocio) y quién aprueba las vacaciones de un jefe, que hoy no se puede
+resolver porque el sistema no conoce el rol de un perfil ajeno sin que esa persona se autentique
+([11](./11-vacaciones.md) §9, decisión 3). Es el primer sitio donde el corte de la
+[00](./00-migracion-datos-e-identidad.md) —los roles viven en el Identity Server— se nota como
+una limitación concreta.
 
 ### Salidas — lo que el sistema produce
 
@@ -181,6 +189,15 @@ Y una consecuencia del modelo que conviene saber antes de tocar los grupos: **ca
 un grupo alcanza al pasado de sus miembros** ([10](./10-descansos.md) §9, decisión 5). Rotar
 turnos se hace creando otro grupo y reasignando.
 
+De la [11](./11-vacaciones.md):
+
+- **Sólo los días laborables que no son descanso consumen saldo.** Un día libre dentro del rango
+  no se cobra: no iba a trabajarse de todas formas.
+- **No hay medios días ni caducidad del saldo.** Las dos entrarían, si acaso, con la decisión de
+  cumplimiento normativo, que sigue abierta.
+- **Las vacaciones sólo se piden a futuro, sin excepción de rol** — al contrario que los
+  descansos (RN-10.7): una regularización hacia atrás es una incidencia, no una fecha movida.
+
 Y dos de forma:
 
 - **El código se escribe en inglés; la interfaz, en español.** Rutas incluidas: *Mi asistencia*
@@ -206,8 +223,18 @@ Lo que sigue abierto y bloquea a varias specs a la vez:
    → [20](./20-app-movil-y-distribucion.md) §7. Decide la forma de la app móvil; no bloquea
    nada más si el backend queda preparado para autenticar también por cabecera.
 
+4. **¿Cómo se sabe quién es jefe de un departamento sin que esté autenticado?**
+   → [11](./11-vacaciones.md) §9, decisión 3. Los roles viven en el Identity Server y sólo se
+   conocen por *session token* (RN-00.43); en nuestra base sólo queda el ámbito **adicional** de
+   un jefe (spec 03 §3), nunca su departamento propio. Eso deja dos cosas a medias hoy: a quién
+   se notifica una solicitud de vacaciones y qué regla protege las vacaciones de un jefe. Pide
+   una de dos decisiones de arquitectura — consultar al IS los roles de un usuario cualquiera, o
+   registrar localmente qué perfil es jefe de qué departamento — y va a volver a aparecer en las
+   specs 12 y 13, que también necesitan avisar a un jefe.
+
 Y una de negocio, no técnica, que puede reescribir una spec entera:
 
-4. **¿El modelo de vacaciones debe cumplir la normativa laboral cubana?**
+5. **¿El modelo de vacaciones debe cumplir la normativa laboral cubana?**
    → [11](./11-vacaciones.md) §2. *(Decía "peruana": la empresa opera en Cuba, ver
-   [06](./06-configuracion-global.md) §8.)*
+   [06](./06-configuracion-global.md) §8.)* Lo construido es el modelo simple del legacy; si la
+   respuesta es "sí", esa spec cambia por completo.
