@@ -653,16 +653,18 @@ describe("RN-13.5 — la barrera de privilegios (§8)", () => {
 		expect(result.payrollAdjustment.amount).toBe("-100.00");
 	});
 
-	test("no existe ningún endpoint de nómina que un jefe pueda tocar", async () => {
-		// La barrera de hoy es que la superficie **no existe**: la spec 17 no está
-		// construida y nada en `routes/` monta `/api/payroll`. Cuando exista, este
-		// caso pasa de 404 a 403 y hay que actualizarlo.
+	test("ningún endpoint de nómina admite a un jefe (RN-17.1)", async () => {
+		// **403, no 404.** Hasta la spec 17 la barrera era que la superficie no
+		// existía y `/api/payroll` devolvía "aquí no hay nada"; ahora existe y
+		// rechaza, que es lo que la regla pedía. La comprobación completa —los seis
+		// endpoints, y también contra un empleado— está en `routes/payroll.test.ts`;
+		// aquí se queda la de esta spec: quien justifica no toca nómina.
 		for (const path of [
 			"/api/payroll/adjustments",
 			"/api/payroll/salaries",
 			"/api/payroll/summary",
 		]) {
-			expect((await request(path, { as: head })).status).toBe(404);
+			expect((await request(path, { as: head })).status).toBe(403);
 		}
 	});
 });

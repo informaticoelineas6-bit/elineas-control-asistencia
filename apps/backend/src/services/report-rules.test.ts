@@ -10,7 +10,7 @@ import {
 	toValueMatrix,
 } from "@elineas/validations";
 import { readXlsx } from "hucre/xlsx";
-import { reportToXlsx } from "#/services/report-xlsx.ts";
+import { reportToXlsx } from "#/services/xlsx.ts";
 import { periodRange } from "#/services/reports.ts";
 
 /**
