@@ -782,3 +782,76 @@ export const restGroupMembersRelations = relations(
 		}),
 	}),
 );
+
+/**
+ * Spec 11 §3. Solicitudes de vacaciones, con el saldo resuelto en
+ * `services/vacations.ts` a partir del historial de marcas — no hay columna de
+ * saldo aquí, para no tener dos verdades sobre cuánto le queda a alguien.
+ *
+ * Tres campos no están en la §3 de la spec y se añaden por criterio, todos por
+ * el mismo motivo que llevó a añadir columnas parecidas en `attendanceMarks`:
+ * **una cancelación es un hecho fechado, no una fila que desaparece**.
+ *
+ * - `cancelled_by` / `cancelled_at`: quién canceló y cuándo (RN-11.10), que es
+ *   una acción distinta de `reviewed_by`/`reviewed_at` — cancelar no es revisar,
+ *   y una solicitud cancelada por su propio dueño no debe parecer revisada por
+ *   nadie.
+ *
+ * Ni `reviewed_by` ni `cancelled_by` llevan clave ajena, por el mismo motivo que
+ * `deactivated_by` en `profiles` (RN-02.8): si ese perfil se borra, el rastro de
+ * quién decidió qué no debe desaparecer con él.
+ */
+export const vacationRequests = pgTable(
+	"vacation_requests",
+	{
+		id: uuid().primaryKey().defaultRandom(),
+		userId: uuid("user_id")
+			.notNull()
+			.references(() => profiles.id, { onDelete: "cascade" }),
+		startDate: date("start_date").notNull(),
+		endDate: date("end_date").notNull(),
+		/**
+		 * Congelado al crear (RN-11.13): un cambio posterior en el calendario o los
+		 * descansos de la persona no debe recalcular hacia atrás cuánto costó una
+		 * solicitud ya aprobada — es el mismo principio de `attendanceMarks.isLate`,
+		 * que guarda la tardanza de entonces y no la que resultaría de las reglas
+		 * de hoy.
+		 */
+		requestedDays: integer("requested_days").notNull(),
+		status: text().notNull().default("pending"),
+		reviewComment: text("review_comment"),
+		reviewedBy: uuid("reviewed_by"),
+		reviewedAt: timestamp("reviewed_at", { withTimezone: true }),
+		cancelledBy: uuid("cancelled_by"),
+		cancelledAt: timestamp("cancelled_at", { withTimezone: true }),
+		createdAt: timestamp("created_at", { withTimezone: true })
+			.notNull()
+			.defaultNow(),
+		updatedAt: timestamp("updated_at", { withTimezone: true })
+			.notNull()
+			.defaultNow(),
+	},
+	(table) => [
+		/**
+		 * RN-11.1/11.3/11.6: el saldo y el solapamiento se calculan por persona,
+		 * filtrando por `pending`/`approved`. Es la consulta que corre en cada
+		 * solicitud nueva, dentro de la transacción que la bloquea.
+		 */
+		index("vacation_requests_user_status_idx").on(table.userId, table.status),
+		/** La bandeja de un jefe: sus solicitudes pendientes, la más antigua primero. */
+		index("vacation_requests_status_created_idx").on(
+			table.status,
+			table.createdAt,
+		),
+	],
+);
+
+export const vacationRequestsRelations = relations(
+	vacationRequests,
+	({ one }) => ({
+		profile: one(profiles, {
+			fields: [vacationRequests.userId],
+			references: [profiles.id],
+		}),
+	}),
+);

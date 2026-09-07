@@ -71,6 +71,13 @@
       "when": 1788531785286,
       "tag": "0009_stiff_loners",
       "breakpoints": true
+    },
+    {
+      "idx": 10,
+      "version": "7",
+      "when": 1788539154653,
+      "tag": "0010_familiar_devos",
+      "breakpoints": true
     }
   ]
 }
