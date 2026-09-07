@@ -960,3 +960,152 @@ export const attendanceIncidentsRelations = relations(
 		}),
 	}),
 );
+
+/**
+ * Spec 13 §2. La decisión del jefe sobre un día ausente: justificada o no.
+ *
+ * **Una fila por (`user_id`, `date`)** (RN-13.2), y la escritura es un upsert:
+ * revisar de nuevo el mismo día sobrescribe la decisión y dispara la reversión o
+ * la creación del ajuste de nómina. No hay historial de decisiones en esta tabla
+ * porque el rastro está donde importa — la bitácora guarda el valor anterior
+ * (RN-13.8) y `payroll_adjustments` no borra nada (RN-17.4)—, así que apilar
+ * filas aquí sólo daría una tercera versión de la misma verdad.
+ *
+ * **No hay `is_justified` nulo ni estado "pendiente".** Una ausencia sin revisar
+ * es *la ausencia de una fila*, no una fila con un tercer valor: es lo que hace
+ * que RN-13.10 —sin decisión, ANJ en el reporte y **sin** descuento— se lea de
+ * un vistazo en vez de dependiendo de cómo se interprete un nulo.
+ */
+export const attendanceAbsenceReviews = pgTable(
+	"attendance_absence_reviews",
+	{
+		id: uuid().primaryKey().defaultRandom(),
+		userId: uuid("user_id")
+			.notNull()
+			.references(() => profiles.id, { onDelete: "cascade" }),
+		/** Día del calendario de pared, como en `work_calendar`. */
+		date: date().notNull(),
+		isJustified: boolean("is_justified").notNull(),
+		notes: text(),
+		/**
+		 * Sin clave ajena, por lo mismo que `reviewed_by` en `vacation_requests` y
+		 * `deactivated_by` en `profiles`: si ese perfil se borra, el rastro de quién
+		 * decidió mover dinero no debe desaparecer con él.
+		 */
+		reviewedBy: uuid("reviewed_by").notNull(),
+		reviewedAt: timestamp("reviewed_at", { withTimezone: true })
+			.notNull()
+			.defaultNow(),
+		createdAt: timestamp("created_at", { withTimezone: true })
+			.notNull()
+			.defaultNow(),
+		updatedAt: timestamp("updated_at", { withTimezone: true })
+			.notNull()
+			.defaultNow(),
+	},
+	(table) => [
+		/** RN-13.2 — Una decisión por día, en la base. Es el destino del upsert. */
+		unique("attendance_absence_reviews_user_date_key").on(
+			table.userId,
+			table.date,
+		),
+		/** La consulta del historial y de la superposición AJ/ANJ: el rango de una persona. */
+		index("attendance_absence_reviews_user_date_idx").on(
+			table.userId,
+			table.date,
+		),
+	],
+);
+
+export const attendanceAbsenceReviewsRelations = relations(
+	attendanceAbsenceReviews,
+	({ one }) => ({
+		profile: one(profiles, {
+			fields: [attendanceAbsenceReviews.userId],
+			references: [profiles.id],
+		}),
+	}),
+);
+
+/**
+ * Spec 17 §2. Ajustes económicos sobre el sueldo de una persona.
+ *
+ * ⚠️ **La spec 17 no está construida.** Esta tabla existe porque RN-13.4 la
+ * necesita: el descuento por ausencia injustificada nace **dentro** de la
+ * transacción de la revisión (RN-13.5), no en un módulo aparte que se llame
+ * después. Lo que falta de la 17 es su superficie de administración —ajustes
+ * manuales, edición de sueldos, `/payroll/*`, totales por periodo—, no su
+ * modelo: crear media tabla ahora y migrarla luego habría sido peor que
+ * declararla entera y dejar sin escribir lo que todavía no se usa.
+ *
+ * Tres decisiones de diseño que la §2 de esa spec deja al implementador:
+ *
+ * - **`amount` es `numeric` con signo** (negativo = descuento). Un campo de tipo
+ *   y otro de valor absoluto obligarían a recordar el signo en cada suma; con el
+ *   signo dentro, el total de un periodo es un `sum()`.
+ * - **`effective_period` es el día 1 del mes de la ausencia**, no de la fecha de
+ *   registro (spec 17 §7): un descuento por una ausencia de marzo registrado en
+ *   abril pertenece a marzo.
+ * - **`source_type`/`source_id` en vez de una clave ajena a
+ *   `attendance_absence_reviews`.** La 17 admite ajustes manuales, que no tienen
+ *   origen, y otros automáticos que vendrán de otras tablas; una FK a la
+ *   revisión ataría la tabla al único origen que existe hoy.
+ */
+export const payrollAdjustments = pgTable(
+	"payroll_adjustments",
+	{
+		id: uuid().primaryKey().defaultRandom(),
+		userId: uuid("user_id")
+			.notNull()
+			.references(() => profiles.id, { onDelete: "cascade" }),
+		/** Con signo. Misma precisión que `employee_compensation.monthly_salary`. */
+		amount: numeric({ precision: 12, scale: 2 }).notNull(),
+		/** El importe nunca viaja sin su moneda: se copia de la compensación de entonces. */
+		currency: text().notNull().default("CUP"),
+		category: text().notNull(),
+		description: text(),
+		status: text().notNull().default("active"),
+		sourceType: text("source_type"),
+		sourceId: uuid("source_id"),
+		/** Día 1 del mes al que se imputa (§7). */
+		effectivePeriod: date("effective_period").notNull(),
+		/** Nulo cuando lo crea el sistema y no una persona, como en la bitácora. */
+		createdBy: uuid("created_by"),
+		revertedBy: uuid("reverted_by"),
+		revertedAt: timestamp("reverted_at", { withTimezone: true }),
+		createdAt: timestamp("created_at", { withTimezone: true })
+			.notNull()
+			.defaultNow(),
+	},
+	(table) => [
+		/**
+		 * RN-17.5 — **Un mismo origen no puede tener dos ajustes activos**, y la spec
+		 * pide explícitamente que la restricción esté en la base y no sólo en el
+		 * código. Parcial porque los revertidos sí conviven: RN-13.4 dice que volver
+		 * a "injustificada" crea un ajuste **nuevo**, no resucita el anterior, así
+		 * que un origen acumula filas revertidas y como mucho una activa.
+		 *
+		 * Es además lo que hace idempotente la cadena de RN-13.4 bajo concurrencia:
+		 * dos revisiones simultáneas del mismo día no pueden crear dos descuentos.
+		 */
+		uniqueIndex("payroll_adjustments_active_source_idx")
+			.on(table.sourceType, table.sourceId)
+			.where(sql`status = 'active' and source_id is not null`),
+		/** El listado del periodo (spec 17 §6) y los totales por empleado. */
+		index("payroll_adjustments_period_idx").on(
+			table.effectivePeriod,
+			table.userId,
+		),
+		index("payroll_adjustments_user_status_idx").on(table.userId, table.status),
+	],
+);
+
+export const payrollAdjustmentsRelations = relations(
+	payrollAdjustments,
+	({ one }) => ({
+		profile: one(profiles, {
+			fields: [payrollAdjustments.userId],
+			references: [profiles.id],
+		}),
+	}),
+);
