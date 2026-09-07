@@ -3,6 +3,7 @@ import {
 	BadgeDollarSign,
 	BedDouble,
 	Building2,
+	CalendarCheck,
 	CalendarClock,
 	ClipboardList,
 	FileBarChart,
@@ -118,6 +119,17 @@ export const NAV_SECTIONS = [
 	{
 		label: "Gestión",
 		items: [
+			/*
+			 * Spec 15 §5.2 y §5.3, que son la misma vista: quien la abre ve su
+			 * ámbito. Va antes de *Mi equipo* porque el orden es el del trabajo —
+			 * primero se mira cómo va el día, luego se decide sobre lo pendiente.
+			 */
+			{
+				to: "/daily",
+				label: "Asistencia del día",
+				icon: CalendarCheck,
+				roles: HEAD_AND_UP,
+			},
 			{
 				to: "/team",
 				label: "Mi equipo",
