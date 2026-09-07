@@ -71,10 +71,25 @@ export const notificationTypeSchema = z.enum([
 	 * enteraba del descuento en la boleta. Es **un** tipo y no dos porque para
 	 * quien lo recibe es un solo hecho —"me clasificaron el día 3 y me
 	 * descontaron"—, y partirlo en dos avisos que llegan juntos sólo llena la
-	 * campana. Cuando la spec 17 traiga los ajustes **manuales**, que no nacen de
-	 * una ausencia, ésos sí necesitarán su propio tipo.
+	 * campana. Los ajustes **manuales** de la spec 17, que no nacen de una
+	 * ausencia, sí tienen el suyo: los dos de aquí abajo.
 	 */
 	"absence.reviewed",
+	/**
+	 * Un ajuste **manual** de nómina, aplicado o revertido (spec 17 RN-17.8 y
+	 * RN-17.10).
+	 *
+	 * Son tipos propios y no `absence.reviewed` porque no nacen de una
+	 * clasificación: nadie revisó nada, alguien decidió a mano descontar o
+	 * bonificar, y el aviso tiene que decir eso. Es la separación que la spec 14
+	 * dejaba anotada —"cuando la spec 17 traiga los ajustes manuales, ésos sí
+	 * necesitarán su propio tipo"— y ya no es una previsión.
+	 *
+	 * Sin `dedupeKey`: dos ajustes del mismo mes son dos hechos económicos
+	 * distintos, y agrupar el segundo escondería dinero.
+	 */
+	"payroll_adjustment.applied",
+	"payroll_adjustment.reverted",
 	/**
 	 * Tu reporte mensual terminó, bien o mal (spec 16 RN-16.6).
 	 *
