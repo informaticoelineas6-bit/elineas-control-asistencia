@@ -1,5 +1,6 @@
 import { z } from "zod";
 import { attendanceDaySchema, attendanceMarkSchema } from "./attendance.ts";
+import { payrollAdjustmentEffectSchema } from "./payroll.ts";
 import { isoDateSchema } from "./time.ts";
 
 /**
@@ -40,13 +41,10 @@ import { isoDateSchema } from "./time.ts";
  *    me dejó"— ya trae su prueba dentro (RN-12.2, el marcaje bloqueado con su
  *    motivo tipado).
  *
- * Y sigue **abierta a propósito la decisión 1**, la más importante de la spec:
- * si aprobar una incidencia debe justificar la ausencia de ese día y evitar el
- * descuento de nómina. No se puede cerrar todavía porque la justificación es de
- * la [spec 13](../../specs/13-justificacion-ausencias.md) y no existe: no hay
- * nada que enlazar. La costura queda preparada —la incidencia guarda su `date`,
- * su `user_id` y su estado— igual que la spec 09 dejó los descansos entrando por
- * un predicado antes de que la 10 existiera.
+ * Y la **decisión 1 quedó cerrada con la spec 13**, que era la que faltaba:
+ * **aprobar una incidencia no justifica la ausencia automáticamente, pero se
+ * puede hacer en el mismo acto** (`justifyAbsence`). El razonamiento está en
+ * `reviewIncidentInputSchema`.
  */
 
 /** §4. Los tres primeros son los "críticos" de RN-12.1. */
@@ -180,10 +178,42 @@ export const reviewIncidentInputSchema = z
 	.object({
 		approved: z.boolean(),
 		notes: z.string().trim().max(1000).optional(),
+		/**
+		 * **La decisión 1 de la §9, cerrada** — con la spec 13 construida ya se
+		 * puede: aprobar una incidencia **no** justifica la ausencia del día por sí
+		 * sola, pero quien revisa puede hacer las dos cosas en un mismo acto y en
+		 * una sola transacción.
+		 *
+		 * No es automático por dos razones, y la primera es dirimente:
+		 *
+		 * 1. **Cuatro de los cinco tipos no implican una ausencia.** Una tardanza y
+		 *    una salida temprana son días *presentes*; un problema de GPS o de
+		 *    geocerca puede acabar con la persona marcando más tarde. "Aprobar
+		 *    justifica el día" sería una regla correcta sólo para `forgot_to_mark` y
+		 *    silenciosamente equivocada en el resto.
+		 * 2. **Aprobar y justificar no dicen lo mismo.** Aprobar es "te creo que
+		 *    intentaste marcar"; justificar es "ese día no se te descuenta". Lo
+		 *    primero va sobre el registro, lo segundo mueve dinero (RN-13.4), y
+		 *    encadenarlas haría que un jefe pagara un día sin haber decidido
+		 *    pagarlo.
+		 *
+		 * Lo que **sí** era un defecto del legacy es que el jefe tuviera que
+		 * acordarse de la segunda acción y buscarla en otra pantalla (§2, "casi
+		 * seguro un defecto de producto"). La respuesta es ofrecerla donde ya está
+		 * mirando, no ejecutarla sin que la pida.
+		 *
+		 * Sólo tiene sentido al aprobar: rechazar una incidencia y justificar el día
+		 * a la vez es contradictorio.
+		 */
+		justifyAbsence: z.boolean().default(false),
 	})
 	.refine((input) => input.approved || !!input.notes, {
 		message: "Un rechazo necesita notas que expliquen el motivo.",
 		path: ["notes"],
+	})
+	.refine((input) => !input.justifyAbsence || input.approved, {
+		message: "No se puede justificar la ausencia de una incidencia rechazada.",
+		path: ["justifyAbsence"],
 	});
 
 export const incidentSchema = z.object({
@@ -217,6 +247,26 @@ export const incidentSchema = z.object({
  * `GET /users` — dos nombres para el mismo filtro es una de esas diferencias que
  * sólo se descubren depurando.
  */
+/**
+ * Lo que devuelve revisar una incidencia: la incidencia **y qué pasó con la
+ * ausencia de ese día**, si se pidió justificarla.
+ *
+ * `absence` es nulo cuando no se pidió y también cuando se pidió pero ese día no
+ * era una ausencia clasificable —al aprobar una tardanza no hay nada que
+ * justificar—. Distinguir los dos casos no le sirve a nadie: en los dos, lo
+ * correcto en pantalla es "la incidencia quedó aprobada y no se tocó ningún
+ * día".
+ */
+export const reviewIncidentResultSchema = z.object({
+	incident: incidentSchema,
+	absence: z
+		.object({
+			date: isoDateSchema,
+			payrollAdjustment: payrollAdjustmentEffectSchema,
+		})
+		.nullable(),
+});
+
 export const listIncidentsQuerySchema = z.object({
 	status: incidentStatusSchema.optional(),
 	scope: z.enum(["own", "managed"]).default("own"),
@@ -291,6 +341,7 @@ export type IncidentStatus = z.infer<typeof incidentStatusSchema>;
 export type AttendanceIncident = z.infer<typeof incidentSchema>;
 export type CreateIncidentInput = z.infer<typeof createIncidentInputSchema>;
 export type ReviewIncidentInput = z.infer<typeof reviewIncidentInputSchema>;
+export type ReviewIncidentResult = z.infer<typeof reviewIncidentResultSchema>;
 export type ListIncidentsQuery = z.infer<typeof listIncidentsQuerySchema>;
 export type PendingIncidentsCountQuery = z.infer<
 	typeof pendingIncidentsCountQuerySchema

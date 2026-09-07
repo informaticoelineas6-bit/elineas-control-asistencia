@@ -620,7 +620,15 @@ describe("RN-12.6 y RN-12.7 — la revisión", () => {
 		});
 		expect(res.status).toBe(200);
 
-		const reviewed = (await res.json()) as Incident;
+		// La respuesta trae la incidencia **y** el efecto sobre la ausencia del día
+		// (spec 12 §9 decisión 1, cerrada con la spec 13): nulo si no se pidió.
+		const body = (await res.json()) as {
+			incident: Incident;
+			absence: unknown | null;
+		};
+		expect(body.absence).toBeNull();
+
+		const reviewed = body.incident;
 		expect(reviewed.status).toBe("approved");
 		expect(reviewed.managerNotes).toContain("registro de la puerta");
 		expect(reviewed.reviewedBy).toBe(await profileIdOf(head));

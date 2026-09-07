@@ -8,6 +8,7 @@ import {
 	pendingIncidentsCountQuerySchema,
 	pendingIncidentsCountSchema,
 	reviewIncidentInputSchema,
+	reviewIncidentResultSchema,
 } from "@elineas/validations";
 import { z } from "zod";
 
@@ -66,6 +67,11 @@ export const incidentsSpec = {
 		method: "POST",
 		path: "/api/incidents/:id/review",
 		body: reviewIncidentInputSchema,
-		response: incidentSchema,
+		/**
+		 * Devuelve la incidencia **y** el efecto sobre la ausencia del día, si se
+		 * pidió justificarla en el mismo acto (spec 12 §9 decisión 1, cerrada con la
+		 * spec 13). Sin eso, quien acaba de mover dinero no tendría cómo saberlo.
+		 */
+		response: reviewIncidentResultSchema,
 	},
 } as const;

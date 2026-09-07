@@ -190,7 +190,29 @@ incidents.post(
 		requireManagementRole(getAuth(c));
 		await requireIncidentScope(c, id, { allowOwner: false });
 
+		const auth = getAuth(c);
 		const reviewed = await reviewIncident(id, c.req.valid("json"), actorOf(c));
-		return c.json(incidentsSpec.review.response.parse(reviewed));
+
+		// RN-17.1 / hallazgo H-3, igual que en `/absences`: el importe del descuento
+		// sólo viaja a un rol administrativo. Quien revisa aquí suele ser el jefe, y
+		// el importe es el sueldo dividido por el divisor.
+		const canSeeAmounts = roleAtLeast(auth.effectiveRole, "global_manager");
+		return c.json(
+			incidentsSpec.review.response.parse(
+				canSeeAmounts || !reviewed.absence
+					? reviewed
+					: {
+							...reviewed,
+							absence: {
+								...reviewed.absence,
+								payrollAdjustment: {
+									...reviewed.absence.payrollAdjustment,
+									amount: null,
+									currency: null,
+								},
+							},
+						},
+			),
+		);
 	},
 );

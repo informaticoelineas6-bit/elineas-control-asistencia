@@ -10,6 +10,7 @@ import {
 	incidentTypeSchema,
 	type ListIncidentsQuery,
 	type ReviewIncidentInput,
+	type ReviewIncidentResult,
 } from "@elineas/validations";
 import { and, desc, eq, getTableColumns, inArray, or, sql } from "drizzle-orm";
 import { HTTPException } from "hono/http-exception";
@@ -20,6 +21,10 @@ import {
 	departments,
 	profiles,
 } from "#/db/schema";
+import {
+	absenceTargetOf,
+	justifyAbsenceFromIncident,
+} from "#/services/absences.ts";
 import {
 	getDaysFor,
 	listBlockedMarksOfWorkDate,
@@ -38,13 +43,16 @@ import { todayForDepartment } from "#/services/schedules.ts";
  * **RN-12.9 — aprobar no corrige nada.** En este archivo no hay un solo
  * `insert` ni `update` sobre `attendance_marks`, y no es un olvido: el marcaje
  * es inmutable desde la aplicación (spec 09 RN-09.12) y la aprobación de una
- * incidencia es un acto documental. La [decisión 1 de la §9](../../../../packages/specs/12-incidencias.md)
- * —si aprobar debería además justificar la ausencia y evitar el descuento de
- * nómina— **sigue abierta**, y no se puede cerrar todavía porque la
- * justificación es de la spec 13 y no existe: no hay nada que enlazar. La
- * costura está lista, que es lo que se podía hacer hoy: la incidencia guarda su
- * `user_id`, su `date` y su estado, y `reviewIncident` es el único sitio por el
- * que pasa una aprobación.
+ * incidencia es un acto documental.
+ *
+ * **La [decisión 1 de la §9](../../../../packages/specs/12-incidencias.md) quedó
+ * cerrada con la spec 13**, que es la que faltaba: aprobar **no** justifica la
+ * ausencia por sí solo, pero `justifyAbsence` permite hacer las dos cosas en un
+ * mismo acto y en una sola transacción. El razonamiento está en
+ * `reviewIncidentInputSchema`; lo que aquí importa es que el efecto de nómina
+ * sigue viviendo en `services/payroll.ts` y entra por
+ * `justifyAbsenceFromIncident`, así que la barrera de RN-13.5 vale igual por
+ * esta puerta que por la de `/absences`.
  *
  * Las reglas que se pueden escribir sin base de datos —qué tipos exigen motivo
  * (RN-12.1), qué fechas se admiten (RN-12.3, RN-12.4) y la asimetría del
@@ -354,7 +362,7 @@ export async function reviewIncident(
 	id: string,
 	input: ReviewIncidentInput,
 	actor: Actor,
-): Promise<AttendanceIncident> {
+): Promise<ReviewIncidentResult> {
 	const { incident, reporter } = await requireIncident(id);
 
 	// RN-12.8 — Inmutable tras la revisión: no se reabre, se crea otra. El
@@ -409,8 +417,33 @@ export async function reviewIncident(
 			recordId: id,
 			oldData: { status: incident.status },
 			newData: { status: row.status, notes: row.managerNotes },
+			metadata: { justifyAbsence: input.justifyAbsence },
 			sourceIp: actor.sourceIp,
 		});
+
+		// La acción combinada de la §6 (spec 12), dentro de la **misma**
+		// transacción: si la justificación falla, la aprobación no queda hecha a
+		// medias con un descuento sin revertir.
+		//
+		// Las notas de la justificación se componen cuando el revisor no escribió
+		// ninguna: RN-13.6 exige un motivo al justificar, y aquí lo hay — la
+		// incidencia aprobada **es** el motivo. Dejarlo en nulo habría sido saltarse
+		// la regla por la puerta de al lado.
+		let absence: ReviewIncidentResult["absence"] = null;
+		if (input.justifyAbsence) {
+			const target = await absenceTargetOf(incident.userId);
+			const payrollAdjustment = await justifyAbsenceFromIncident(
+				tx,
+				target,
+				incident.date,
+				input.notes ??
+					`Justificada al aprobar la incidencia «${INCIDENT_TYPE_LABELS[toType(incident.incidentType)]}» del ${incident.date}.`,
+				actor,
+			);
+			if (payrollAdjustment) {
+				absence = { date: incident.date, payrollAdjustment };
+			}
+		}
 
 		// RN-12.10 — Al revisar, a quien la reportó. El cuerpo dice explícitamente
 		// que aprobarla no corrige el marcaje (RN-12.9): sin esa frase, "aprobada"
@@ -427,7 +460,7 @@ export async function reviewIncident(
 			actionUrl: "/incidents",
 		});
 
-		return toIncident(row, reporter);
+		return { incident: toIncident(row, reporter), absence };
 	});
 }
 
