@@ -78,6 +78,13 @@
       "when": 1788539154653,
       "tag": "0010_familiar_devos",
       "breakpoints": true
+    },
+    {
+      "idx": 11,
+      "version": "7",
+      "when": 1788790546142,
+      "tag": "0011_smart_misty_knight",
+      "breakpoints": true
     }
   ]
 }

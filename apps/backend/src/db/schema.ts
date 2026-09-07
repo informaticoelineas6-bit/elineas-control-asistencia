@@ -855,3 +855,108 @@ export const vacationRequestsRelations = relations(
 		}),
 	}),
 );
+
+/**
+ * Spec 12 §3. Incidencias de asistencia: lo que el empleado reporta sobre un
+ * problema con su marcaje, y la constancia de que alguien lo revisó.
+ *
+ * **Aprobar una incidencia no toca `attendance_marks`** (RN-12.9): esta tabla es
+ * el registro de un acto documental, no una corrección del historial. Es la otra
+ * cara de la nota de `attendance_marks`, que no admite `UPDATE` ni `DELETE`
+ * desde la aplicación (RN-09.12) — una corrección es una incidencia, no una
+ * edición.
+ *
+ * Dos campos no están en la §3:
+ *
+ * - `attendance_mark_id`, la **propuesta RN-12.2**: el marcaje bloqueado que
+ *   originó la incidencia. El legacy no lo enlazaba, así que el revisor tenía
+ *   que buscar a mano la evidencia de un "intenté marcar y no me dejó" que el
+ *   sistema ya tenía guardada (RN-09.8). Con `set null` al borrarse la marca: la
+ *   incidencia y su revisión siguen valiendo sin ella.
+ * - `updated_at`, que la §3 sí pide pero conviene decir para qué sirve: la
+ *   revisión es **irreversible** (RN-12.8), así que es la marca de cuándo se
+ *   cerró, no de la última de muchas ediciones.
+ *
+ * `reviewed_by` no lleva clave ajena, por el mismo motivo que en
+ * `vacation_requests`: si ese perfil se borra, el rastro de quién decidió qué no
+ * debe desaparecer con él.
+ */
+export const attendanceIncidents = pgTable(
+	"attendance_incidents",
+	{
+		id: uuid().primaryKey().defaultRandom(),
+		userId: uuid("user_id")
+			.notNull()
+			.references(() => profiles.id, { onDelete: "cascade" }),
+		/** Del vocabulario cerrado de la §4, en `@elineas/validations/incidents`. */
+		incidentType: text("incident_type").notNull(),
+		/**
+		 * El día al que se refiere. Tipo `date` y no `timestamptz` por lo mismo que
+		 * en `work_calendar`: es un día del calendario de pared, y convertirlo a
+		 * instante es lo que hace que se corra de día.
+		 */
+		date: date().notNull(),
+		/**
+		 * Vacío admitido: los tipos técnicos pueden enviarse sin texto (RN-12.1)
+		 * porque el sistema ya tiene la evidencia. Es `''` y no nulo para que no
+		 * haya dos formas de decir "sin motivo".
+		 */
+		reason: text().notNull().default(""),
+		status: text().notNull().default("pending"),
+		managerNotes: text("manager_notes"),
+		attendanceMarkId: uuid("attendance_mark_id").references(
+			() => attendanceMarks.id,
+			{ onDelete: "set null" },
+		),
+		reviewedBy: uuid("reviewed_by"),
+		reviewedAt: timestamp("reviewed_at", { withTimezone: true }),
+		createdAt: timestamp("created_at", { withTimezone: true })
+			.notNull()
+			.defaultNow(),
+		updatedAt: timestamp("updated_at", { withTimezone: true })
+			.notNull()
+			.defaultNow(),
+	},
+	(table) => [
+		/** Los dos índices que la §3 pide explícitamente, porque los necesita la bandeja. */
+		index("attendance_incidents_user_status_idx").on(
+			table.userId,
+			table.status,
+		),
+		index("attendance_incidents_date_idx").on(table.date),
+		/**
+		 * El orden de la bandeja (§6): pendientes primero, luego por fecha
+		 * descendente. El tercer índice de la §3 —"por departamento vía join"— no
+		 * se crea aquí: el departamento vive en `profiles`, que ya tiene el suyo, y
+		 * un índice sobre esta tabla no puede cubrir una columna de la otra.
+		 */
+		index("attendance_incidents_status_date_idx").on(
+			table.status,
+			table.date.desc(),
+		),
+		/**
+		 * RN-12.5 — Una por día y tipo mientras esté pendiente, **en la base**. Es
+		 * parcial a propósito: una vez revisada, la spec permite crear otra
+		 * (RN-12.8, "si hace falta, se crea otra"), así que la restricción sólo
+		 * puede alcanzar a las pendientes. Comprobarlo antes de insertar no ganaría
+		 * la carrera del doble envío, igual que en el antirrebote del marcaje.
+		 */
+		uniqueIndex("attendance_incidents_pending_unique_idx")
+			.on(table.userId, table.date, table.incidentType)
+			.where(sql`status = 'pending'`),
+	],
+);
+
+export const attendanceIncidentsRelations = relations(
+	attendanceIncidents,
+	({ one }) => ({
+		profile: one(profiles, {
+			fields: [attendanceIncidents.userId],
+			references: [profiles.id],
+		}),
+		mark: one(attendanceMarks, {
+			fields: [attendanceIncidents.attendanceMarkId],
+			references: [attendanceMarks.id],
+		}),
+	}),
+);
