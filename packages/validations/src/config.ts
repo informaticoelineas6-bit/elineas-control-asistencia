@@ -86,7 +86,22 @@ export const configValueSchemas = {
 	 */
 	vacation_days_per_worked_day: z.number().min(0).max(1),
 
-	// ── 3.5 Reportería ──────────────────────────────────────────────────────
+	// ── 3.5 Incidencias ─────────────────────────────────────────────────────
+	/**
+	 * Días hacia atrás dentro de los que se puede reportar una incidencia (spec
+	 * 12 RN-12.4). **0 desactiva el plazo**, y por eso es el default: es el
+	 * interruptor, igual que en `rest_days_min_separation`.
+	 *
+	 * La spec proponía 7 días. La cifra es una regla laboral —¿hasta cuándo se
+	 * admite un reclamo sobre un mes ya pagado?— y la pone el negocio; lo que
+	 * tenía que existir ya es el sitio donde ponerla. Sin plazo, alguien puede
+	 * reclamar un día de hace seis meses; con uno mal elegido, alguien de baja
+	 * médica pierde la vía formal de reportar. Ninguna de las dos la decide el
+	 * código.
+	 */
+	incident_report_window_days: z.number().int().min(0).max(365),
+
+	// ── 3.6 Reportería ──────────────────────────────────────────────────────
 	/** Si los `department_head` salen en el reporte global (spec 16 RN-16.2). */
 	include_heads_in_global_reports: z.boolean(),
 	report_slo_error_rate_pct: z.number().min(0).max(100),
@@ -94,7 +109,7 @@ export const configValueSchemas = {
 	/** Nulo = la exportación a Sheets está sin configurar (spec 16). */
 	google_sheets_report_spreadsheet_id: z.string().trim().min(1).nullable(),
 
-	// ── Ámbito ──────────────────────────────────────────────────────────────
+	// ── 3.7 Ámbito ──────────────────────────────────────────────────────────
 	/**
 	 * Departamento al que se fuerzan los perfiles con rol `global_manager`
 	 * (RN-03.6). Se guarda por **id**, no por nombre: el legacy lo resolvía por
@@ -126,6 +141,7 @@ export const CONFIG_DEFAULTS: AppConfigValues = {
 	rest_days_min_per_week: 0,
 	rest_days_max_per_week: 7,
 	vacation_days_per_worked_day: 0,
+	incident_report_window_days: 0,
 	include_heads_in_global_reports: true,
 	report_slo_error_rate_pct: 1,
 	report_slo_availability_pct: 99,
@@ -151,6 +167,13 @@ export const PUBLIC_CONFIG_KEYS = [
 	"attendance_checkout_mode",
 	"attendance_auto_checkout_time",
 	"attendance_geofence_exit_minutes",
+	/**
+	 * Spec 12 RN-12.4: el formulario de incidencias tiene que poder decir "esa
+	 * fecha ya quedó fuera de plazo" antes de enviar, con la misma cifra que
+	 * aplica el servidor (`incidentDateIssue`). Es exactamente para lo que existe
+	 * esta lista, y no revela nada: es un plazo, igual que la tolerancia.
+	 */
+	"incident_report_window_days",
 ] as const satisfies readonly ConfigKey[];
 
 export const publicConfigSchema = configSchema.pick(

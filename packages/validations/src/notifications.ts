@@ -52,6 +52,17 @@ export const notificationTypeSchema = z.enum([
 	"vacation.requested",
 	"vacation.reviewed",
 	"vacation.cancelled",
+	/**
+	 * Incidencias de asistencia (spec 12 RN-12.10). Dos momentos: al crear avisa
+	 * al jefe —con la misma limitación que las vacaciones, sólo alcanza a quien
+	 * gestiona el departamento como responsabilidad adicional (ver
+	 * `services/incidents.ts`)— y al revisar avisa a quien la reportó.
+	 *
+	 * Sin `dedupeKey`: cada incidencia es un hecho distinto aunque coincidan el
+	 * día y el tipo, y agrupar dos avisos escondería el segundo.
+	 */
+	"incident.reported",
+	"incident.reviewed",
 ]);
 
 export const notificationSchema = z.object({

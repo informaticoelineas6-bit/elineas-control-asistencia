@@ -49,6 +49,9 @@ export const auditActionSchema = z.enum([
 	"vacation.requested",
 	"vacation.reviewed",
 	"vacation.cancelled",
+	// Incidencias de asistencia (spec 12)
+	"incident.reported",
+	"incident.reviewed",
 ]);
 
 export type AuditAction = z.infer<typeof auditActionSchema>;
