@@ -8,6 +8,7 @@ export * from "./incidents.ts";
 export * from "./locations.ts";
 export * from "./notifications.ts";
 export * from "./path.ts";
+export * from "./reports.ts";
 export * from "./rest.ts";
 export * from "./schedules.ts";
 export * from "./users.ts";
