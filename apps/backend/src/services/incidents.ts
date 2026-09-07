@@ -32,6 +32,7 @@ import {
 import type { Actor } from "#/services/audit.ts";
 import { audit } from "#/services/audit.ts";
 import { getConfig } from "#/services/config.ts";
+import { refreshFactsForUser } from "#/services/daily-facts-store.ts";
 import { notify } from "#/services/notifications.ts";
 import { additionalHeadsOf } from "#/services/responsibilities.ts";
 import { todayForDepartment } from "#/services/schedules.ts";
@@ -382,86 +383,98 @@ export async function reviewIncident(
 		});
 	}
 
-	return db.transaction(async (tx) => {
-		const [row] = await tx
-			.update(attendanceIncidents)
-			.set({
-				status: input.approved ? "approved" : "rejected",
-				managerNotes: input.notes ?? null,
-				reviewedBy: actor.profileId,
-				reviewedAt: new Date(),
-				updatedAt: new Date(),
-			})
-			// El estado va en el `where` y no sólo en la comprobación de arriba: dos
-			// revisores simultáneos sobre la misma incidencia no pueden escribir los
-			// dos, y el segundo recibe el 409 en vez de sobrescribir el veredicto
-			// del primero.
-			.where(
-				and(
-					eq(attendanceIncidents.id, id),
-					eq(attendanceIncidents.status, "pending"),
-				),
-			)
-			.returning();
+	return db
+		.transaction(async (tx) => {
+			const [row] = await tx
+				.update(attendanceIncidents)
+				.set({
+					status: input.approved ? "approved" : "rejected",
+					managerNotes: input.notes ?? null,
+					reviewedBy: actor.profileId,
+					reviewedAt: new Date(),
+					updatedAt: new Date(),
+				})
+				// El estado va en el `where` y no sólo en la comprobación de arriba: dos
+				// revisores simultáneos sobre la misma incidencia no pueden escribir los
+				// dos, y el segundo recibe el 409 en vez de sobrescribir el veredicto
+				// del primero.
+				.where(
+					and(
+						eq(attendanceIncidents.id, id),
+						eq(attendanceIncidents.status, "pending"),
+					),
+				)
+				.returning();
 
-		if (!row) {
-			throw new HTTPException(409, {
-				message: "Esa incidencia ya fue revisada y no se reabre.",
-			});
-		}
-
-		await audit(tx, {
-			actorId: actor.profileId,
-			action: "incident.reviewed",
-			tableName: "attendance_incidents",
-			recordId: id,
-			oldData: { status: incident.status },
-			newData: { status: row.status, notes: row.managerNotes },
-			metadata: { justifyAbsence: input.justifyAbsence },
-			sourceIp: actor.sourceIp,
-		});
-
-		// La acción combinada de la §6 (spec 12), dentro de la **misma**
-		// transacción: si la justificación falla, la aprobación no queda hecha a
-		// medias con un descuento sin revertir.
-		//
-		// Las notas de la justificación se componen cuando el revisor no escribió
-		// ninguna: RN-13.6 exige un motivo al justificar, y aquí lo hay — la
-		// incidencia aprobada **es** el motivo. Dejarlo en nulo habría sido saltarse
-		// la regla por la puerta de al lado.
-		let absence: ReviewIncidentResult["absence"] = null;
-		if (input.justifyAbsence) {
-			const target = await absenceTargetOf(incident.userId);
-			const payrollAdjustment = await justifyAbsenceFromIncident(
-				tx,
-				target,
-				incident.date,
-				input.notes ??
-					`Justificada al aprobar la incidencia «${INCIDENT_TYPE_LABELS[toType(incident.incidentType)]}» del ${incident.date}.`,
-				actor,
-			);
-			if (payrollAdjustment) {
-				absence = { date: incident.date, payrollAdjustment };
+			if (!row) {
+				throw new HTTPException(409, {
+					message: "Esa incidencia ya fue revisada y no se reabre.",
+				});
 			}
-		}
 
-		// RN-12.10 — Al revisar, a quien la reportó. El cuerpo dice explícitamente
-		// que aprobarla no corrige el marcaje (RN-12.9): sin esa frase, "aprobada"
-		// se lee como "ya está arreglado" y la persona no vuelve a reclamar por
-		// algo que sigue igual en su historial.
-		await notify(tx, [incident.userId], {
-			type: "incident.reviewed",
-			title: input.approved
-				? "Tu incidencia fue aprobada"
-				: "Tu incidencia fue rechazada",
-			body: input.approved
-				? `${INCIDENT_TYPE_LABELS[toType(incident.incidentType)]} del ${incident.date}. Queda constancia; tu marcaje no cambia.`
-				: `${INCIDENT_TYPE_LABELS[toType(incident.incidentType)]} del ${incident.date}. Motivo: ${row.managerNotes ?? "sin notas"}.`,
-			actionUrl: "/incidents",
+			await audit(tx, {
+				actorId: actor.profileId,
+				action: "incident.reviewed",
+				tableName: "attendance_incidents",
+				recordId: id,
+				oldData: { status: incident.status },
+				newData: { status: row.status, notes: row.managerNotes },
+				metadata: { justifyAbsence: input.justifyAbsence },
+				sourceIp: actor.sourceIp,
+			});
+
+			// La acción combinada de la §6 (spec 12), dentro de la **misma**
+			// transacción: si la justificación falla, la aprobación no queda hecha a
+			// medias con un descuento sin revertir.
+			//
+			// Las notas de la justificación se componen cuando el revisor no escribió
+			// ninguna: RN-13.6 exige un motivo al justificar, y aquí lo hay — la
+			// incidencia aprobada **es** el motivo. Dejarlo en nulo habría sido saltarse
+			// la regla por la puerta de al lado.
+			let absence: ReviewIncidentResult["absence"] = null;
+			if (input.justifyAbsence) {
+				const target = await absenceTargetOf(incident.userId);
+				const payrollAdjustment = await justifyAbsenceFromIncident(
+					tx,
+					target,
+					incident.date,
+					input.notes ??
+						`Justificada al aprobar la incidencia «${INCIDENT_TYPE_LABELS[toType(incident.incidentType)]}» del ${incident.date}.`,
+					actor,
+				);
+				if (payrollAdjustment) {
+					absence = { date: incident.date, payrollAdjustment };
+				}
+			}
+
+			// RN-12.10 — Al revisar, a quien la reportó. El cuerpo dice explícitamente
+			// que aprobarla no corrige el marcaje (RN-12.9): sin esa frase, "aprobada"
+			// se lee como "ya está arreglado" y la persona no vuelve a reclamar por
+			// algo que sigue igual en su historial.
+			await notify(tx, [incident.userId], {
+				type: "incident.reviewed",
+				title: input.approved
+					? "Tu incidencia fue aprobada"
+					: "Tu incidencia fue rechazada",
+				body: input.approved
+					? `${INCIDENT_TYPE_LABELS[toType(incident.incidentType)]} del ${incident.date}. Queda constancia; tu marcaje no cambia.`
+					: `${INCIDENT_TYPE_LABELS[toType(incident.incidentType)]} del ${incident.date}. Motivo: ${row.managerNotes ?? "sin notas"}.`,
+				actionUrl: "/incidents",
+			});
+
+			return { incident: toIncident(row, reporter), absence };
+		})
+		.then(async (result) => {
+			// RN-16.11 — Si se justificó la ausencia, su hecho diario quedó obsoleto.
+			// Después de confirmar, por lo mismo que en `reviewAbsence`.
+			if (result.absence) {
+				await refreshFactsForUser(
+					{ id: incident.userId, departmentId: reporter.departmentId },
+					{ from: result.absence.date, to: result.absence.date },
+				);
+			}
+			return result;
 		});
-
-		return { incident: toIncident(row, reporter), absence };
-	});
 }
 
 // ── Listar y contar (§6, §7) ──────────────────────────────────────────────────

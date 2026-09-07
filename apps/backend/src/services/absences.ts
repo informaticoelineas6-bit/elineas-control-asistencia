@@ -19,6 +19,7 @@ import {
 	peopleInScope,
 	type ScopedProfile,
 } from "#/services/daily-facts.ts";
+import { refreshFactsForUser } from "#/services/daily-facts-store.ts";
 import { notify } from "#/services/notifications.ts";
 import {
 	createAbsenceDiscount,
@@ -262,89 +263,98 @@ export async function reviewAbsence(
 		});
 	}
 
-	return db.transaction(async (tx) => {
-		const previous = await currentReview(tx, target.id, date);
+	return db
+		.transaction(async (tx) => {
+			const previous = await currentReview(tx, target.id, date);
 
-		const [row] = await tx
-			.insert(attendanceAbsenceReviews)
-			.values({
-				userId: target.id,
-				date,
-				isJustified: input.isJustified,
-				notes: input.notes ?? null,
-				reviewedBy: actor.profileId,
-				reviewedAt: new Date(),
-			})
-			// RN-13.2 — Upsert: una decisión por día, y revisar de nuevo sobrescribe.
-			.onConflictDoUpdate({
-				target: [
-					attendanceAbsenceReviews.userId,
-					attendanceAbsenceReviews.date,
-				],
-				set: {
+			const [row] = await tx
+				.insert(attendanceAbsenceReviews)
+				.values({
+					userId: target.id,
+					date,
 					isJustified: input.isJustified,
 					notes: input.notes ?? null,
 					reviewedBy: actor.profileId,
 					reviewedAt: new Date(),
-					updatedAt: new Date(),
+				})
+				// RN-13.2 — Upsert: una decisión por día, y revisar de nuevo sobrescribe.
+				.onConflictDoUpdate({
+					target: [
+						attendanceAbsenceReviews.userId,
+						attendanceAbsenceReviews.date,
+					],
+					set: {
+						isJustified: input.isJustified,
+						notes: input.notes ?? null,
+						reviewedBy: actor.profileId,
+						reviewedAt: new Date(),
+						updatedAt: new Date(),
+					},
+				})
+				.returning();
+
+			if (!row) {
+				throw new HTTPException(500, {
+					message: "No se pudo guardar la clasificación.",
+				});
+			}
+
+			// RN-13.4 — El efecto de nómina, con privilegio que quien dispara esto no
+			// tiene (RN-13.5). Justificar revierte; no justificar crea. Las dos
+			// operaciones devuelven `unchanged` si no había nada que cambiar, que es lo
+			// que hace idempotente repetir la misma decisión.
+			const payrollAdjustment = input.isJustified
+				? await revertAbsenceDiscount(tx, { reviewId: row.id }, actor)
+				: await createAbsenceDiscount(
+						tx,
+						{ userId: target.id, date, reviewId: row.id },
+						actor,
+					);
+
+			// RN-13.8 — Con el valor anterior, que es lo que se querrá leer si alguien
+			// pregunta por qué cambió una clasificación.
+			await audit(tx, {
+				actorId: actor.profileId,
+				action: "absence.reviewed",
+				tableName: "attendance_absence_reviews",
+				recordId: row.id,
+				oldData: previous
+					? { isJustified: previous.isJustified, notes: previous.notes }
+					: null,
+				newData: { isJustified: row.isJustified, notes: row.notes },
+				metadata: {
+					userId: target.id,
+					date,
+					payrollEffect: payrollAdjustment.effect,
 				},
-			})
-			.returning();
-
-		if (!row) {
-			throw new HTTPException(500, {
-				message: "No se pudo guardar la clasificación.",
+				sourceIp: actor.sourceIp,
 			});
-		}
 
-		// RN-13.4 — El efecto de nómina, con privilegio que quien dispara esto no
-		// tiene (RN-13.5). Justificar revierte; no justificar crea. Las dos
-		// operaciones devuelven `unchanged` si no había nada que cambiar, que es lo
-		// que hace idempotente repetir la misma decisión.
-		const payrollAdjustment = input.isJustified
-			? await revertAbsenceDiscount(tx, { reviewId: row.id }, actor)
-			: await createAbsenceDiscount(
-					tx,
-					{ userId: target.id, date, reviewId: row.id },
-					actor,
-				);
+			// RN-13.7 y RN-17.10 — ⚠️ Los dos son huecos del legacy (punto 76): allí el
+			// empleado se enteraba del descuento en la boleta. El importe **sí** va en
+			// el cuerpo: es su propio sueldo, y es el dato que necesita para reclamar.
+			await notify(tx, [target.id], {
+				type: "absence.reviewed",
+				title: input.isJustified
+					? "Tu ausencia fue justificada"
+					: "Tu ausencia quedó como injustificada",
+				body: absenceNotificationBody(date, input, payrollAdjustment),
+				actionUrl: "/attendance",
+			});
 
-		// RN-13.8 — Con el valor anterior, que es lo que se querrá leer si alguien
-		// pregunta por qué cambió una clasificación.
-		await audit(tx, {
-			actorId: actor.profileId,
-			action: "absence.reviewed",
-			tableName: "attendance_absence_reviews",
-			recordId: row.id,
-			oldData: previous
-				? { isJustified: previous.isJustified, notes: previous.notes }
-				: null,
-			newData: { isJustified: row.isJustified, notes: row.notes },
-			metadata: {
-				userId: target.id,
-				date,
-				payrollEffect: payrollAdjustment.effect,
-			},
-			sourceIp: actor.sourceIp,
+			return {
+				review: toReview(row, target),
+				payrollAdjustment,
+			};
+		})
+		.then(async (result) => {
+			// RN-16.11 — El hecho diario de ese día queda obsoleto en cuanto cambia la
+			// clasificación: es literalmente el primer caso que nombra la regla. Se
+			// refresca **después** de confirmar la transacción, porque el recálculo lee
+			// con la conexión suelta y no vería lo que aún no se ha escrito.
+			await refreshFactsForUser(target, { from: date, to: date });
+			return result;
 		});
-
-		// RN-13.7 y RN-17.10 — ⚠️ Los dos son huecos del legacy (punto 76): allí el
-		// empleado se enteraba del descuento en la boleta. El importe **sí** va en
-		// el cuerpo: es su propio sueldo, y es el dato que necesita para reclamar.
-		await notify(tx, [target.id], {
-			type: "absence.reviewed",
-			title: input.isJustified
-				? "Tu ausencia fue justificada"
-				: "Tu ausencia quedó como injustificada",
-			body: absenceNotificationBody(date, input, payrollAdjustment),
-			actionUrl: "/attendance",
-		});
-
-		return {
-			review: toReview(row, target),
-			payrollAdjustment,
-		};
-	});
 }
 
 async function currentReview(
@@ -468,6 +478,10 @@ export async function justifyAbsenceFromIncident(
 		actionUrl: "/attendance",
 	});
 
+	// El refresco del hecho diario (RN-16.11) **no** va aquí: esto corre dentro de
+	// la transacción de la incidencia y el recálculo lee con la conexión suelta,
+	// así que no vería la revisión que se acaba de escribir. Lo hace
+	// `reviewIncident` al confirmar.
 	return payrollAdjustment;
 }
 
