@@ -34,4 +34,33 @@ export const config = {
 	 */
 	rolesStaleGraceMs: Number(process.env.ROLES_STALE_GRACE_MS ?? 60 * 60 * 1000),
 	isProduction: process.env.NODE_ENV === "production",
+	/**
+	 * Dónde viven los artefactos de la reportería (spec 16 RN-16.5).
+	 *
+	 * "Almacenamiento privado" significa exactamente eso: un directorio que el
+	 * servidor no publica. En el legacy era un bucket de Supabase, que con la
+	 * spec 00 ya no existe; aquí es un volumen del contenedor, y la descarga pasa
+	 * siempre por un endpoint que comprueba ámbito y firma.
+	 */
+	reportsDir: process.env.REPORTS_DIR ?? "./data/reports",
+	/**
+	 * Con qué se firman los enlaces de descarga (RN-16.5: temporal y no
+	 * adivinable).
+	 *
+	 * Sin la variable se usa un secreto **aleatorio por proceso**: los enlaces
+	 * siguen siendo seguros, sólo dejan de valer al reiniciar. Eso es preferible
+	 * a un valor por defecto compartido, que sería un secreto conocido. En
+	 * producción conviene fijarla para que un despliegue no invalide los enlaces
+	 * que alguien acaba de recibir.
+	 */
+	reportDownloadSecret:
+		process.env.REPORT_DOWNLOAD_SECRET ?? crypto.randomUUID(),
+	/**
+	 * RN-16.8 — Una corrida `running` que pase de aquí se marca `failed`. Sin
+	 * esto, una colgada bloquea RN-16.7 para siempre: no se podría volver a
+	 * encolar ese reporte nunca.
+	 */
+	reportRunTimeoutMs: Number(
+		process.env.REPORT_RUN_TIMEOUT_MS ?? 15 * 60 * 1000,
+	),
 } as const;

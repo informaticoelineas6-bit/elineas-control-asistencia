@@ -12,6 +12,7 @@ import { incidents } from "#/routes/incidents.ts";
 import { locations } from "#/routes/locations.ts";
 import { me } from "#/routes/me";
 import { notifications } from "#/routes/notifications.ts";
+import { attendanceFacts, reports } from "#/routes/reports.ts";
 import { departmentRest, restGroupsRouter } from "#/routes/rest.ts";
 import { schedules } from "#/routes/schedules.ts";
 import { users } from "#/routes/users.ts";
@@ -58,10 +59,15 @@ export function createApp() {
 	// departamento. Los paths no se solapan y cada dominio conserva su servicio.
 	app.route("/api/departments", departmentRest);
 	app.route("/api/work-locations", locations);
+	// **Antes** que `/api/attendance`: los dos prefijos se solapan, y el router
+	// más específico tiene que poder atender lo suyo antes de que el general
+	// responda 404 por no conocer esa ruta.
+	app.route("/api/attendance/facts", attendanceFacts);
 	app.route("/api/attendance", attendance);
 	app.route("/api/incidents", incidents);
 	app.route("/api/absences", absences);
 	app.route("/api/dashboard", dashboard);
+	app.route("/api/reports", reports);
 	app.route("/api/notifications", notifications);
 	app.route("/api/rest-groups", restGroupsRouter);
 	app.route("/api/config", configRoutes);
