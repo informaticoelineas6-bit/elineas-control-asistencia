@@ -1,4 +1,8 @@
-import type { AttendanceDayStatus, MarkType } from "@elineas/validations";
+import type {
+	AbsenceOverlay,
+	AttendanceDayStatus,
+	MarkType,
+} from "@elineas/validations";
 
 /**
  * **Estado de un día para una persona** (spec 15 §2 y §3, adelantado aquí).
@@ -8,8 +12,8 @@ import type { AttendanceDayStatus, MarkType } from "@elineas/validations";
  * está construida, así que aquí va **su función pura**, no una copia paralela: el
  * aviso de la 15 es explícito — en el legacy esta lógica estaba duplicada entre un
  * hook de frontend, una función SQL y una edge function, y **no hay que repetir
- * eso**. Cuando llegue la 15, esta función crece (AJ/ANJ, materialización); no se
- * reescribe en otro sitio.
+ * eso**. Cuando llegue la 15, esta función crece (materialización); no se
+ * reescribe en otro sitio — y ya creció una vez, con `AJ`/`ANJ` de la spec 13.
  *
  * Dos cosas que la 15 deja abiertas y aquí hubo que resolver para poder pintar algo:
  *
@@ -29,6 +33,12 @@ import type { AttendanceDayStatus, MarkType } from "@elineas/validations";
  * antes que el calendario y los descansos (RN-09.4/09.5). Y **no consume saldo**
  * — eso lo decide `countWorkableDays` (spec 11 §9 decisión 2) mirando el mismo
  * día desde el otro lado: si no iba a trabajar, no le costó nada.
+ *
+ * **`AJ`/`ANJ` (spec 13) es una superposición, no un estado.** Sale en `absence`
+ * y sólo cuando el día ya es `AUSENTE` y está cerrado: llamar ANJ a alguien a
+ * media mañana sería clasificar una ausencia que todavía no ha ocurrido. Sin
+ * fila de revisión el código es `ANJ` con `reviewed: false` (RN-13.10), que en el
+ * reporte se ve igual y en la nómina no — sólo la decisión explícita descuenta.
  */
 
 export type DailyMark = {
@@ -55,6 +65,13 @@ export type DailyContext = {
 	 * alguien a media mañana.
 	 */
 	isOpen?: boolean;
+	/**
+	 * La decisión de la spec 13 sobre este día, si existe. `undefined` o `null`
+	 * significan "nadie la revisó", que **no** es lo mismo que "está
+	 * injustificada": las dos salen `ANJ` (RN-13.10) y sólo la primera no
+	 * descuenta.
+	 */
+	absenceReview?: { isJustified: boolean; notes: string | null } | null;
 };
 
 export type DailyFact = {
@@ -67,6 +84,7 @@ export type DailyFact = {
 	isLate: boolean;
 	lateMinutes: number;
 	pending: boolean;
+	absence: AbsenceOverlay | null;
 };
 
 export function computeDailyStatus(context: DailyContext): DailyFact {
@@ -111,6 +129,9 @@ export function computeDailyStatus(context: DailyContext): DailyFact {
 		return "AUSENTE";
 	})();
 
+	const pending =
+		marks.length === 0 && status === "AUSENTE" && (context.isOpen ?? false);
+
 	return {
 		date: context.date,
 		status,
@@ -121,7 +142,30 @@ export function computeDailyStatus(context: DailyContext): DailyFact {
 		incomplete,
 		isLate: !!late,
 		lateMinutes: late?.lateMinutes ?? 0,
-		pending:
-			marks.length === 0 && status === "AUSENTE" && (context.isOpen ?? false),
+		pending,
+		absence: absenceOverlayFor(status, pending, context.absenceReview),
+	};
+}
+
+/**
+ * RN-13.1 y RN-13.10 en una función: **sólo un día ausente y cerrado lleva
+ * código**, y sin revisión el código es `ANJ`.
+ *
+ * Que devuelva `null` en todo lo demás es lo que hace que RN-13.1 —"no tiene
+ * sentido justificar un día presente, de descanso, no laborable o de
+ * vacaciones"— se pueda comprobar en el servidor mirando un solo campo, en vez
+ * de repitiendo la lista de estados excluidos en cada sitio que lo necesite.
+ */
+function absenceOverlayFor(
+	status: AttendanceDayStatus,
+	pending: boolean,
+	review: DailyContext["absenceReview"],
+): AbsenceOverlay | null {
+	if (status !== "AUSENTE" || pending) return null;
+	if (!review) return { code: "ANJ", reviewed: false, notes: null };
+	return {
+		code: review.isJustified ? "AJ" : "ANJ",
+		reviewed: true,
+		notes: review.notes,
 	};
 }

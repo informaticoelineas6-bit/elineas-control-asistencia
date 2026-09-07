@@ -142,6 +142,73 @@ describe("estados (spec 15 §2)", () => {
 	});
 });
 
+describe("superposición AJ/ANJ (spec 13, RN-13.1 y RN-13.10)", () => {
+	test("un día ausente sin revisar es ANJ, y consta que nadie lo revisó", () => {
+		const day = computeDailyStatus(context());
+		expect(day.status).toBe("AUSENTE");
+		expect(day.absence).toEqual({ code: "ANJ", reviewed: false, notes: null });
+	});
+
+	test("revisado como justificado sale AJ, con sus notas", () => {
+		const day = computeDailyStatus(
+			context({
+				absenceReview: { isJustified: true, notes: "Certificado médico" },
+			}),
+		);
+		expect(day.absence).toEqual({
+			code: "AJ",
+			reviewed: true,
+			notes: "Certificado médico",
+		});
+	});
+
+	test("revisado como injustificado sale ANJ, pero revisado", () => {
+		// Es la distinción que RN-13.10 necesita: en el reporte se ven igual, y en
+		// la nómina no — sólo la decisión explícita descuenta.
+		const day = computeDailyStatus(
+			context({ absenceReview: { isJustified: false, notes: null } }),
+		);
+		expect(day.absence).toEqual({ code: "ANJ", reviewed: true, notes: null });
+	});
+
+	test("una jornada que aún puede completarse no se clasifica", () => {
+		const day = computeDailyStatus(context({ isOpen: true }));
+		expect(day.pending).toBe(true);
+		expect(day.absence).toBeNull();
+	});
+
+	test("ningún otro estado lleva superposición (RN-13.1)", () => {
+		// La lista de la regla, entera: presente, descanso, no laborable y
+		// vacaciones. Que esta función devuelva `null` en los cuatro es lo que
+		// permite comprobar RN-13.1 en el servidor mirando un solo campo.
+		expect(
+			computeDailyStatus(context({ marks: [mark("IN", "08:00")] })).absence,
+		).toBeNull();
+		expect(computeDailyStatus(context({ isRestDay: true })).absence).toBeNull();
+		expect(
+			computeDailyStatus(context({ isWorkday: false })).absence,
+		).toBeNull();
+		expect(
+			computeDailyStatus(context({ onVacation: true })).absence,
+		).toBeNull();
+	});
+
+	test("una revisión sobre un día que dejó de ser ausente se ignora", () => {
+		// Puede pasar: alguien justifica el día 3 y luego se importa un marcaje
+		// histórico de ese día (RN-15.2). El día pasa a PRESENTE y la fila de
+		// revisión queda huérfana; enseñar "AJ" sobre un día presente sería peor
+		// que ignorarla.
+		const day = computeDailyStatus(
+			context({
+				marks: [mark("IN", "08:00")],
+				absenceReview: { isJustified: true, notes: "Certificado" },
+			}),
+		);
+		expect(day.status).toBe("PRESENTE");
+		expect(day.absence).toBeNull();
+	});
+});
+
 describe("datos derivados (spec 15 §3)", () => {
 	test("jornada sin salida: incompleta y sin minutos inventados (RN-15.3)", () => {
 		const fact = computeDailyStatus(context({ marks: [mark("IN", "07:50")] }));
