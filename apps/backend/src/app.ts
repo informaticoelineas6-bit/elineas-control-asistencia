@@ -12,6 +12,7 @@ import { notifications } from "#/routes/notifications.ts";
 import { departmentRest, restGroupsRouter } from "#/routes/rest.ts";
 import { schedules } from "#/routes/schedules.ts";
 import { users } from "#/routes/users.ts";
+import { vacations } from "#/routes/vacations.ts";
 
 /**
  * Construye la aplicación con todas sus rutas.
@@ -59,6 +60,7 @@ export function createApp() {
 	app.route("/api/rest-groups", restGroupsRouter);
 	app.route("/api/config", configRoutes);
 	app.route("/api/users", users);
+	app.route("/api/vacations", vacations);
 
 	app.get("/api/health", (c) => c.json({ status: "ok" }));
 

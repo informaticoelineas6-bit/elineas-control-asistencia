@@ -4,6 +4,7 @@ import {
 	restSpec,
 	schedulesSpec,
 	usersSpec,
+	vacationsSpec,
 } from "@elineas/contracts";
 import {
 	devicePositionSchema,
@@ -29,6 +30,7 @@ import {
 } from "#/services/rest-schedules.ts";
 import { getMySchedule } from "#/services/schedules.ts";
 import { getOwnProfile, updateOwnProfile } from "#/services/users.ts";
+import { getBalance } from "#/services/vacations.ts";
 
 export const me = new Hono();
 
@@ -139,6 +141,20 @@ me.put(
 		return c.json(restSpec.updateMine.response.parse(view));
 	},
 );
+
+/**
+ * `GET /api/me/vacations/balance` (spec 11 §6): el saldo propio, ganado /
+ * usado / pendiente / disponible (§2). Sin parámetro de usuario, como todo
+ * `/me`. Se devuelve igual aunque el rol no marque —normalmente será cero—: el
+ * frontend decide si ofrece el formulario de solicitud con su propio
+ * `roleCanMark(session.effectiveRole)`, sin que este endpoint tenga que
+ * repetirlo.
+ */
+me.get("/vacations/balance", async (c) => {
+	const auth = getAuth(c);
+	const balance = await getBalance(auth.profile);
+	return c.json(vacationsSpec.balance.response.parse(balance));
+});
 
 /**
  * `GET`/`PUT /api/me/work-location` (spec 08 §7): la sede contra la que se validan

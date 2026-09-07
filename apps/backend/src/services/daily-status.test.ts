@@ -36,6 +36,7 @@ function context(overrides: Partial<DailyContext> = {}): DailyContext {
 		date: "2026-08-19",
 		marks: [],
 		isWorkday: true,
+		onVacation: false,
 		isRestDay: false,
 		...overrides,
 	};
@@ -103,6 +104,36 @@ describe("estados (spec 15 §2)", () => {
 			context({
 				isWorkday: false,
 				isRestDay: true,
+				marks: [mark("IN", "07:50"), mark("OUT", "12:00")],
+			}),
+		);
+
+		expect(fact.status).toBe("PRESENTE");
+	});
+
+	test("VACACIONES: solicitud aprobada y vigente (spec 11 RN-11.12)", () => {
+		expect(computeDailyStatus(context({ onVacation: true })).status).toBe(
+			"VACACIONES",
+		);
+	});
+
+	test("VACACIONES gana sobre DESCANSO (RN-15.1): no consume, pero se presenta así", () => {
+		expect(
+			computeDailyStatus(context({ onVacation: true, isRestDay: true })).status,
+		).toBe("VACACIONES");
+	});
+
+	test("NO_LABORABLE gana sobre VACACIONES (RN-15.1)", () => {
+		expect(
+			computeDailyStatus(context({ onVacation: true, isWorkday: false }))
+				.status,
+		).toBe("NO_LABORABLE");
+	});
+
+	test("con marcas, la presencia gana también sobre vacaciones (RN-15.2)", () => {
+		const fact = computeDailyStatus(
+			context({
+				onVacation: true,
 				marks: [mark("IN", "07:50"), mark("OUT", "12:00")],
 			}),
 		);

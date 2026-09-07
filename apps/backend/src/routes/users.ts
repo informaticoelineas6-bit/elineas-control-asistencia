@@ -1,4 +1,4 @@
-import { restSpec, usersSpec } from "@elineas/contracts";
+import { restSpec, usersSpec, vacationsSpec } from "@elineas/contracts";
 import {
 	deactivateUserInputSchema,
 	listUsersQuerySchema,
@@ -41,6 +41,7 @@ import {
 	setCompensation,
 	updateUser,
 } from "#/services/users.ts";
+import { getBalance } from "#/services/vacations.ts";
 
 /**
  * Usuarios y perfiles (spec 02 §7). Montado en `/api/users`.
@@ -288,5 +289,22 @@ users.put(
 			role: getAuth(c).effectiveRole,
 		});
 		return c.json(restSpec.updateOfUser.response.parse(view));
+	},
+);
+
+/**
+ * Saldo de vacaciones de otra persona (spec 11 §6): mismo ámbito que el resto
+ * de "lo de otra persona" en este router.
+ */
+users.get(
+	"/:id/vacations/balance",
+	requireRole("department_head"),
+	validate("param", idParam),
+	async (c) => {
+		const { id } = c.req.valid("param");
+		const target = await requireManageable(c, id);
+
+		const balance = await getBalance(target);
+		return c.json(vacationsSpec.balanceOfUser.response.parse(balance));
 	},
 );

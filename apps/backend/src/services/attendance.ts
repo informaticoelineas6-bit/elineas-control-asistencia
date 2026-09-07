@@ -34,6 +34,10 @@ import {
 	validateMarkTime,
 } from "#/services/schedule-rules.ts";
 import { getCalendar, getSchedule } from "#/services/schedules.ts";
+import {
+	isOnVacationToday,
+	vacationDayResolverFor,
+} from "#/services/vacations.ts";
 
 /**
  * Marcaje de asistencia (spec 09).
@@ -137,6 +141,15 @@ type LoadedContext = {
 	 * de tiempo— y conectarla es literalmente pasar este argumento.
 	 */
 	isRestDay: (workDate: string) => boolean;
+	/**
+	 * Spec 11 RN-09.2: ¿tiene una solicitud aprobada que cubre **hoy**? Es la
+	 * otra costura que la spec 09 dejó preparada, y la única de las dos que se
+	 * resuelve para "hoy" y no para el día laboral: RN-09.2 se comprueba **antes**
+	 * de que `validateMarkTime` resuelva a qué jornada pertenece la marca (spec
+	 * 09 §3, es el segundo paso del orden exacto), así que todavía no hay un
+	 * `workDate` contra el que preguntar.
+	 */
+	onVacation: boolean;
 };
 
 /**
@@ -188,6 +201,7 @@ async function loadContext(
 	const activeLocations = await listWorkLocations({ includeInactive: false });
 
 	const isRestDay = await restDayResolverFor(profile);
+	const onVacation = await isOnVacationToday(profile.id, localDate);
 
 	const recentRows = await db
 		.select({
@@ -241,6 +255,7 @@ async function loadContext(
 			workDate: row.workDate,
 		})),
 		isRestDay,
+		onVacation,
 	};
 }
 
@@ -283,9 +298,9 @@ export async function createMark(
 		// Los descansos ya están conectados (spec 10 RN-10.4): un intento en día de
 		// descanso se rechaza con `REST_DAY` y queda registrado como los demás.
 		isRestDay: context.isRestDay,
-		// Las vacaciones (spec 11) siguen siendo una costura: mientras no exista su
-		// tabla, nadie está de vacaciones.
-		onVacation: undefined,
+		// Y las vacaciones también (spec 11 RN-09.2): con una solicitud aprobada
+		// vigente hoy, se rechaza con `ON_VACATION` antes de mirar nada más.
+		onVacation: context.onVacation,
 		globalToleranceMinutes: context.globalToleranceMinutes,
 		requestedLocationId: input.workLocationId,
 		selectedLocation: context.selectedLocation,
@@ -463,22 +478,39 @@ export async function getStatus(
 
 	const applicable = nextMarkType === "OUT" ? outVerdict : inVerdict;
 
-	const canCheckIn = canMark && inVerdict.allowed && last?.markType !== "IN";
-	const canCheckOut = canMark && outVerdict.allowed && last?.markType === "IN";
+	// RN-09.2: las vacaciones se comprueban **antes** que la ventana horaria
+	// (spec 09 §3, es el segundo paso del orden exacto), así que aquí se aplican
+	// como un gate más externo que `inVerdict`/`outVerdict` — igual que `canMark`,
+	// que tampoco pasa por `validateMarkTime`. `validateMarkTime` es de la spec 07
+	// y no conoce vacaciones; meterlo ahí sería una capa que no le corresponde.
+	const canCheckIn =
+		canMark &&
+		!context.onVacation &&
+		inVerdict.allowed &&
+		last?.markType !== "IN";
+	const canCheckOut =
+		canMark &&
+		!context.onVacation &&
+		outVerdict.allowed &&
+		last?.markType === "IN";
 
 	const reason: MarkRejectionReason | null = !canMark
 		? "ROLE_CANNOT_MARK"
-		: canCheckIn || canCheckOut
-			? null
-			: (applicable.reason ?? null);
+		: context.onVacation
+			? "ON_VACATION"
+			: canCheckIn || canCheckOut
+				? null
+				: (applicable.reason ?? null);
 
 	const message = !canMark
 		? MARK_REJECTION_MESSAGES.ROLE_CANNOT_MARK
-		: canCheckIn
-			? "Puedes registrar tu entrada."
-			: canCheckOut
-				? "Puedes registrar tu salida."
-				: (applicable.message ?? "Ahora mismo no puedes marcar.");
+		: context.onVacation
+			? MARK_REJECTION_MESSAGES.ON_VACATION
+			: canCheckIn
+				? "Puedes registrar tu entrada."
+				: canCheckOut
+					? "Puedes registrar tu salida."
+					: (applicable.message ?? "Ahora mismo no puedes marcar.");
 
 	return {
 		workDate,
@@ -521,6 +553,10 @@ export async function getMyDays(
 	// puede atravesar un cambio de descansos, y un único conjunto de días para todo
 	// el rango daría el mismo estado al día 1 y al 30.
 	const isRestDay = await restDayResolverFor(profile);
+	// Igual con las vacaciones (spec 11): una sola solicitud aprobada puede cubrir
+	// parte del rango, y el predicado se resuelve fecha a fecha por el mismo
+	// motivo que el de descansos.
+	const onVacation = await vacationDayResolverFor(profile);
 
 	const marks = await selectMarks(
 		and(
@@ -554,6 +590,11 @@ export async function getMyDays(
 				}),
 			),
 			isWorkday: calendarByDate.get(date)?.isWorkday ?? true,
+			// Spec 11 RN-15.1: las vacaciones ganan sobre el descanso en la
+			// precedencia de presentación, y por eso van antes en el objeto — el
+			// orden aquí no cambia el resultado, pero se lee igual que
+			// `computeDailyStatus`.
+			onVacation: onVacation(date),
 			// Spec 10 RN-10.4: un día de descanso clasifica `DESCANSO`, nunca
 			// `AUSENTE`.
 			isRestDay: isRestDay(date),

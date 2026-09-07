@@ -8,19 +8,27 @@ import type { AttendanceDayStatus, MarkType } from "@elineas/validations";
  * está construida, así que aquí va **su función pura**, no una copia paralela: el
  * aviso de la 15 es explícito — en el legacy esta lógica estaba duplicada entre un
  * hook de frontend, una función SQL y una edge function, y **no hay que repetir
- * eso**. Cuando llegue la 15, esta función crece (vacaciones, AJ/ANJ,
- * materialización); no se reescribe en otro sitio.
+ * eso**. Cuando llegue la 15, esta función crece (AJ/ANJ, materialización); no se
+ * reescribe en otro sitio.
  *
  * Dos cosas que la 15 deja abiertas y aquí hubo que resolver para poder pintar algo:
  *
- * - **Un día con marcas gana sobre `NO_LABORABLE` y `DESCANSO`** (RN-15.2, que la
- *   spec marca como "confirmar"). Con el marcaje rechazado en origen esto sólo pasa
- *   por importación histórica, y esconder trabajo que existió es peor que contradecir
- *   la precedencia de presentación.
+ * - **Un día con marcas gana sobre `NO_LABORABLE`, `VACACIONES` y `DESCANSO`**
+ *   (RN-15.2, que la spec marca como "confirmar"). Con el marcaje rechazado en
+ *   origen esto sólo pasa por importación histórica, y esconder trabajo que
+ *   existió es peor que contradecir la precedencia de presentación.
  * - **`worked_minutes` suma los pares entrada→salida**, no `última salida − primera
  *   entrada`. Con la alternancia impuesta (RN-09.9) los pares son inequívocos, y
  *   sumarlos deja fuera el almuerzo; con un solo par da exactamente lo que describe
  *   la §3.
+ *
+ * **Precedencia (RN-15.1), spec 11 ya conectada:** `NO_LABORABLE` → `VACACIONES` →
+ * `DESCANSO` → `AUSENTE`, con las marcas por delante de las cuatro. Un día de
+ * vacaciones que además era descanso sale `VACACIONES`: consistente con
+ * `validateAttendanceMark` (spec 09 §3), que comprueba `onVacation` (RN-09.2)
+ * antes que el calendario y los descansos (RN-09.4/09.5). Y **no consume saldo**
+ * — eso lo decide `countWorkableDays` (spec 11 §9 decisión 2) mirando el mismo
+ * día desde el otro lado: si no iba a trabajar, no le costó nada.
  */
 
 export type DailyMark = {
@@ -36,7 +44,9 @@ export type DailyContext = {
 	marks: readonly DailyMark[];
 	/** Del calendario del departamento (spec 07 RN-07.6/7). */
 	isWorkday: boolean;
-	/** Descansos de la persona (spec 10). Hoy siempre `false`: no hay tabla. */
+	/** Vacaciones aprobadas y vigentes (spec 11 RN-11.9/11.12). */
+	onVacation: boolean;
+	/** Descansos de la persona (spec 10). */
 	isRestDay: boolean;
 	/**
 	 * `true` si la jornada todavía puede completarse (hoy o futuro). No cambia el
@@ -91,9 +101,12 @@ export function computeDailyStatus(context: DailyContext): DailyFact {
 
 	const status: AttendanceDayStatus = (() => {
 		// RN-15.2: si hay marcas, hubo presencia, y eso manda sobre la clasificación
-		// del día.
+		// del día, incluso sobre las vacaciones — un marcaje en un día aprobado no
+		// debería existir (RN-09.2 lo rechaza en origen) salvo importación histórica,
+		// y esconderlo sería peor que contradecir el orden de la tabla.
 		if (marks.length > 0) return late ? "TARDE" : "PRESENTE";
 		if (!context.isWorkday) return "NO_LABORABLE";
+		if (context.onVacation) return "VACACIONES";
 		if (context.isRestDay) return "DESCANSO";
 		return "AUSENTE";
 	})();
