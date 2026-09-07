@@ -1,4 +1,5 @@
 import { z } from "zod";
+import { absenceOverlaySchema } from "./absences.ts";
 import { latitudeSchema, longitudeSchema } from "./geo.ts";
 import { isoDateSchema } from "./time.ts";
 
@@ -222,8 +223,13 @@ export const attendanceStatusSchema = z.object({
  * `AUSENTE`, con la excepción que la 15 documenta para RN-15.2: si hay marcas,
  * ganan siempre, porque esconder trabajo que existió es peor que contradecir el
  * orden de presentación — sólo puede pasar por importación histórica, ya que en
- * vivo el marcaje se rechaza antes en cualquiera de esos días. `AJ`/`ANJ` llega
- * con la spec 13 y es otra superposición, no un estado nuevo en la lista.
+ * vivo el marcaje se rechaza antes en cualquiera de esos días.
+ *
+ * `AJ`/`ANJ` **llegó con la spec 13 y no está en esta lista**, como estaba
+ * previsto: es una superposición sobre `AUSENTE` y viaja en el campo `absence`
+ * de un día (`absenceOverlaySchema`). Meterlo aquí habría convertido un estado
+ * en tres y obligado a cada consumidor a tratar `AJ` y `ANJ` como si fueran
+ * ausencias distintas, cuando son la **misma** ausencia con una decisión encima.
  */
 export const attendanceDayStatusSchema = z.enum([
 	"PRESENTE",
@@ -255,6 +261,13 @@ export const attendanceDaySchema = z.object({
 	pending: z.boolean(),
 	isLate: z.boolean(),
 	lateMinutes: z.number().int().nonnegative(),
+	/**
+	 * Spec 13: `AJ`/`ANJ` y si alguien lo decidió. **Nulo salvo en un día
+	 * `AUSENTE` ya cerrado** — ni un día presente, ni de descanso, ni no
+	 * laborable, ni de vacaciones se justifica (RN-13.1), y una jornada que
+	 * todavía puede completarse no se clasifica (`pending`).
+	 */
+	absence: absenceOverlaySchema.nullable(),
 	marks: z.array(attendanceMarkSchema),
 });
 

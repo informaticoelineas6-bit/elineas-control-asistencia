@@ -101,7 +101,27 @@ export const configValueSchemas = {
 	 */
 	incident_report_window_days: z.number().int().min(0).max(365),
 
-	// ── 3.6 Reportería ──────────────────────────────────────────────────────
+	// ── 3.6 Nómina ──────────────────────────────────────────────────────────
+	/**
+	 * Divisor del descuento diario por ausencia injustificada (spec 17 RN-17.3):
+	 * `amount = −round(monthly_salary / payroll_daily_divisor, 2)`.
+	 *
+	 * En el legacy estaba **fijo en 30 dentro de una función SQL** (punto 75), que
+	 * es exactamente el tipo de número que hay que poder cambiar sin despliegue.
+	 *
+	 * Es la única clave del catálogo cuyo **default no deja la regla inerte**, y a
+	 * propósito: un divisor no tiene valor neutro —el 0 sería una división por
+	 * cero— así que el default reproduce lo que el sistema ya hacía, que es el
+	 * mismo espíritu del criterio de esta spec. El mínimo es 1 para que la clave no
+	 * pueda romper el cálculo desde la configuración.
+	 *
+	 * ⚠️ **No es la tasa de vacaciones.** `old-docs.md` sugería reutilizar
+	 * `vacation_days_per_worked_day` para esto y es un error: son parámetros
+	 * distintos (spec 06 §3.4, spec 17 §7).
+	 */
+	payroll_daily_divisor: z.number().int().min(1).max(31),
+
+	// ── 3.7 Reportería ──────────────────────────────────────────────────────
 	/** Si los `department_head` salen en el reporte global (spec 16 RN-16.2). */
 	include_heads_in_global_reports: z.boolean(),
 	report_slo_error_rate_pct: z.number().min(0).max(100),
@@ -109,7 +129,7 @@ export const configValueSchemas = {
 	/** Nulo = la exportación a Sheets está sin configurar (spec 16). */
 	google_sheets_report_spreadsheet_id: z.string().trim().min(1).nullable(),
 
-	// ── 3.7 Ámbito ──────────────────────────────────────────────────────────
+	// ── 3.8 Ámbito ──────────────────────────────────────────────────────────
 	/**
 	 * Departamento al que se fuerzan los perfiles con rol `global_manager`
 	 * (RN-03.6). Se guarda por **id**, no por nombre: el legacy lo resolvía por
@@ -142,6 +162,7 @@ export const CONFIG_DEFAULTS: AppConfigValues = {
 	rest_days_max_per_week: 7,
 	vacation_days_per_worked_day: 0,
 	incident_report_window_days: 0,
+	payroll_daily_divisor: 30,
 	include_heads_in_global_reports: true,
 	report_slo_error_rate_pct: 1,
 	report_slo_availability_pct: 99,

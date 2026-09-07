@@ -52,6 +52,16 @@ export const auditActionSchema = z.enum([
 	// Incidencias de asistencia (spec 12)
 	"incident.reported",
 	"incident.reviewed",
+	// Justificación de ausencias (spec 13)
+	"absence.reviewed",
+	/**
+	 * Nómina (spec 17 RN-17.9). ⚠️ **Hueco del legacy** (punto 76): allí los
+	 * ajustes no llegaban a la bitácora, que es justo lo que uno querría leer
+	 * cuando alguien pregunta por un descuento. Las escribe el servicio de
+	 * nómina dentro de la transacción de la revisión que las origina.
+	 */
+	"payroll_adjustment.created",
+	"payroll_adjustment.reverted",
 ]);
 
 export type AuditAction = z.infer<typeof auditActionSchema>;

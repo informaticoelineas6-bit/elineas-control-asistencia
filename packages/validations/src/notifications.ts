@@ -63,6 +63,18 @@ export const notificationTypeSchema = z.enum([
 	 */
 	"incident.reported",
 	"incident.reviewed",
+	/**
+	 * Tu ausencia fue clasificada (spec 13 RN-13.7), y con qué efecto en la
+	 * nómina (spec 17 RN-17.10).
+	 *
+	 * ⚠️ **Los dos son huecos del legacy** (punto 76): allí el empleado se
+	 * enteraba del descuento en la boleta. Es **un** tipo y no dos porque para
+	 * quien lo recibe es un solo hecho —"me clasificaron el día 3 y me
+	 * descontaron"—, y partirlo en dos avisos que llegan juntos sólo llena la
+	 * campana. Cuando la spec 17 traiga los ajustes **manuales**, que no nacen de
+	 * una ausencia, ésos sí necesitarán su propio tipo.
+	 */
+	"absence.reviewed",
 ]);
 
 export const notificationSchema = z.object({
