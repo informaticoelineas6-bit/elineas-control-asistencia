@@ -2,6 +2,7 @@ import { Hono } from "hono";
 import { cors } from "hono/cors";
 import { HTTPException } from "hono/http-exception";
 import { config as appConfig } from "#/lib/config";
+import { absences } from "#/routes/absences.ts";
 import { attendance } from "#/routes/attendance.ts";
 import { auth } from "#/routes/auth";
 import { config as configRoutes } from "#/routes/config.ts";
@@ -58,6 +59,7 @@ export function createApp() {
 	app.route("/api/work-locations", locations);
 	app.route("/api/attendance", attendance);
 	app.route("/api/incidents", incidents);
+	app.route("/api/absences", absences);
 	app.route("/api/notifications", notifications);
 	app.route("/api/rest-groups", restGroupsRouter);
 	app.route("/api/config", configRoutes);

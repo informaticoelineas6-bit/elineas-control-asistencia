@@ -265,21 +265,56 @@ async function countWorkableDaysInRange(
 export async function vacationDayResolverFor(
 	profile: VacationProfile,
 ): Promise<(date: string) => boolean> {
+	const ranges = await loadApprovedVacationRanges([profile.id]);
+	return vacationDayPredicate(ranges.get(profile.id) ?? []);
+}
+
+export type VacationRange = { startDate: string; endDate: string };
+
+/**
+ * Los rangos aprobados de **varias personas de un tirón**: una consulta para
+ * toda la plantilla de un departamento en vez de una por persona.
+ *
+ * Existe por lo mismo que `loadRestContexts` en la spec 10: la bandeja de
+ * ausencias pendientes (spec 13 §5) tiene que clasificar cada jornada de cada
+ * miembro de un ámbito, y hacerlo persona a persona multiplica las consultas por
+ * el tamaño del departamento.
+ */
+export async function loadApprovedVacationRanges(
+	userIds: readonly string[],
+): Promise<Map<string, VacationRange[]>> {
+	const ranges = new Map<string, VacationRange[]>();
+	const ids = [...new Set(userIds)];
+	if (ids.length === 0) return ranges;
+
 	const rows = await db
 		.select({
+			userId: vacationRequests.userId,
 			startDate: vacationRequests.startDate,
 			endDate: vacationRequests.endDate,
 		})
 		.from(vacationRequests)
 		.where(
 			and(
-				eq(vacationRequests.userId, profile.id),
+				inArray(vacationRequests.userId, ids),
 				eq(vacationRequests.status, "approved"),
 			),
 		);
 
+	for (const row of rows) {
+		const list = ranges.get(row.userId) ?? [];
+		list.push({ startDate: row.startDate, endDate: row.endDate });
+		ranges.set(row.userId, list);
+	}
+	return ranges;
+}
+
+/** El predicado de RN-09.2 / RN-15.1 a partir de unos rangos ya cargados. */
+export function vacationDayPredicate(
+	ranges: readonly VacationRange[],
+): (date: string) => boolean {
 	return (date: string) =>
-		rows.some((row) => row.startDate <= date && date <= row.endDate);
+		ranges.some((range) => range.startDate <= date && date <= range.endDate);
 }
 
 /**

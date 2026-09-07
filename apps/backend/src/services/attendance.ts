@@ -19,6 +19,7 @@ import { eachDayOfInterval, format, parseISO, subDays } from "date-fns";
 import { and, desc, eq, gte, inArray, lte, sql } from "drizzle-orm";
 import { db } from "#/db";
 import { attendanceMarks, departments, workLocations } from "#/db/schema";
+import { loadAbsenceReviews } from "#/services/absences.ts";
 import {
 	type AttendanceMarkContext,
 	type RecentMark,
@@ -563,6 +564,11 @@ export async function getDaysFor(
 	// parte del rango, y el predicado se resuelve fecha a fecha por el mismo
 	// motivo que el de descansos.
 	const onVacation = await vacationDayResolverFor(profile);
+	// Y las clasificaciones de ausencia (spec 13), que superponen `AJ`/`ANJ` sobre
+	// los días ausentes. Es la vía por la que el empleado ve la decisión sobre su
+	// propio día: esta spec no le da ningún endpoint propio, porque no inicia el
+	// flujo (spec 12 §2).
+	const absenceReviews = await loadAbsenceReviews([profile.id], range);
 
 	const marks = await selectMarks(
 		and(
@@ -605,6 +611,7 @@ export async function getDaysFor(
 			// `AUSENTE`.
 			isRestDay: isRestDay(date),
 			isOpen: date >= today,
+			absenceReview: absenceReviews.get(`${profile.id}|${date}`) ?? null,
 		});
 
 		return {
@@ -617,6 +624,7 @@ export async function getDaysFor(
 			pending: fact.pending,
 			isLate: fact.isLate,
 			lateMinutes: fact.lateMinutes,
+			absence: fact.absence,
 			marks: dayMarks,
 		};
 	});
