@@ -13,3 +13,7 @@ dist-ssr
 .vinxi
 __unconfig*
 todos.json
+
+# Artefactos de la reportería mensual en local (spec 16 §3): son datos
+# generados, y además llevan dentro la asistencia de la plantilla.
+data/

@@ -19,12 +19,19 @@ services:
       - apps/backend/.env.production
     environment:
       PORT: 3001
+      # Spec 16 RN-16.5: almacenamiento privado para los artefactos del reporte
+      # mensual. Conviene fijar además REPORT_DOWNLOAD_SECRET en el
+      # .env.production, para que un redespliegue no invalide los enlaces que
+      # alguien acaba de recibir.
+      REPORTS_DIR: /app/data/reports
       # Postgres externo ya existente en el servidor (no lo levanta este
       # compose). POSTGRES_HOST es el container_name (o alias de red) de ese
       # contenedor en `elineas-db`. Nombre de base fijado aquí (no en el
       # .env): esta app tiene su propia base "elineas_control_asistencia",
       # creada una sola vez a mano (ver DEPLOY.md § 1).
       DATABASE_URL: postgres://${POSTGRES_USER:?falta POSTGRES_USER}:${POSTGRES_PASSWORD:?falta POSTGRES_PASSWORD}@${POSTGRES_HOST:?falta POSTGRES_HOST}:${POSTGRES_PORT:-5432}/elineas_control_asistencia
+    volumes:
+      - reports:/app/data/reports
     ports:
       - "127.0.0.1:${BACKEND_PORT:-3001}:3001"
     healthcheck:
@@ -78,6 +85,12 @@ services:
       options:
         max-size: "10m"
         max-file: "5"
+
+volumes:
+  # Artefactos XLSX de la reportería mensual (spec 16 §3). Sobreviven a un
+  # redespliegue: una corrida `completed` cuyo archivo desapareciera dejaría un
+  # enlace de descarga que promete algo que no está.
+  reports:
 
 networks:
   elineas-db:

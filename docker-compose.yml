@@ -65,6 +65,11 @@ services:
       # Mismo motivo en sentido inverso: por el `container_name` del IS, no
       # por su nombre de servicio corto (que en su propio compose es `api`).
       AUTH_API_URL: http://elineas-auth-api:8081
+      # Spec 16 RN-16.5: los artefactos del reporte mensual viven en
+      # almacenamiento **privado**, nunca servido como estático. Es un volumen,
+      # no un bind mount, para que no se mezclen con el código fuente montado
+      # arriba.
+      REPORTS_DIR: /app/data/reports
     networks:
       - default
       - elineas-auth
@@ -77,6 +82,7 @@ services:
       - ./apps/backend/src:/app/apps/backend/src
       - ./packages/validations/src:/app/packages/validations/src
       - ./packages/contracts/src:/app/packages/contracts/src
+      - reports:/app/data/reports
     depends_on:
       postgres:
         condition: service_healthy
@@ -104,6 +110,10 @@ services:
 
 volumes:
   pgdata:
+  # Artefactos XLSX de la reportería mensual (spec 16 §3). Sobreviven a un
+  # redespliegue: una corrida `completed` cuyo archivo desapareciera dejaría un
+  # enlace de descarga que promete algo que no está.
+  reports:
 
 networks:
   # Red por defecto de este stack: backend ↔ postgres ↔ frontend.
