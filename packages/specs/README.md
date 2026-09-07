@@ -155,11 +155,24 @@ del legacy, con la lógica repartida entre un hook, una función SQL y una edge 
 Cerró sus cuatro decisiones abiertas y dejó **medida** la que más costaba demostrar: un panel de
 203 personas hace las **mismas 11 consultas** que uno de 5.
 
+La [16](./16-reporteria-mensual.md) cerró la deuda que su §7 llamaba **crítica**: en el legacy,
+la exportación a Google Sheets reimplementaba a mano la misma matriz que el XLSX, sin contrato
+común ni prueba que detectara una desincronización. Aquí la matriz se construye **una vez** en
+`@elineas/validations` y de ahí salen tres consumidores —el XLSX, la matriz que consume Sheets y
+la tabla de la pantalla—, con una prueba que escribe el archivo, lo vuelve a leer y lo compara
+**celda a celda**. Cerró tres de sus cuatro decisiones y dejó abierta la segunda, que es de
+negocio: **si se mantiene Google Sheets**. Lo que falta de ella es el transporte, no la forma.
+
+Y aparecieron dos cosas que la spec no había anticipado: **el resumen de "seis columnas" no puede
+cuadrar con seis** —falta la de días no laborables, o un mes con un feriado suma uno de menos—, y
+una prueba encontró que `periodRange` construía en UTC y formateaba en local, así que **en La
+Habana marzo terminaba el 30**. Es exactamente lo que RN-15.4 y la spec 07 §2 llevan advirtiendo.
+
 | # | Spec | Estado legacy | Depende de |
 |---|---|---|---|
 | 14 | [Notificaciones](./14-notificaciones.md) | ⚠️ | 02, 05 |
 | 15 | [Agregación diaria, dashboard y paneles](./15-paneles-y-dashboard.md) | ✅ | 07, 09, 10, 11, 13 — ✅ **en el monorepo** |
-| 16 | [Reportería mensual](./16-reporteria-mensual.md) | ⚠️ | 15 |
+| 16 | [Reportería mensual](./16-reporteria-mensual.md) | ⚠️ | 15 — ✅ **en el monorepo**, menos el transporte a Google Sheets |
 | 17 | [Nómina: ajustes y descuentos](./17-nomina.md) | ⚠️ | 02, 13 — **parcial en el monorepo**: hecho el descuento automático, falta la administración |
 | 18 | [Bitácora de auditoría](./18-auditoria.md) | ⚠️ | 03 |
 
@@ -188,7 +201,7 @@ Por dependencia técnica, no por valor de negocio:
 07 → 08 → 10                   el marco de validez de un marcaje
 09                             el núcleo del producto
 11 → 12 → 13                   las excepciones
-15 → 16                        agregación y reportes (15 ✅)
+15 → 16                        agregación y reportes (✅ las dos)
 17                             nómina (depende de 13) — su descuento automático ya está,
                                adelantado por la 13 porque RN-13.4 no se podía construir sin él
 14 · 18                        transversales, en paralelo desde temprano
@@ -285,6 +298,21 @@ De la [15](./15-paneles-y-dashboard.md), que cerró sus cuatro:
 - Y **`scope=` desapareció de la API en vez de rechazarse**: el ámbito sale de la sesión y sólo
   se puede *acotar*. El parámetro que puede ensanchar el ámbito es el parámetro por el que se
   escapan los datos.
+
+De la [16](./16-reporteria-mensual.md), que cerró tres de sus cuatro:
+
+- **Los códigos de la matriz son los de su §2** (`P`/`T`/`D`/`NL`/`V`/`AJ`/`ANJ`). El legacy sólo
+  documentaba `AJ`/`ANJ` y los nombres de las seis columnas, y los dos coinciden.
+- **El periodo es el mes natural.** Un periodo del 26 al 25 arrastraría a la 17, cuyo cierre de
+  periodo sigue siendo su propia decisión abierta.
+- **Un reporte lo descarga cualquiera con ámbito sobre él**, sin mirar su fecha de alta: el
+  reporte es de un departamento y un periodo, no de una persona.
+- Y una que la spec daba por hecha y no lo era: **el resumen necesita una séptima columna**, la
+  de días no laborables, o RN-16.1 —"la suma de las columnas = días del mes"— es imposible de
+  cumplir. Las seis del entregable siguen siendo seis; la séptima va aparte.
+
+**Para el XLSX se usa `hucre`**: cero dependencias, ESM y TypeScript nativos, y un formato de
+escritura por filas que es exactamente la forma que ya tenía la cuadrícula compartida.
 
 Y dos de forma:
 

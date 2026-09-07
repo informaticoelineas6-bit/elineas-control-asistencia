@@ -187,7 +187,7 @@ pueda ver desde ahí.
 | `/daily` | Asistencia del día | ✅ ([15](./15-paneles-y-dashboard.md) §5.2 y §5.3, en una sola vista) |
 | `/team` | Mi equipo | ✅ ([11](./11-vacaciones.md), [12](./12-incidencias.md) y [13](./13-justificacion-ausencias.md)) |
 | `/rest-days` | Descansos | ✅ ([10](./10-descansos.md)) |
-| `/reports` | Reportes | marcador ([16](./16-reporteria-mensual.md)) |
+| `/reports` | Reportes | ✅ ([16](./16-reporteria-mensual.md)) |
 | `/users` | Usuarios | ✅ ([02](./02-usuarios-y-perfiles.md)) |
 | `/departments` | Departamentos | ✅ ([01](./01-organizacion-departamentos.md)) |
 | `/payroll` | Nómina | marcador ([17](./17-nomina.md)) — su **backend está a medias a propósito**: el descuento automático existe, la superficie de administración no |

@@ -23,10 +23,10 @@
 > `apps/frontend/src/modules/dashboard/`). 18 pruebas de integración en
 > `apps/backend/src/routes/dashboard.test.ts`, incluida la del conteo de consultas.
 >
-> **Falta la materialización en `attendance_daily_facts`**, y no bloquea nada: la §4 la pide
-> "para volumen" y la remite a la [16](./16-reporteria-mensual.md) §4, que es su dueña. El
-> criterio de aceptación que la motivaba —que un panel de 200 empleados no dispare 200
-> consultas— **se cumple sin ella**: son 11 consultas con 5 personas y 11 con 203, medidas.
+> **La materialización en `attendance_daily_facts` la construyó la
+> [16](./16-reporteria-mensual.md)**, que es su dueña. Los paneles siguen leyendo en vivo y no la
+> necesitan —11 consultas con 5 personas y 11 con 203, medidas—; quien la usa es el reporte
+> mensual.
 >
 > Dos puntos que esta spec dejaba abiertos y la implementación tuvo que resolver para poder
 > pintar el historial; **conviene confirmarlos aquí**:
@@ -130,8 +130,8 @@ presentación):
 - El frontend **no calcula estados**. Consume `DailyFact` ya resuelto. ✅ — ningún esquema del
   contrato lleva insumos para clasificar, sólo resultados.
 - Para volumen, el resultado se materializa en `attendance_daily_facts`
-  ([16-reporteria-mensual](./16-reporteria-mensual.md) §4). ❌ **pendiente**, y sin urgencia: ver
-  la cabecera.
+  ([16-reporteria-mensual](./16-reporteria-mensual.md) §4). ✅ construida por esa spec, que es su
+  dueña. Los paneles siguen leyendo en vivo: no la necesitan.
 
 > **Trampa conocida (N+1):** el legacy calculaba por empleado en cliente y tuvo que mover el
 > cálculo al servidor para eliminarlo (punto 55). El servicio nuevo debe cargar el contexto en
