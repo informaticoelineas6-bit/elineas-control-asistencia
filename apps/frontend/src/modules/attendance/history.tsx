@@ -40,6 +40,8 @@ const STATUS_LABEL: Record<AttendanceDayStatus, string> = {
 	AUSENTE: "Ausente",
 	DESCANSO: "Descanso",
 	NO_LABORABLE: "No laborable",
+	// Spec 11 RN-11.12: superposición sobre lo que le hubiera tocado al día.
+	VACACIONES: "Vacaciones",
 };
 
 const STATUS_TONE: Record<AttendanceDayStatus, CalendarTone> = {
@@ -48,6 +50,10 @@ const STATUS_TONE: Record<AttendanceDayStatus, CalendarTone> = {
 	AUSENTE: "danger",
 	DESCANSO: "info",
 	NO_LABORABLE: "neutral",
+	// Mismo tono que DESCANSO a propósito: sólo hay cinco tonos en el calendario
+	// (`CalendarTone`) y las dos son "día libre planeado, no un problema". La
+	// etiqueta es la que distingue una cosa de la otra.
+	VACACIONES: "info",
 };
 
 const STATUS_BADGE: Record<
@@ -59,6 +65,7 @@ const STATUS_BADGE: Record<
 	AUSENTE: "destructive",
 	DESCANSO: "outline",
 	NO_LABORABLE: "outline",
+	VACACIONES: "secondary",
 };
 
 const time = (value: string | null) =>

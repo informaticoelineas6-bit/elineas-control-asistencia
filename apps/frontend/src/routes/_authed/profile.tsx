@@ -17,6 +17,7 @@ import {
 	ownProfileQueryOptions,
 	useUpdateOwnProfile,
 } from "#/modules/users/api.ts";
+import { MyVacationsCard } from "#/modules/vacations/my-vacations-card.tsx";
 
 export const Route = createFileRoute("/_authed/profile")({
 	component: OwnProfilePage,
@@ -164,6 +165,12 @@ function OwnProfilePage() {
 					 * escalas: el horario dice a qué hora, los descansos qué días.
 					 */}
 					<MyRestCard />
+
+					{/*
+					 * Spec 11 §7: saldo de vacaciones y solicitud, en el mismo sitio que
+					 * el resto de "lo mío" — así lo anticipaba ya la spec 05 §3.
+					 */}
+					<MyVacationsCard />
 
 					{/*
 					 * Spec 08 RN-08.7/RN-08.8: la sede contra la que se validan sus
