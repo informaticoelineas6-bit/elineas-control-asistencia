@@ -12,6 +12,7 @@ export * from "./locations.ts";
 export * from "./notifications.ts";
 export * from "./payroll.ts";
 export * from "./phone.ts";
+export * from "./reports.ts";
 export * from "./rest.ts";
 export * from "./roles.ts";
 export * from "./schedules.ts";

@@ -62,6 +62,17 @@ export const auditActionSchema = z.enum([
 	 */
 	"payroll_adjustment.created",
 	"payroll_adjustment.reverted",
+	/**
+	 * Reportería mensual (spec 16 §3). El historial de corridas ya es un registro
+	 * en sí mismo (RN-16.4: reintentar crea una fila nueva), así que estas
+	 * entradas no lo duplican: añaden **quién** pidió cada una y con qué
+	 * resultado, junto al resto de la actividad del sistema.
+	 */
+	"report_run.enqueued",
+	"report_run.completed",
+	"report_run.failed",
+	/** Recálculo manual de hechos diarios (RN-16.9). */
+	"attendance_facts.refreshed",
 ]);
 
 export type AuditAction = z.infer<typeof auditActionSchema>;

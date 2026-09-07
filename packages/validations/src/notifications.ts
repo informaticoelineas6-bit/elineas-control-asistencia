@@ -75,6 +75,15 @@ export const notificationTypeSchema = z.enum([
 	 * una ausencia, ésos sí necesitarán su propio tipo.
 	 */
 	"absence.reviewed",
+	/**
+	 * Tu reporte mensual terminó, bien o mal (spec 16 RN-16.6).
+	 *
+	 * Es **un** tipo para los dos desenlaces porque quien lo recibe espera *una*
+	 * respuesta a *una* petición; el título dice cuál fue. Lleva `dedupeKey` por
+	 * corrida: reintentar no debe apilar avisos de un reporte que sigue siendo el
+	 * mismo.
+	 */
+	"report_run.finished",
 ]);
 
 export const notificationSchema = z.object({
