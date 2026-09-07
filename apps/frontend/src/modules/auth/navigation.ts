@@ -123,8 +123,13 @@ export const NAV_SECTIONS = [
 				label: "Mi equipo",
 				icon: ClipboardList,
 				roles: HEAD_AND_UP,
-				/* RN-05.8: lo que espera por una decisión suya (spec 12 §7). */
-				badge: "incidents-managed",
+				/*
+				 * RN-05.8: lo que espera por una decisión suya. Suma las dos bandejas
+				 * de esa página que tienen conteo —incidencias por revisar (spec 12 §7)
+				 * y ausencias sin clasificar (spec 13 §5)—, porque el badge de un ítem
+				 * de menú responde "¿tengo algo que hacer ahí?", no "¿de qué tipo?".
+				 */
+				badge: "team-pending",
 			},
 			/*
 			 * Spec 10 §4. Empieza en `department_head` y no en `global_manager`
@@ -194,7 +199,7 @@ export type NavPath = (typeof NAV_SECTIONS)[number]["items"][number]["to"];
  * tabla sigue siendo datos puros y se puede leer desde el guard sin arrastrar
  * consultas.
  */
-export type NavBadge = "incidents-own" | "incidents-managed";
+export type NavBadge = "incidents-own" | "team-pending";
 
 export function badgeOf(
 	item: (typeof NAV_SECTIONS)[number]["items"][number],

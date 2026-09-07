@@ -7,6 +7,7 @@ import type {
 	ListIncidentsQuery,
 	PendingIncidentsCount,
 	ReviewIncidentInput,
+	ReviewIncidentResult,
 } from "@elineas/validations";
 import {
 	queryOptions,
@@ -14,18 +15,20 @@ import {
 	useQueryClient,
 } from "@tanstack/react-query";
 import { apiJson } from "#/lib/api-client.ts";
+import { absencesQueryKey } from "#/modules/absences/api.ts";
+import { attendanceQueryKey } from "#/modules/attendance/api.ts";
 import { notificationsQueryKey } from "#/modules/notifications/api.ts";
 
 /**
  * Acceso a incidencias (spec 12). Las rutas salen del contrato; aquí no hay
  * ninguna URL escrita a mano (api-conventions.md).
  *
- * Al contrario que en vacaciones, **ninguna mutación invalida la asistencia**:
- * aprobar una incidencia no cambia ni un marcaje ni el estado de un día
- * (RN-12.9), así que refrescar el historial sería pedir de nuevo unos datos que
- * no pueden haber cambiado. Si la decisión 1 de la §9 se cierra alguna vez a
- * favor de justificar la ausencia, esta es la línea que hay que añadir — y el
- * comentario que hay que borrar.
+ * Aprobar una incidencia no cambia por sí solo ni un marcaje ni el estado de un
+ * día (RN-12.9). Pero desde que la decisión 1 de la §9 quedó cerrada con la spec
+ * 13, la revisión **puede** justificar la ausencia del día en el mismo acto, y
+ * eso sí cambia su código `AJ`/`ANJ` y puede revertir un descuento — así que la
+ * mutación invalida también la asistencia y las ausencias. Es más barato
+ * invalidar siempre que llevar la cuenta de si esta revisión concreta lo pidió.
  */
 
 export const incidentsQueryKey = ["incidents"] as const;
@@ -91,6 +94,8 @@ function useIncidentsMutation<TInput, TResult>(
 			// Reportar y revisar generan notificaciones (RN-12.10): la campana y los
 			// badges tienen que reflejarlo sin recargar (RN-05.5).
 			void queryClient.invalidateQueries({ queryKey: notificationsQueryKey });
+			void queryClient.invalidateQueries({ queryKey: absencesQueryKey });
+			void queryClient.invalidateQueries({ queryKey: attendanceQueryKey });
 		},
 	});
 }
@@ -110,7 +115,7 @@ export function useReviewIncident() {
 		({
 			id,
 			...input
-		}: ReviewIncidentInput & { id: string }): Promise<AttendanceIncident> =>
+		}: ReviewIncidentInput & { id: string }): Promise<ReviewIncidentResult> =>
 			apiJson(
 				resolvePath(incidentsSpec.review.path, { id }),
 				incidentsSpec.review.response,

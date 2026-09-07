@@ -49,11 +49,13 @@ import {
  * revisar dos veces lo mismo y responder distinto. El filtro de estado está ahí
  * para acotarlo.
  *
- * La acción combinada *"Aprobar y justificar la ausencia"* que propone la §6 **no
- * está**: es la decisión 1 de la §9 y necesita la spec 13, que no existe. Lo que
- * sí hace el diálogo es decirlo en voz alta —aprobar no cambia el marcaje
- * (RN-12.9)—, porque el desacople del legacy no era un problema de código sino
- * de que nadie sabía que las dos cosas eran dos cosas.
+ * La acción combinada *"Aprobar y justificar la ausencia"* que propone la §6 **ya
+ * está**, desde que la spec 13 cerró la decisión 1: se ofrece —marcada por
+ * defecto cuando ese día es una ausencia sin justificar— y **no se ejecuta sin
+ * que se pida**. Ése era el defecto del legacy: no que las dos acciones
+ * existieran, sino que el jefe tuviera que acordarse de la segunda y buscarla en
+ * otra pantalla. El diálogo sigue diciendo en voz alta que aprobar, por sí solo,
+ * no cambia el marcaje (RN-12.9).
  */
 
 const ANY = "__any__";
@@ -183,6 +185,17 @@ function ReviewDialog({
 	const review = useReviewIncident();
 	const context = useQuery(incidentContextQueryOptions(incident.id));
 	const [notes, setNotes] = useState("");
+	const [justifyAbsence, setJustifyAbsence] = useState<boolean | null>(null);
+
+	// Sólo se ofrece si ese día es una ausencia que sigue sin justificar. Con una
+	// tardanza o una salida temprana —días presentes— no hay nada que justificar,
+	// y es la razón principal por la que la justificación no es automática.
+	const absence = context.data?.day.absence;
+	const canJustify = !!absence && absence.code === "ANJ";
+	// Marcada por defecto: si la persona no marcó y su incidencia se aprueba, lo
+	// normal es que ese día no se le descuente. Pero se ve y se puede desmarcar,
+	// que es la diferencia entre ofrecer y decidir por alguien.
+	const willJustify = canJustify && (justifyAbsence ?? true);
 
 	return (
 		<Dialog open onOpenChange={(open) => !open && onClose()}>
@@ -269,6 +282,23 @@ function ReviewDialog({
 					)}
 				</div>
 
+				{canJustify && (
+					<label className="flex cursor-pointer items-start gap-2.5 rounded-md border border-amber-500/40 bg-amber-500/10 p-3 text-sm">
+						<input
+							type="checkbox"
+							className="mt-0.5"
+							checked={willJustify}
+							onChange={(event) => setJustifyAbsence(event.target.checked)}
+						/>
+						<span>
+							<strong>Justificar también la ausencia de ese día.</strong> Sin
+							esto, el día sigue contando como injustificada y el descuento —si
+							lo hay— se mantiene. Aprobar la incidencia, por sí solo, no cambia
+							ningún marcaje ni ningún día.
+						</span>
+					</label>
+				)}
+
 				<div className="space-y-2">
 					<Label htmlFor="incident-notes">Notas</Label>
 					<Textarea
@@ -293,6 +323,9 @@ function ReviewDialog({
 									id: incident.id,
 									approved: false,
 									notes: notes.trim() || undefined,
+									// Rechazar y justificar a la vez es contradictorio, y el
+									// esquema lo rechaza.
+									justifyAbsence: false,
 								},
 								{ onSuccess: onClose },
 							)
@@ -310,13 +343,14 @@ function ReviewDialog({
 									id: incident.id,
 									approved: true,
 									notes: notes.trim() || undefined,
+									justifyAbsence: willJustify,
 								},
 								{ onSuccess: onClose },
 							)
 						}
 					>
 						<Check />
-						Aprobar
+						{willJustify ? "Aprobar y justificar" : "Aprobar"}
 					</Button>
 				</DialogFooter>
 			</DialogContent>

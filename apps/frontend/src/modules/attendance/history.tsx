@@ -56,6 +56,16 @@ const STATUS_TONE: Record<AttendanceDayStatus, CalendarTone> = {
 	VACACIONES: "info",
 };
 
+/**
+ * Spec 13. Los códigos del reporte se enseñan **desarrollados**: `AJ` y `ANJ`
+ * son el vocabulario de la reportería (spec 16), no el de quien lee su propio
+ * historial en el móvil.
+ */
+const ABSENCE_LABEL: Record<"AJ" | "ANJ", string> = {
+	AJ: "Justificada",
+	ANJ: "No justificada",
+};
+
 const STATUS_BADGE: Record<
 	AttendanceDayStatus,
 	"default" | "secondary" | "warning" | "destructive" | "outline"
@@ -115,6 +125,9 @@ export function AttendanceHistory() {
 			dots: day.incomplete ? ["warning"] : undefined,
 			description: [
 				day.pending ? "Jornada en curso" : STATUS_LABEL[day.status],
+				// Spec 13: la clasificación de la ausencia, con el mismo texto que el
+				// badge de la tabla.
+				day.absence ? ABSENCE_LABEL[day.absence.code] : null,
 				day.isLate ? `${day.lateMinutes} min de tardanza` : null,
 				day.incomplete ? "sin salida registrada" : null,
 				day.workedMinutes !== null
@@ -201,6 +214,30 @@ export function AttendanceHistory() {
 														)}
 														{day.incomplete && (
 															<Badge variant="warning">Sin salida</Badge>
+														)}
+														{/*
+														 * Spec 13: `AJ`/`ANJ` sobre un día ausente. Va como
+														 * badge aparte y no sustituyendo a "Ausente"
+														 * porque es una **superposición**: el día sigue
+														 * siendo una ausencia, y lo que añade es qué se
+														 * decidió sobre ella.
+														 */}
+														{day.absence && (
+															<Badge
+																variant={
+																	day.absence.code === "AJ"
+																		? "secondary"
+																		: "destructive"
+																}
+																title={
+																	day.absence.notes ??
+																	(day.absence.reviewed
+																		? undefined
+																		: "Tu jefe todavía no la ha clasificado")
+																}
+															>
+																{ABSENCE_LABEL[day.absence.code]}
+															</Badge>
 														)}
 													</div>
 												</TableCell>

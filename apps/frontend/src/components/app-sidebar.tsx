@@ -17,6 +17,7 @@ import {
 	SidebarMenuItem,
 	SidebarRail,
 } from "#/components/ui/sidebar.tsx";
+import { pendingAbsencesCountQueryOptions } from "#/modules/absences/api.ts";
 import {
 	badgeOf,
 	canAccess,
@@ -70,14 +71,21 @@ export function AppSidebar({ session }: { session: Permissions }) {
 		...pendingIncidentsCountQueryOptions("own"),
 		enabled: shown.has("incidents-own"),
 	});
-	const managedPending = useQuery({
+	const managedIncidents = useQuery({
 		...pendingIncidentsCountQueryOptions("managed"),
-		enabled: shown.has("incidents-managed"),
+		enabled: shown.has("team-pending"),
+	});
+	const pendingAbsences = useQuery({
+		...pendingAbsencesCountQueryOptions(),
+		enabled: shown.has("team-pending"),
 	});
 
 	const counts: Record<NavBadge, number> = {
 		"incidents-own": ownPending.data?.count ?? 0,
-		"incidents-managed": managedPending.data?.count ?? 0,
+		// Las dos bandejas con conteo de `/team`, sumadas: el badge dice si hay algo
+		// que decidir, y abrir la página ya separa de qué se trata.
+		"team-pending":
+			(managedIncidents.data?.count ?? 0) + (pendingAbsences.data?.count ?? 0),
 	};
 
 	return (

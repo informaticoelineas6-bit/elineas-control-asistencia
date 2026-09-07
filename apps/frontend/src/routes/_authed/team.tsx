@@ -1,4 +1,5 @@
 import { createFileRoute } from "@tanstack/react-router";
+import { AbsenceReviewPanel } from "#/modules/absences/absence-review-panel.tsx";
 import { RequireRole } from "#/modules/auth/require-role.tsx";
 import { IncidentReviewPanel } from "#/modules/incidents/incident-review-panel.tsx";
 import { VacationReviewPanel } from "#/modules/vacations/vacation-review-panel.tsx";
@@ -19,15 +20,17 @@ export const Route = createFileRoute("/_authed/team")({
  * que tiene su propia ruta, `/rest-days`, por la misma razón que ésta no la
  * absorbió).
  *
- * Creció como `/settings`, pieza a pieza: las vacaciones de la spec 11 y ahora
- * las incidencias de la spec 12. La justificación de ausencias (spec 13) se
- * añade aquí cuando exista.
+ * Creció como `/settings`, pieza a pieza: vacaciones (spec 11), incidencias
+ * (spec 12) y ahora ausencias por clasificar (spec 13). Con eso, **las tres
+ * bandejas de decisión de un jefe están en un solo sitio**, que es lo que el
+ * legacy no tenía — allí las ausencias sólo se veían navegando día por día
+ * (spec 13 §5).
  *
- * Siguen siendo **secciones apiladas y no pestañas**. Dos pestañas esconderían
- * la mitad de lo que espera por una decisión, y eso es justo lo contrario de
+ * Siguen siendo **secciones apiladas y no pestañas**. Dos o tres pestañas
+ * esconderían lo que espera por una decisión, y eso es justo lo contrario de
  * para qué existe esta página; el mismo criterio que `/profile`, que apila sus
- * tarjetas. Cuando haya tres o cuatro bandejas y ninguna quepa en pantalla,
- * entonces sí.
+ * tarjetas. El orden es por consecuencia: las ausencias van primero porque son
+ * las únicas que mueven dinero (RN-13.4).
  */
 function TeamPage() {
 	return (
@@ -39,8 +42,9 @@ function TeamPage() {
 				</p>
 			</div>
 
-			<VacationReviewPanel />
+			<AbsenceReviewPanel />
 			<IncidentReviewPanel />
+			<VacationReviewPanel />
 		</div>
 	);
 }
