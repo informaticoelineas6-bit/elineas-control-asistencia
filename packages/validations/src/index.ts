@@ -13,3 +13,4 @@ export * from "./roles.ts";
 export * from "./schedules.ts";
 export * from "./time.ts";
 export * from "./users.ts";
+export * from "./vacations.ts";

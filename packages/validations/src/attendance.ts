@@ -219,9 +219,11 @@ export const attendanceStatusSchema = z.object({
  *
  * El vocabulario y su **precedencia** son de la spec 15 §2 (RN-15.1), que es su
  * dueña: `NO_LABORABLE` → `VACACIONES` → `DESCANSO` → `PRESENTE`/`TARDE` →
- * `AUSENTE`. Aquí están los cinco que se pueden resolver hoy; `VACACIONES` llega
- * con la spec 11 y `AJ`/`ANJ` con la 13, y son **superposiciones**, no estados
- * nuevos en la lista.
+ * `AUSENTE`, con la excepción que la 15 documenta para RN-15.2: si hay marcas,
+ * ganan siempre, porque esconder trabajo que existió es peor que contradecir el
+ * orden de presentación — sólo puede pasar por importación histórica, ya que en
+ * vivo el marcaje se rechaza antes en cualquiera de esos días. `AJ`/`ANJ` llega
+ * con la spec 13 y es otra superposición, no un estado nuevo en la lista.
  */
 export const attendanceDayStatusSchema = z.enum([
 	"PRESENTE",
@@ -229,6 +231,7 @@ export const attendanceDayStatusSchema = z.enum([
 	"AUSENTE",
 	"DESCANSO",
 	"NO_LABORABLE",
+	"VACACIONES",
 ]);
 
 export const attendanceDaySchema = z.object({

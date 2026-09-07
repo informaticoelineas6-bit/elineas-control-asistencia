@@ -42,6 +42,16 @@ export const notificationTypeSchema = z.enum([
 	 * abría la aplicación. Aquí la evalúa el servidor al iniciar sesión.
 	 */
 	"rest_schedule.missing",
+	/**
+	 * Vacaciones (spec 11 §5). Tres momentos del flujo, cada uno a su
+	 * destinatario: la solicitud avisa al jefe (cuando es localizable, ver
+	 * `vacations.ts`), la revisión avisa a quien la pidió, y una cancelación de
+	 * lo ya aprobado también — es lo que evita que alguien se presente a
+	 * trabajar sin saber que su descanso dejó de existir.
+	 */
+	"vacation.requested",
+	"vacation.reviewed",
+	"vacation.cancelled",
 ]);
 
 export const notificationSchema = z.object({
