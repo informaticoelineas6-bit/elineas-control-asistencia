@@ -71,7 +71,7 @@ Barra lateral con navegación **agrupada** y filtrada por rol. Agrupación imple
 | Grupo | Ítems | Quién lo ve |
 |---|---|---|
 | **Personal** | Inicio · Marcar¹ · Mi asistencia¹ · Mi perfil · Diagnóstico GPS² | todos |
-| **Gestión** | Mi equipo · Descansos³ · Reportes | `department_head` y por encima |
+| **Gestión** | Asistencia del día⁴ · Mi equipo · Descansos³ · Reportes | `department_head` y por encima |
 | **Administración** | Usuarios · Departamentos · Nómina · Configuración | `global_manager` y por encima |
 | | Logs | sólo `superadmin` |
 
@@ -87,13 +87,20 @@ descanso es su operación ([10](./10-descansos.md) §4): los grupos los define u
 quien organiza el turno de su gente es el jefe. Los descansos **propios** no están ahí, están en
 *Mi perfil*.
 
+⁴ es el panel de departamento **y** el global de la [15](./15-paneles-y-dashboard.md) §5.2/§5.3,
+que son la misma vista con distinto alcance: quien la abre ve su ámbito. Va antes de *Mi equipo*
+porque el orden es el del trabajo — primero se mira cómo va el día, luego se decide sobre lo que
+quedó pendiente.
+
 > **Esta agrupación sustituye a la del borrador** (*Asistencia · Gestión · Sistema*), que
 > mezclaba en un mismo grupo lo que uno hace consigo mismo y lo que hace con su equipo. La
 > división real es por **de quién son los datos**: los míos, los de mi gente, los de la empresa.
 >
 > Del borrador quedan por colocar, cuando existan sus specs: *Mi semana*
-> ([09](./09-marcaje-asistencia.md)), *Panel global*
-> ([15](./15-paneles-y-dashboard.md)) y *Superadmin* ([19](./19-panel-superadmin.md)).
+> ([09](./09-marcaje-asistencia.md)) y *Superadmin* ([19](./19-panel-superadmin.md)). El *Panel
+> global* del borrador **no va a existir como ítem propio**: la [15](./15-paneles-y-dashboard.md)
+> lo unificó con el de departamento en *Asistencia del día*, porque son la misma vista con
+> distinto alcance.
 > *Incidencias* ya está, en *Personal* y con badge: la ve cualquier rol porque la
 > [12](./12-incidencias.md) §7 dice "autenticado" y no invoca RN-03.4 como sí hace la
 > [11](./11-vacaciones.md) con las vacaciones.
@@ -171,12 +178,13 @@ pueda ver desde ahí.
 |---|---|---|
 | `/login` | Entrar | ✅ |
 | `/pending-account` | Cuenta pendiente | ✅ |
-| `/dashboard` | Inicio | ✅ |
+| `/dashboard` | Inicio | ✅ ([15](./15-paneles-y-dashboard.md) §5.1) |
 | `/clock-in` | Marcar | ✅ ([09](./09-marcaje-asistencia.md)) |
 | `/attendance` | Mi asistencia | ✅ ([09](./09-marcaje-asistencia.md)) |
 | `/profile` | Mi perfil | ✅ |
 | `/gps` | Diagnóstico GPS | ✅ ([08](./08-sedes-y-geocerca.md) §6) |
 | `/incidents` | Incidencias | ✅ ([12](./12-incidencias.md)) |
+| `/daily` | Asistencia del día | ✅ ([15](./15-paneles-y-dashboard.md) §5.2 y §5.3, en una sola vista) |
 | `/team` | Mi equipo | ✅ ([11](./11-vacaciones.md), [12](./12-incidencias.md) y [13](./13-justificacion-ausencias.md)) |
 | `/rest-days` | Descansos | ✅ ([10](./10-descansos.md)) |
 | `/reports` | Reportes | marcador ([16](./16-reporteria-mensual.md)) |

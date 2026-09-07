@@ -3,6 +3,12 @@
 > **Origen:** `old-docs.md` §3.5, puntos 54–59, 73, 78, 79; hallazgo H-1.
 > **Estado en el sistema legacy:** ✅ implementado, ⚠️ con deuda en observabilidad y en el duplicado de la matriz de exportación.
 > **Estado en el monorepo nuevo:** ❌ no existe.
+> **Lo que ya está hecho de sus cimientos:** la agregación diaria de la
+> [15](./15-paneles-y-dashboard.md) —una sola definición del estado de un día, con `AJ`/`ANJ`
+> incluidos— y su **carga en lote** (`services/daily-facts.ts`), que es de donde tiene que salir
+> el reporte. La materialización en `attendance_daily_facts` de la §4 sigue pendiente y es de
+> esta spec: hoy no hace falta para los paneles (11 consultas con 5 personas y 11 con 203), pero
+> un reporte mensual de toda la plantilla es otro volumen.
 > **Depende de:** [15-paneles-y-dashboard](./15-paneles-y-dashboard.md) (la agregación diaria es la entrada).
 
 ---

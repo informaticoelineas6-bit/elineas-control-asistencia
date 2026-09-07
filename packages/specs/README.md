@@ -145,10 +145,20 @@ privilegios de RN-13.5 —el jefe justifica pero no toca nómina— es hoy la m�
 
 ### Salidas — lo que el sistema produce
 
+La [15](./15-paneles-y-dashboard.md) llegó con **medio camino hecho**: su función pura la
+adelantó la [09](./09-marcaje-asistencia.md) y su carga en lote la [13](./13-justificacion-ausencias.md).
+Construirla fue, sobre todo, **sacar esas dos piezas al sitio que su §4 nombra**
+(`services/daily-facts.ts`) y comprobar que no hubiera una segunda implementación a medias —
+la había: el historial propio componía su propio contexto en paralelo. Ese era el error concreto
+del legacy, con la lógica repartida entre un hook, una función SQL y una edge function.
+
+Cerró sus cuatro decisiones abiertas y dejó **medida** la que más costaba demostrar: un panel de
+203 personas hace las **mismas 11 consultas** que uno de 5.
+
 | # | Spec | Estado legacy | Depende de |
 |---|---|---|---|
 | 14 | [Notificaciones](./14-notificaciones.md) | ⚠️ | 02, 05 |
-| 15 | [Agregación diaria, dashboard y paneles](./15-paneles-y-dashboard.md) | ✅ | 07, 09, 10, 11, 13 |
+| 15 | [Agregación diaria, dashboard y paneles](./15-paneles-y-dashboard.md) | ✅ | 07, 09, 10, 11, 13 — ✅ **en el monorepo** |
 | 16 | [Reportería mensual](./16-reporteria-mensual.md) | ⚠️ | 15 |
 | 17 | [Nómina: ajustes y descuentos](./17-nomina.md) | ⚠️ | 02, 13 — **parcial en el monorepo**: hecho el descuento automático, falta la administración |
 | 18 | [Bitácora de auditoría](./18-auditoria.md) | ⚠️ | 03 |
@@ -178,7 +188,7 @@ Por dependencia técnica, no por valor de negocio:
 07 → 08 → 10                   el marco de validez de un marcaje
 09                             el núcleo del producto
 11 → 12 → 13                   las excepciones
-15 → 16                        agregación y reportes
+15 → 16                        agregación y reportes (15 ✅)
 17                             nómina (depende de 13) — su descuento automático ya está,
                                adelantado por la 13 porque RN-13.4 no se podía construir sin él
 14 · 18                        transversales, en paralelo desde temprano
@@ -261,6 +271,20 @@ Y una consecuencia de la barrera de privilegios que la spec no anticipaba: **el 
 clasifica una ausencia no ve el importe del descuento que causa**, porque el importe es el sueldo
 dividido por el divisor y enseñárselo le enseña el sueldo (hallazgo H-3). Ve el hecho; la cifra
 sólo llega a un rol administrativo — y al propio empleado, en su notificación.
+
+De la [15](./15-paneles-y-dashboard.md), que cerró sus cuatro:
+
+- **El marcaje en un día no laborable o de descanso gana `PRESENTE`** (RN-15.2). Esconder
+  trabajo que existió es peor que contradecir un orden de presentación, y en vivo no puede pasar.
+- **El dashboard es fijo por rol, no configurable.** Las tres filas de su §5.1 son acumulativas:
+  es una pantalla cuyas secciones aparecen según lo que manda el servidor.
+- **"Estado en vivo" se responde a medias, con la mitad que se puede construir**: quién tiene la
+  jornada abierta, no quién está dentro de la geocerca. Lo segundo exige geolocalización en
+  segundo plano, que sigue abierto en la [20](./20-app-movil-y-distribucion.md) §7; fingirlo con
+  la última marca diría "dentro" de alguien que se fue sin marcar.
+- Y **`scope=` desapareció de la API en vez de rechazarse**: el ámbito sale de la sesión y sólo
+  se puede *acotar*. El parámetro que puede ensanchar el ámbito es el parámetro por el que se
+  escapan los datos.
 
 Y dos de forma:
 
