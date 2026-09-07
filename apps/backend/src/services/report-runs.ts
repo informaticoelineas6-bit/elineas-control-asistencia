@@ -17,7 +17,7 @@ import { departments, reportRuns } from "#/db/schema";
 import { config } from "#/lib/config.ts";
 import { type Actor, audit } from "#/services/audit.ts";
 import { notify } from "#/services/notifications.ts";
-import { reportToXlsx } from "#/services/report-xlsx.ts";
+import { reportToXlsx } from "#/services/xlsx.ts";
 import {
 	buildMonthlyReport,
 	periodRange,

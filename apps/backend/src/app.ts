@@ -12,6 +12,7 @@ import { incidents } from "#/routes/incidents.ts";
 import { locations } from "#/routes/locations.ts";
 import { me } from "#/routes/me";
 import { notifications } from "#/routes/notifications.ts";
+import { payroll } from "#/routes/payroll.ts";
 import { attendanceFacts, reports } from "#/routes/reports.ts";
 import { departmentRest, restGroupsRouter } from "#/routes/rest.ts";
 import { schedules } from "#/routes/schedules.ts";
@@ -69,6 +70,7 @@ export function createApp() {
 	app.route("/api/dashboard", dashboard);
 	app.route("/api/reports", reports);
 	app.route("/api/notifications", notifications);
+	app.route("/api/payroll", payroll);
 	app.route("/api/rest-groups", restGroupsRouter);
 	app.route("/api/config", configRoutes);
 	app.route("/api/users", users);
