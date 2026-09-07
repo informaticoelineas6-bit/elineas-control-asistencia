@@ -8,6 +8,7 @@ import {
 	jsonb,
 	numeric,
 	pgTable,
+	primaryKey,
 	text,
 	time,
 	timestamp,
@@ -1108,4 +1109,147 @@ export const payrollAdjustmentsRelations = relations(
 			references: [profiles.id],
 		}),
 	}),
+);
+
+/**
+ * Spec 16 §5. Con qué reglas se calculó un día o una corrida.
+ *
+ * `params` es **la foto de la configuración aplicada**, no una referencia a
+ * ella: la configuración cambia y no es retroactiva (RN-06.4), así que la única
+ * forma de responder "¿por qué en marzo este día salía distinto?" es haber
+ * guardado los valores de entonces.
+ *
+ * Sólo una fila puede estar activa a la vez, y lo garantiza un índice único
+ * parcial en vez de una comprobación en código — es el mismo criterio que en
+ * `payroll_adjustments`: una condición que dos peticiones simultáneas pueden
+ * romper vive en la base.
+ */
+export const attendanceRuleVersions = pgTable(
+	"attendance_rule_versions",
+	{
+		id: uuid().primaryKey().defaultRandom(),
+		/** Correlativo legible: es lo que se enseña en un reporte. */
+		version: integer().notNull(),
+		params: jsonb().notNull(),
+		isActive: boolean("is_active").notNull().default(true),
+		activatedAt: timestamp("activated_at", { withTimezone: true })
+			.notNull()
+			.defaultNow(),
+	},
+	(table) => [
+		unique("attendance_rule_versions_version_key").on(table.version),
+		uniqueIndex("attendance_rule_versions_active_idx")
+			.on(table.isActive)
+			.where(sql`is_active`),
+	],
+);
+
+/**
+ * Spec 16 §4. El estado de un día ya resuelto, precalculado.
+ *
+ * **RN-16.10 — es caché, no verdad.** Siempre puede regenerarse desde los datos
+ * crudos y dar lo mismo; hay una prueba de que recalcular un mes cerrado no
+ * cambia ningún valor. Por eso no hay ninguna operación que *edite* un hecho:
+ * sólo se recalculan y se sobrescriben enteros.
+ *
+ * `status` guarda el vocabulario de la spec 15 y `absence_code` la
+ * superposición de la 13 por separado, no un octavo estado combinado: son dos
+ * hechos distintos —qué pasó ese día y qué se decidió sobre él— y unirlos aquí
+ * obligaría a partirlos otra vez en el reporte.
+ */
+export const attendanceDailyFacts = pgTable(
+	"attendance_daily_facts",
+	{
+		userId: uuid("user_id")
+			.notNull()
+			.references(() => profiles.id, { onDelete: "cascade" }),
+		date: date().notNull(),
+		/** Foto del departamento de entonces, como en `attendance_marks`. */
+		departmentId: uuid("department_id").references(() => departments.id, {
+			onDelete: "set null",
+		}),
+		status: text().notNull(),
+		absenceCode: text("absence_code"),
+		inTimestamp: timestamp("in_timestamp", { withTimezone: true }),
+		outTimestamp: timestamp("out_timestamp", { withTimezone: true }),
+		lateMinutes: integer("late_minutes"),
+		workedMinutes: integer("worked_minutes"),
+		ruleVersionId: uuid("rule_version_id")
+			.notNull()
+			.references(() => attendanceRuleVersions.id),
+		computedAt: timestamp("computed_at", { withTimezone: true })
+			.notNull()
+			.defaultNow(),
+	},
+	(table) => [
+		primaryKey({ columns: [table.userId, table.date] }),
+		/** La consulta del reporte: un rango de fechas de un departamento. */
+		index("attendance_daily_facts_department_date_idx").on(
+			table.departmentId,
+			table.date,
+		),
+	],
+);
+
+/**
+ * Spec 16 §3. El historial de generaciones del reporte mensual.
+ *
+ * **RN-16.4 — reintentar crea una fila nueva**, nunca muta el historial: es un
+ * registro de qué se pidió y cómo fue, no el estado de una cosa.
+ *
+ * El artefacto no vive aquí. `artifact_path` apunta a un archivo en el
+ * almacenamiento privado del servidor (RN-16.5); en el legacy era un bucket de
+ * Supabase, que con la spec 00 ya no existe.
+ */
+export const reportRuns = pgTable(
+	"report_runs",
+	{
+		id: uuid().primaryKey().defaultRandom(),
+		scope: text().notNull(),
+		departmentId: uuid("department_id").references(() => departments.id, {
+			onDelete: "cascade",
+		}),
+		periodStart: date("period_start").notNull(),
+		periodEnd: date("period_end").notNull(),
+		status: text().notNull().default("queued"),
+		requestedBy: uuid("requested_by").notNull(),
+		artifactBucket: text("artifact_bucket"),
+		artifactPath: text("artifact_path"),
+		/** Integridad del artefacto: SHA-256 de lo que se escribió. */
+		checksum: text(),
+		rowCount: integer("row_count"),
+		durationMs: integer("duration_ms"),
+		errorMessage: text("error_message"),
+		retryCount: integer("retry_count").notNull().default(0),
+		ruleVersionId: uuid("rule_version_id")
+			.notNull()
+			.references(() => attendanceRuleVersions.id),
+		startedAt: timestamp("started_at", { withTimezone: true }),
+		createdAt: timestamp("created_at", { withTimezone: true })
+			.notNull()
+			.defaultNow(),
+		updatedAt: timestamp("updated_at", { withTimezone: true })
+			.notNull()
+			.defaultNow(),
+	},
+	(table) => [
+		/**
+		 * RN-16.7 — **Sin corridas duplicadas**, en la base. Dos peticiones
+		 * simultáneas del mismo reporte no se detectan comprobando antes de
+		 * insertar, que es justo lo que el criterio de aceptación pide demostrar.
+		 *
+		 * El `coalesce` es necesario porque un índice único trata cada `NULL` como
+		 * distinto, y `department_id` es nulo en las corridas globales: sin él,
+		 * dos globales del mismo periodo pasarían las dos.
+		 */
+		uniqueIndex("report_runs_active_unique_idx")
+			.on(
+				table.scope,
+				sql`coalesce(${table.departmentId}, '00000000-0000-0000-0000-000000000000'::uuid)`,
+				table.periodStart,
+			)
+			.where(sql`status in ('queued', 'running')`),
+		index("report_runs_status_idx").on(table.status, table.createdAt.desc()),
+		index("report_runs_created_idx").on(table.createdAt.desc()),
+	],
 );
