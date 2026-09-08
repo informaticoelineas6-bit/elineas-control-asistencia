@@ -12,6 +12,7 @@ import {
 	Satellite,
 	ScrollText,
 	Settings,
+	ShieldAlert,
 	Timer,
 	UserRound,
 	Users,
@@ -195,6 +196,17 @@ export const NAV_SECTIONS = [
 				to: "/logs",
 				label: "Logs",
 				icon: ScrollText,
+				roles: SUPERADMIN,
+			},
+			/*
+			 * Spec 19. Va **al final y sólo para `superadmin`**: es la pantalla que
+			 * menos debería hacer falta (RN-19.10 — si algo de ahí se usa a menudo,
+			 * falta una funcionalidad en el producto).
+			 */
+			{
+				to: "/admin",
+				label: "Superadmin",
+				icon: ShieldAlert,
 				roles: SUPERADMIN,
 			},
 		],

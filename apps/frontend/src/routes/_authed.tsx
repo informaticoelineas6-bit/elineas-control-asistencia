@@ -9,6 +9,7 @@ import {
 	SidebarTrigger,
 } from "#/components/ui/sidebar.tsx";
 import { Skeleton } from "#/components/ui/skeleton.tsx";
+import { MaintenanceBanner } from "#/modules/admin/maintenance-banner.tsx";
 import { sessionQueryOptions } from "#/modules/auth/session.ts";
 import { NotificationsLive } from "#/modules/notifications/live.tsx";
 import { NotificationsBell } from "#/modules/notifications/notifications-bell.tsx";
@@ -56,6 +57,13 @@ function AuthedLayout() {
 						<NotificationsBell />
 					</div>
 				</header>
+				{/*
+				 * Spec 19 §2.5 — El aviso de mantenimiento, para **todos** los usuarios
+				 * conectados: es un criterio de aceptación de esa spec y llega por la
+				 * configuración pública, no por un canal aparte.
+				 */}
+				<MaintenanceBanner />
+
 				<div className="flex-1 p-6">
 					<Outlet />
 				</div>

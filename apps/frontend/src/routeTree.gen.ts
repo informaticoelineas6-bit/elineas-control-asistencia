@@ -13,6 +13,7 @@ import { Route as IndexRouteImport } from './routes/index'
 import { Route as AuthedRouteImport } from './routes/_authed'
 import { Route as LoginRouteImport } from './routes/login'
 import { Route as PendingAccountRouteImport } from './routes/pending-account'
+import { Route as AuthedAdminRouteImport } from './routes/_authed/admin'
 import { Route as AuthedAttendanceRouteImport } from './routes/_authed/attendance'
 import { Route as AuthedClockInRouteImport } from './routes/_authed/clock-in'
 import { Route as AuthedDailyRouteImport } from './routes/_authed/daily'
@@ -48,6 +49,11 @@ const PendingAccountRoute = PendingAccountRouteImport.update({
   id: '/pending-account',
   path: '/pending-account',
   getParentRoute: () => rootRouteImport,
+} as any)
+const AuthedAdminRoute = AuthedAdminRouteImport.update({
+  id: '/admin',
+  path: '/admin',
+  getParentRoute: () => AuthedRoute,
 } as any)
 const AuthedAttendanceRoute = AuthedAttendanceRouteImport.update({
   id: '/attendance',
@@ -134,6 +140,7 @@ export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
   '/login': typeof LoginRoute
   '/pending-account': typeof PendingAccountRoute
+  '/admin': typeof AuthedAdminRoute
   '/attendance': typeof AuthedAttendanceRoute
   '/clock-in': typeof AuthedClockInRoute
   '/daily': typeof AuthedDailyRoute
@@ -155,6 +162,7 @@ export interface FileRoutesByTo {
   '/': typeof IndexRoute
   '/login': typeof LoginRoute
   '/pending-account': typeof PendingAccountRoute
+  '/admin': typeof AuthedAdminRoute
   '/attendance': typeof AuthedAttendanceRoute
   '/clock-in': typeof AuthedClockInRoute
   '/daily': typeof AuthedDailyRoute
@@ -178,6 +186,7 @@ export interface FileRoutesById {
   '/_authed': typeof AuthedRouteWithChildren
   '/login': typeof LoginRoute
   '/pending-account': typeof PendingAccountRoute
+  '/_authed/admin': typeof AuthedAdminRoute
   '/_authed/attendance': typeof AuthedAttendanceRoute
   '/_authed/clock-in': typeof AuthedClockInRoute
   '/_authed/daily': typeof AuthedDailyRoute
@@ -201,6 +210,7 @@ export interface FileRouteTypes {
     | '/'
     | '/login'
     | '/pending-account'
+    | '/admin'
     | '/attendance'
     | '/clock-in'
     | '/daily'
@@ -222,6 +232,7 @@ export interface FileRouteTypes {
     | '/'
     | '/login'
     | '/pending-account'
+    | '/admin'
     | '/attendance'
     | '/clock-in'
     | '/daily'
@@ -244,6 +255,7 @@ export interface FileRouteTypes {
     | '/_authed'
     | '/login'
     | '/pending-account'
+    | '/_authed/admin'
     | '/_authed/attendance'
     | '/_authed/clock-in'
     | '/_authed/daily'
@@ -298,6 +310,13 @@ declare module '@tanstack/react-router' {
       fullPath: '/pending-account'
       preLoaderRoute: typeof PendingAccountRouteImport
       parentRoute: typeof rootRouteImport
+    }
+    '/_authed/admin': {
+      id: '/_authed/admin'
+      path: '/admin'
+      fullPath: '/admin'
+      preLoaderRoute: typeof AuthedAdminRouteImport
+      parentRoute: typeof AuthedRoute
     }
     '/_authed/attendance': {
       id: '/_authed/attendance'
@@ -415,6 +434,7 @@ declare module '@tanstack/react-router' {
 }
 
 interface AuthedRouteChildren {
+  AuthedAdminRoute: typeof AuthedAdminRoute
   AuthedAttendanceRoute: typeof AuthedAttendanceRoute
   AuthedClockInRoute: typeof AuthedClockInRoute
   AuthedDailyRoute: typeof AuthedDailyRoute
@@ -434,6 +454,7 @@ interface AuthedRouteChildren {
 }
 
 const AuthedRouteChildren: AuthedRouteChildren = {
+  AuthedAdminRoute: AuthedAdminRoute,
   AuthedAttendanceRoute: AuthedAttendanceRoute,
   AuthedClockInRoute: AuthedClockInRoute,
   AuthedDailyRoute: AuthedDailyRoute,
