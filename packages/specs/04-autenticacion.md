@@ -7,8 +7,9 @@
 > del JWT y sonda de sesión: `apps/backend/src/lib/identity.ts`, `lib/cookies.ts`,
 > `routes/auth.ts` y `apps/frontend/src/modules/auth/session.ts`. Las reglas de §8 están
 > cubiertas por `apps/backend/src/routes/auth.test.ts`. Queda pendiente lo atado a otras specs:
-> la custodia de tokens en nativo (§7, spec 20) y la limpieza de la sede al salir (RN-04.8,
-> spec 08).
+> la limpieza de la sede al salir (RN-04.8, spec 08). La custodia de tokens en un cliente
+> nativo (§7) **dejó de estar atada a otra spec**: la de la app móvil se retiró del alcance, así
+> que esa §7 es ahora su único sitio — y una hipótesis, no un pendiente.
 > **Normativo:** [00-migracion-datos-e-identidad](./00-migracion-datos-e-identidad.md) Parte C
 > y [identity-server-usage.md](../docs/identity-server-usage.md). Ante cualquier diferencia, mandan esos dos.
 > **Depende de:** [02-usuarios-y-perfiles](./02-usuarios-y-perfiles.md), [03-roles-y-autorizacion](./03-roles-y-autorizacion.md).
@@ -156,10 +157,17 @@ defecto del rol (`defaultRouteFor`).
 
 ## 7. Móvil
 
-- **El patrón de cookies `httpOnly` no se traslada tal cual a un cliente nativo.** Ésta es la
-  principal atadura entre esta spec, [00](./00-migracion-datos-e-identidad.md) §C.9 y
-  [20-app-movil-y-distribucion](./20-app-movil-y-distribucion.md) §2: la forma de la app móvil
-  decide cómo se custodian los tokens allí. Se deciden juntas.
+> ⚠️ **Esta sección describe un cliente que hoy no existe.** La spec de la app móvil y su
+> distribución **se retiró del alcance**: la aplicación se usa desde el navegador, también en el
+> teléfono, y las pantallas de marcaje están hechas para eso
+> ([05](./05-shells-y-navegacion.md) §3). Lo que sigue se conserva porque es la lista de lo que
+> habría que resolver **si** algún día se empaqueta un cliente nativo, y porque dos de sus puntos
+> son restricciones reales del patrón de sesión de esta spec, no del empaquetado.
+
+- **El patrón de cookies `httpOnly` no se traslada tal cual a un cliente nativo.** Es la única
+  atadura que queda con [00](./00-migracion-datos-e-identidad.md) §C.9, y **se decide aquí**: si
+  hubiera cliente nativo, habría que elegir entre pasar el session token por cabecera o montar un
+  WebView que conserve las cookies. El backend no cierra ninguna de las dos puertas hoy.
 - En runtime nativo la app corre desde `file://`, que **no soporta rutas por path**: hay que
   usar enrutado por hash (el legacy intercambiaba `BrowserRouter` → `HashRouter`).
 - La sesión debe sobrevivir al cierre de la app: el session token es de larga duración y en
@@ -191,8 +199,9 @@ defecto del rol (`defaultRouteFor`).
 
 1. ¿El backend de Hono o las funciones de servidor de TanStack Start hablan con el IS?
    ([00](./00-migracion-datos-e-identidad.md) §C.9, decisión 1 — recomendación: Hono.)
-2. Custodia de tokens en la app móvil (§7), atada a
-   [20](./20-app-movil-y-distribucion.md) §2.
+2. Custodia de tokens en un cliente nativo (§7). **Ya no está atada a nada**: la spec de la
+   app móvil se retiró, así que esto sólo se decide el día que exista tal cliente. No bloquea
+   nada mientras la aplicación se use desde el navegador.
 3. ¿El IS ofrece recuperación de contraseña autoservicio? (RN-04.3)
 4. Duración de la sesión: el session token del IS dura días. Para operarios en planta eso es
    lo deseable; confirmar que no choca con la política de seguridad de Elineas.

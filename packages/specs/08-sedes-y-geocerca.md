@@ -3,7 +3,8 @@
 > **Origen:** `old-docs.md` §3.3, puntos 21, 22, 23, 24, 25, 77.
 > **Estado en el sistema legacy:** ✅ implementado, ⚠️ con deuda en el seguimiento en segundo plano de Android.
 > **Estado en el monorepo nuevo:** ✅ implementado, salvo el seguimiento en segundo plano
-> (§4), que es de la [20](./20-app-movil-y-distribucion.md). Tabla `work_locations` y columna
+> (§4), que **no está en el alcance**: exige un cliente nativo y la spec de la app móvil se
+> retiró, así que la §4 de aquí es su único sitio. Tabla `work_locations` y columna
 > `profiles.selected_work_location_id`; geometría compartida (Haversine y veredicto de una
 > geocerca) en `packages/validations/src/locations.ts`; **la función pura de decisión** en
 > `apps/backend/src/services/location-rules.ts`; lecturas y escrituras en
@@ -144,9 +145,10 @@ el servidor, que es quien decide (RN-08.2).
 
 Tres decisiones de esa capa que conviene conocer:
 
-- **La interfaz del módulo no menciona `navigator`.** Cuando exista el plugin nativo
-  ([20](./20-app-movil-y-distribucion.md)) se cambia la implementación de esas cuatro funciones
-  y nada más del proyecto se toca.
+- **La interfaz del módulo no menciona `navigator`.** Si algún día hubiera un cliente nativo
+  con su plugin de geolocalización, se cambia la implementación de esas cuatro funciones y nada
+  más del proyecto se toca. Es una costura barata de dejar puesta, no una promesa: hoy no hay
+  spec de app móvil.
 - **No lee al montar.** Encender el GPS es una acción del usuario: una pantalla que pide
   ubicación sola en cuanto se abre enseña el diálogo del permiso en el peor momento —cuando
   nadie sabe todavía para qué—, que es cuando se deniega y ya no se puede volver a pedir.
@@ -163,9 +165,11 @@ Tres decisiones de esa capa que conviene conocer:
 > **Decidido (§9.4):** el modo se mantiene en la configuración **con advertencia visible** —en
 > el propio selector de la pestaña *General* y en la de *Sedes*— y aquí sólo se construye
 > seguimiento **en primer plano**, que es lo que necesitan el diagnóstico y el marcaje. El
-> cierre automático de jornada es de la [09](./09-marcaje-asistencia.md) y el servicio nativo
-> de la [20](./20-app-movil-y-distribucion.md): la decisión de ofrecerlo de verdad se toma con
-> esas dos delante, no antes.
+> cierre automático de jornada es de la [09](./09-marcaje-asistencia.md), y el servicio en
+> segundo plano exigiría un cliente nativo que **no está en el alcance** (la spec de la app móvil
+> se retiró). Así que el modo se queda advertido y esta §4 es el único sitio donde vive esa
+> deuda: sin cliente nativo no hay nada que construir, y con él, esto es lo que habría que
+> resolver.
 
 ## 5. Administración de sedes
 
@@ -266,9 +270,9 @@ Cuatro notas sobre esta tabla:
 3. ~~¿Mapa a mano o librería?~~ **Leaflet** con mosaicos de OSM, sin `react-leaflet`. El círculo
    en metros y el marcador arrastrable son la parte que decide marcajes: no se reinventan.
 4. ~~¿Se ofrece el modo de salida por geocerca?~~ **Se mantiene con advertencia visible**, y no
-   se construye seguimiento en segundo plano aquí. Esa pieza es de la
-   [20](./20-app-movil-y-distribucion.md) y el cierre automático, de la
-   [09](./09-marcaje-asistencia.md).
+   se construye seguimiento en segundo plano aquí. El cierre automático es de la
+   [09](./09-marcaje-asistencia.md); el seguimiento en segundo plano **no tiene spec y no está en
+   el alcance** desde que se retiró la de la app móvil, así que esta §4 es su único registro.
 
 Queda por decidir, y no bloquea nada de esta spec:
 

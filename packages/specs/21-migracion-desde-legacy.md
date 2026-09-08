@@ -19,7 +19,7 @@
 | Lógica de negocio | Repartida entre hooks de React, funciones SQL, triggers y edge functions | Servicios de dominio en el backend |
 | Validación | Ad hoc | Zod compartido (`packages/validations`) |
 | Contratos | Ninguno (cliente hablando directo a la base) | `packages/contracts` |
-| Móvil | Capacitor sobre la SPA | Por decidir ([20](./20-app-movil-y-distribucion.md)) |
+| Móvil | Capacitor sobre la SPA | **No se migra**: se usa desde el navegador del teléfono, con las pantallas de marcaje hechas para eso ([05](./05-shells-y-navegacion.md) §3) |
 | Almacenamiento | Buckets de Supabase (`monthly-reports`, `app-releases`) | Por decidir |
 
 ## 2. Los cuatro cambios de fondo

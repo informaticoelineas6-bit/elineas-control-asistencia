@@ -260,6 +260,7 @@ silencio.
    del panel y el resumen del ámbito traen `open`: entrada sin salida y el día en curso. Es la
    pregunta del jefe de planta respondida con lo que el sistema sabe de verdad.
    > Lo otro —quién está **físicamente** en la geocerca ahora— exige seguimiento de ubicación en
-   > segundo plano, que Android corta y que sigue siendo decisión abierta de la
-   > [20](./20-app-movil-y-distribucion.md) §7. Fingirlo con la última marca sería peor que no
-   > tenerlo: diría "dentro" de alguien que se fue sin marcar.
+   > segundo plano, que un navegador no da y que Android corta. **No está en el alcance**: la
+   > spec de la app móvil se retiró y esa deuda vive en [08](./08-sedes-y-geocerca.md) §4.
+   > Fingirlo con la última marca sería peor que no tenerlo: diría "dentro" de alguien que se fue
+   > sin marcar.

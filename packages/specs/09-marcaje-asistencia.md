@@ -294,8 +294,9 @@ interfaz lo muestra tal cual; no reescribe mensajes.
 5. ~~¿Marcaje sin conexión con cola local?~~ **No ahora.** Una cola obliga a aceptar la hora
    del teléfono, que es justo lo que RN-09.11 evita, o a inventar reglas de conciliación. Lo
    que sí es seguro es **reintentar**: la idempotencia por (persona, tipo, minuto) hace que
-   repetir la petición no duplique. Queda como requisito de la
-   [20](./20-app-movil-y-distribucion.md), donde hay almacenamiento propio.
+   repetir la petición no duplique. Una cola local exigiría un cliente con almacenamiento propio,
+   y ése **no está en el alcance** desde que se retiró la spec de la app móvil: la decisión queda
+   cerrada en "no", no aparcada en otra spec.
 
 Lo que queda pendiente **por dependencia**, no por decisión:
 

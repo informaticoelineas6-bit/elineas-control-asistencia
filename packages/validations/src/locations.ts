@@ -27,7 +27,8 @@ import { distanceInMeters, latitudeSchema, longitudeSchema } from "./geo.ts";
  * 3. El selector de ubicación usa **Leaflet con mosaicos de OpenStreetMap**, con
  *    degradación a coordenadas a mano si no cargan.
  * 4. El modo de salida por geocerca **se mantiene en la configuración con
- *    advertencia**; el seguimiento en segundo plano es de la spec 20.
+ *    advertencia**; el seguimiento en segundo plano exigiría un cliente nativo y
+ *    está fuera del alcance (spec 08 §4).
  */
 
 /**

@@ -77,8 +77,10 @@ activó, y desactivación igual de simple.
 Borrado real ([02](./02-usuarios-y-perfiles.md) RN-02.8), otorgamiento del rol `superadmin`
 ([03](./03-roles-y-autorizacion.md) RN-03.7/8), reseteo de contraseñas.
 
-### 2.7 Publicación de la app
-Ver [20-app-movil-y-distribucion](./20-app-movil-y-distribucion.md).
+### 2.7 ~~Publicación de la app~~ — fuera del alcance
+La spec de la app móvil y su distribución **se retiró**: la aplicación se sirve por web, también
+en el teléfono, así que no hay APK que publicar ni versión mínima que forzar. Si algún día se
+empaqueta un cliente nativo, esta sección vuelve con él.
 
 ## 3. Reglas transversales
 

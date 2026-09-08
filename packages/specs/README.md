@@ -199,7 +199,17 @@ lectores*.
 | # | Spec | Estado legacy | Depende de |
 |---|---|---|---|
 | 19 | [Panel de superadmin](./19-panel-superadmin.md) | ✅ | 02, 06, 18 |
-| 20 | [App móvil Android y distribución](./20-app-movil-y-distribucion.md) | ⚠️ | 04, 08, 19 |
+
+> **La 20 —app móvil Android y distribución— se retiró, y por eso el índice salta de la 19 a la
+> 21.** La aplicación se usa desde el navegador, también en el teléfono, y las pantallas de
+> marcaje están hechas para eso ([05](./05-shells-y-navegacion.md) §3). Lo que esa spec cargaba
+> tiene ahora un solo sitio cada cosa: la **geolocalización en segundo plano** —con el modo
+> `geofence_exit` y el cierre automático de jornada— en [08](./08-sedes-y-geocerca.md) §4, y la
+> **custodia de tokens en un cliente nativo** en [04](./04-autenticacion.md) §7. Las dos dejan
+> de ser pendientes y pasan a ser hipótesis: no hay nada que construir mientras no exista un
+> cliente nativo. Del **marcaje sin conexión** se cerró la decisión en la
+> [09](./09-marcaje-asistencia.md) §9.5 —no—, y la publicación del APK desapareció del CI de la
+> [22](./22-calidad-y-deuda-tecnica.md) §2 y de la §2.7 de la [19](./19-panel-superadmin.md).
 
 ### Transversales
 
@@ -224,7 +234,7 @@ Por dependencia técnica, no por valor de negocio:
                                antes, adelantado por la 13 porque RN-13.4 no se podía construir
                                sin él; sólo queda su cierre de periodo
 14 · 18                        transversales, en paralelo desde temprano
-19 → 20                        plataforma
+19                             plataforma (la 20 se retiró: ver el índice)
 ```
 
 **21** y **22** no son una fase final: se leen **antes de empezar**. La 22 fija cómo se
@@ -312,8 +322,9 @@ De la [15](./15-paneles-y-dashboard.md), que cerró sus cuatro:
   es una pantalla cuyas secciones aparecen según lo que manda el servidor.
 - **"Estado en vivo" se responde a medias, con la mitad que se puede construir**: quién tiene la
   jornada abierta, no quién está dentro de la geocerca. Lo segundo exige geolocalización en
-  segundo plano, que sigue abierto en la [20](./20-app-movil-y-distribucion.md) §7; fingirlo con
-  la última marca diría "dentro" de alguien que se fue sin marcar.
+  segundo plano, que un navegador no da y que quedó **fuera del alcance**
+  ([08](./08-sedes-y-geocerca.md) §4); fingirlo con la última marca diría "dentro" de alguien que
+  se fue sin marcar.
 - Y **`scope=` desapareció de la API en vez de rechazarse**: el ámbito sale de la sesión y sólo
   se puede *acotar*. El parámetro que puede ensanchar el ámbito es el parámetro por el que se
   escapan los datos.
@@ -373,9 +384,12 @@ Lo que sigue abierto y bloquea a varias specs a la vez:
 2. **Dos preguntas al equipo del Identity Server**, de las que depende la UX del corte y el
    soporte del día a día: ¿fuerza cambio de contraseña al primer ingreso?, ¿tiene recuperación
    autoservicio? → [00](./00-migracion-datos-e-identidad.md) §B.1.
-3. **¿Hace falta geolocalización en segundo plano y marcaje sin conexión?**
-   → [20](./20-app-movil-y-distribucion.md) §7. Decide la forma de la app móvil; no bloquea
-   nada más si el backend queda preparado para autenticar también por cabecera.
+3. ~~**¿Hace falta geolocalización en segundo plano y marcaje sin conexión?**~~ **Cerrado por
+   alcance:** no, mientras la aplicación se use desde el navegador. Lo segundo se decidió en la
+   [09](./09-marcaje-asistencia.md) §9.5 —una cola local obliga a aceptar la hora del teléfono,
+   que es justo lo que RN-09.11 evita— y lo primero queda anotado en
+   [08](./08-sedes-y-geocerca.md) §4 como lo que haría falta **si** algún día hubiera cliente
+   nativo. Ninguna de las dos bloquea nada hoy.
 
 4. **¿Cómo se sabe quién es jefe de un departamento sin que esté autenticado?**
    → [11](./11-vacaciones.md) §9, decisión 3. Los roles viven en el Identity Server y sólo se

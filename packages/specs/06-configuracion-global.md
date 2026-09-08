@@ -64,9 +64,10 @@ todas dependen de estos valores.
 | `attendance_geofence_exit_minutes` | int 1–720 \| null | obligatorio si modo `geofence_exit` | `null` | idem |
 
 > ⚠️ El modo `geofence_exit` **no es fiable hoy** y la interfaz lo advierte al elegirlo: necesita
-> seguimiento de ubicación en segundo plano, que Android corta ([08](./08-sedes-y-geocerca.md) §4,
-> deuda del punto 77). La clave se queda en el catálogo; ofrecerlo de verdad es una decisión de la
-> [20](./20-app-movil-y-distribucion.md).
+> seguimiento de ubicación en segundo plano, que un navegador no da y que Android corta
+> ([08](./08-sedes-y-geocerca.md) §4, deuda del punto 77). La clave se queda en el catálogo, pero
+> **ofrecerlo de verdad exigiría un cliente nativo con servicio propio, que no está en el
+> alcance**: la spec de la app móvil se retiró. Lo que decide su futuro es esa §4.
 
 ### 3.3 Descansos
 

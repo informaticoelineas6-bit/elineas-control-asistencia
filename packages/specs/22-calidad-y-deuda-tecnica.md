@@ -28,8 +28,10 @@ Requisito mínimo del flujo de CI:
 4. `build` — backend y frontend.
 5. **Verificación de esquema** — el esquema desplegado coincide con las migraciones del
    repositorio ([21](./21-migracion-desde-legacy.md) §8).
-6. Build y firma del APK, si se mantiene la app nativa
-   ([20](./20-app-movil-y-distribucion.md) §4).
+
+   *(Aquí había un sexto paso —build y firma del APK— que desapareció con la spec de la app
+   móvil: no hay nada nativo que empaquetar. Con eso, los cinco pasos de RQ-22.1 son exactamente
+   los cinco que existen.)*
 
 - **RQ-22.1** — Ningún cambio se fusiona a `main` sin que los pasos 1–5 pasen.
 
@@ -98,7 +100,7 @@ ejecutado**. Mínimos para el sistema nuevo:
 | 74 | Auditoría de usabilidad sin cerrar | §6 |
 | 75 | Divisor de nómina fijo | [17](./17-nomina.md) RN-17.3 |
 | 76 | Nómina fuera de reportes, auditoría y avisos | [17](./17-nomina.md) RN-17.9/10/11 |
-| 77 | Geolocalización en segundo plano | [08](./08-sedes-y-geocerca.md) §4, [20](./20-app-movil-y-distribucion.md) §4 |
+| 77 | Geolocalización en segundo plano | [08](./08-sedes-y-geocerca.md) §4 — **fuera del alcance**: exige cliente nativo |
 | 78 | Particionamiento | §5 |
 | 79 | Pruebas de carga | §5 |
 | 80 | Residuos y limpieza | [21](./21-migracion-desde-legacy.md) §7 |

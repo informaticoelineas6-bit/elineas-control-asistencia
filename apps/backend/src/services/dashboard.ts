@@ -60,7 +60,8 @@ export type Scope = { managedDepartmentIds: string[] | "all" };
  * sede ahora mismo?"—: una entrada sin salida de un día ya cerrado no es alguien
  * dentro, es una jornada incompleta (RN-15.3). Ver la nota de la decisión en la
  * spec: saber quién está *físicamente* en la sede exige geolocalización en
- * segundo plano, que sigue siendo una decisión abierta de la spec 20.
+ * segundo plano, que un navegador no da y que quedó fuera del alcance
+ * (spec 08 §4).
  */
 const isOpenNow = (fact: DailyFact, today: string) =>
 	fact.incomplete && fact.date === today;

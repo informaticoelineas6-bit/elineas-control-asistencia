@@ -3,17 +3,19 @@ import type { DevicePosition } from "@elineas/validations";
 /**
  * Capa de ubicación del cliente (spec 08 §4).
  *
- * Una sola abstracción sobre dos runtimes. Hoy sólo existe el **web**; el nativo
- * (Capacitor) llega con la spec 20, y por eso la interfaz de este módulo no menciona
- * `navigator`: cuando haya plugin, se cambia la implementación de estas cuatro
- * funciones y **nada más del proyecto se toca**.
+ * Una sola abstracción sobre un runtime, el **web**, que es el único que hay: la
+ * spec de la app móvil se retiró del alcance. La interfaz no menciona `navigator`
+ * de todas formas, porque la costura es barata de dejar puesta — si algún día
+ * hubiera un cliente nativo con su plugin, se cambia la implementación de estas
+ * cuatro funciones y **nada más del proyecto se toca**.
  *
  * ⚠️ **Deuda heredada (punto 77).** El seguimiento en segundo plano en Android usaba
  * `watchPosition` como sustituto de un servicio nativo, y Android mata el proceso.
  * Aquí sólo hay seguimiento **en primer plano** —con la pantalla abierta—, que es lo
  * que necesitan el diagnóstico (§6) y el marcaje (spec 09). El modo de salida por
  * geocerca sigue sin ser fiable, y por eso su opción lleva advertencia en
- * Configuración: la decisión de ofrecerlo de verdad es de la spec 20.
+ * Configuración: ofrecerlo de verdad exigiría un cliente nativo con servicio en
+ * segundo plano, que no está en el alcance (spec 08 §4).
  *
  * Lo que **no** hace esta capa: decidir. No calcula si estás dentro de una geocerca
  * ni cachea veredictos. Lee el GPS y devuelve lo que dice, con su precisión; quien

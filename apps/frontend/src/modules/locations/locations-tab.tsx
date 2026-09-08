@@ -184,7 +184,7 @@ export function LocationsTab({ config }: { config: AppConfigValues }) {
 							Ese modo necesita seguimiento de ubicación en segundo plano, y hoy
 							no es fiable: Android corta el proceso con la pantalla apagada.
 							Las jornadas pueden quedarse sin salida sin que nadie lo note
-							hasta el reporte. Mientras eso no se resuelva (spec 20), usa el
+							hasta el reporte. Un navegador no puede resolverlo, así que usa el
 							modo manual o el cierre por horario.
 						</p>
 					</div>

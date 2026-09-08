@@ -42,7 +42,7 @@ accede a la base ([architecture.md](../docs/architecture.md)).
 | PostgREST (`supabase.from(...)` desde el cliente) | API HTTP tipada con contratos en `packages/contracts` | [api-conventions.md](../docs/api-conventions.md) |
 | Funciones SQL y triggers | Servicios de dominio en TypeScript | [21](./21-migracion-desde-legacy.md) §2 |
 | Edge Functions (Deno, 8) | Rutas de Hono + procesos programados | [16](./16-reporteria-mensual.md), [19](./19-panel-superadmin.md) |
-| Storage (`monthly-reports`, `app-releases`) | **Por decidir** (§A.5) | [16](./16-reporteria-mensual.md), [20](./20-app-movil-y-distribucion.md) |
+| Storage (`monthly-reports`, `app-releases`) | Volumen privado del contenedor para los reportes; `app-releases` **sin destino**: la app móvil salió del alcance | [16](./16-reporteria-mensual.md) |
 | Realtime (`postgres_changes`) | SSE, WebSocket o sondeo | [14](./14-notificaciones.md) RN-14.4 |
 
 - **RN-00.1 — La pérdida de RLS es el riesgo número uno de esta migración.** En Supabase, un
@@ -374,9 +374,11 @@ naturaleza**: deja de crear cuentas y pasa a completar perfiles.
    [architecture.md](../docs/architecture.md) (el backend es dueño de la autenticación) →
    **recomendación: Hono**. Pero implica cookies cross-origin entre `:3004` y `:3001`, que ya
    obligaron a `sameSite: "none"`.
-2. **Cookies httpOnly y app móvil.** En un WebView o cliente nativo el patrón de cookies no
-   aplica igual. **Esta decisión está atada a [20-app-movil-y-distribucion](./20-app-movil-y-distribucion.md) §2**
-   y hay que resolverlas juntas.
+2. ~~**Cookies httpOnly y app móvil.**~~ **Ya no bloquea nada.** En un WebView o cliente nativo
+   el patrón de cookies no aplica igual, pero la spec de la app móvil **se retiró del alcance** y
+   la aplicación se usa desde el navegador, también en el teléfono. Lo que habría que resolver el
+   día que exista un cliente nativo vive en [04](./04-autenticacion.md) §7, que es ahora su único
+   sitio.
 3. TTL de la caché de roles (RN-00.41) y comportamiento con el IS caído (RN-00.42).
 4. Provisión del perfil al primer ingreso (RN-00.46).
 5. ¿Se exige segundo factor para `superadmin`? Depende de lo que ofrezca el IS.

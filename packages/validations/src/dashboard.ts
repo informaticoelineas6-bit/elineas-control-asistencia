@@ -88,8 +88,8 @@ export const dailyRosterEntrySchema = attendanceDaySchema
 		 * `true` si hay una entrada sin su salida **y el día todavía está en
 		 * curso**: la aproximación honesta a "quién está dentro ahora mismo" (§8,
 		 * decisión 4). No es lo mismo que estar dentro de la geocerca — eso exige
-		 * geolocalización en segundo plano, que es una decisión abierta de la
-		 * [spec 20] §7 — pero es lo que un jefe de planta puede usar hoy.
+		 * geolocalización en segundo plano, fuera del alcance de una aplicación web
+		 * ([spec 08] §4) — pero es lo que un jefe de planta puede usar hoy.
 		 */
 		open: z.boolean(),
 	});
