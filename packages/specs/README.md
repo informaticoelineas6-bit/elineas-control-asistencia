@@ -282,7 +282,7 @@ en la pantalla se ve perfectamente.
 | # | Spec | Estado | Contenido |
 |---|---|---|---|
 | 21 | [Migración desde el legacy](./21-migracion-desde-legacy.md) | ❌ | Qué datos se traen, qué se deja atrás, estrategia de corte |
-| 22 | [Calidad, pruebas y deuda técnica](./22-calidad-y-deuda-tecnica.md) | ❌ | CI, cobertura mínima obligatoria, principios de arquitectura |
+| 22 | [Calidad, pruebas y deuda técnica](./22-calidad-y-deuda-tecnica.md) | ✅ **en el monorepo** | CI, cobertura mínima obligatoria, principios de arquitectura |
 
 ## Orden de construcción sugerido
 
@@ -310,6 +310,25 @@ Por dependencia técnica, no por valor de negocio:
 
 **21** y **22** no son una fase final: se leen **antes de empezar**. La 22 fija cómo se
 construye todo lo demás y la 21 condiciona el modelo de datos.
+
+La **[22](./22-calidad-y-deuda-tecnica.md)** se construyó al final aunque se leyera al principio,
+y tiene su ironía: **el flujo de CI que exige que nada se fusione roto llegó después de diez
+specs**. Lo que la salva es que sus reglas se venían aplicando desde la primera —dominio puro,
+pruebas de autorización con usuarios reales, una regla una implementación— así que escribir el CI
+no fue arreglar el proyecto, fue automatizar lo que ya se hacía a mano.
+
+Y aun así **encontró tres cosas**, que es exactamente para lo que sirve: el paso de lint no
+pasaba —tres errores en componentes de shadcn y el `$schema` de Biome desfasado—,
+`packages/contracts` no compilaba por su cuenta, y **RQ-22.5 estaba medio cumplida**: había
+conteo de consultas en el panel y no en el reporte. El del reporte, al escribirlo, enseñó que
+**el reporte sí crece** —34 consultas con 5 personas, 45 con 205— y que el crecimiento no es un
+N+1 sino el `insert` de hechos diarios en trozos de 500 filas, que es el límite del protocolo de
+PostgreSQL.
+
+⚠️ **Lo que el repositorio no puede cerrar solo**: RQ-22.1 dice que ningún cambio se fusiona sin
+que los cinco pasos pasen, y el flujo sólo *declara* las comprobaciones. Bloquear la fusión es
+marcar el trabajo como obligatorio en la configuración de la rama en GitHub. Sin ese
+interruptor, los cinco pasos son un informe y no una barrera.
 
 ## Ya decidido
 

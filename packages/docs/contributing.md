@@ -92,6 +92,33 @@ bun run lint
 bun run format
 ```
 
+## Typecheck
+
+```bash
+bun run typecheck   # los cuatro paquetes: las dos apps, validations y contracts
+```
+
+## Integración continua
+
+`.github/workflows/ci.yml` corre los cinco pasos de la [spec 22 §2](../specs/22-calidad-y-deuda-tecnica.md)
+en cada `push` a `main` y en cada pull request: **lint → typecheck → pruebas → build →
+verificación de esquema**, más el presupuesto de tamaño del cliente. En ese orden, que es el del
+coste: lo que falla en segundos va antes que lo que tarda minutos.
+
+Los mismos comandos se pueden correr en local, y **son literalmente los mismos**: la CI no tiene
+scripts propios. Los dos que sólo se usan ahí:
+
+```bash
+bun scripts/check-bundle.ts        # RQ-22.4 — presupuesto de tamaño (necesita un build)
+bun scripts/check-schema-drift.ts  # deriva entre schema.ts y las migraciones
+```
+
+El segundo se salta solo si hay cambios sin confirmar en `apps/backend/drizzle`: con una
+migración a medio escribir no puede distinguir una deriva del trabajo en curso.
+
+> ⚠️ Que el flujo exista **no** bloquea una fusión rota: eso es marcar el trabajo `verificar`
+> como comprobación obligatoria en la configuración de la rama, y eso vive en GitHub, no aquí.
+
 ## Build
 
 ```bash
