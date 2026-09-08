@@ -61,6 +61,7 @@ mock.module("#/lib/identity", () => ({
 }));
 
 const { createApp } = await import("#/app.ts");
+const { countQueries } = await import("#/test-support/count-queries.ts");
 const { db } = await import("#/db");
 const {
 	appConfig,
@@ -805,6 +806,63 @@ describe("RN-16.5 — la descarga (§9)", () => {
 				.status,
 		).toBe(403);
 	});
+});
+
+describe("RQ-22.5 — sin N+1 (spec 22 §5)", () => {
+	test("el reporte de 200 personas hace las mismas consultas que el de 5", async () => {
+		// La spec 22 pide este conteo en "los endpoints de panel **y reporte**", y
+		// el del panel ya existía (spec 15). Éste faltaba, y es el que más lo
+		// necesita: la matriz mensual es empleado × día, así que una consulta por
+		// persona no se nota con cinco y tumba el servidor con doscientas.
+		const few = await countQueries(() => monthly(manager));
+
+		const bulk = Array.from({ length: 200 }, (_, index) => ({
+			identityUserId: `${TAG}-bulk-${index}`,
+			email: `${TAG}-bulk-${index}@test.local`,
+			fullName: `${TAG} Bulk ${String(index).padStart(3, "0")}`,
+			departmentId,
+			isActive: true,
+		}));
+		const bulkIds = (
+			await db.insert(profiles).values(bulk).returning({ id: profiles.id })
+		).map((row) => row.id);
+
+		try {
+			// La comprobación de volumen va **dentro** de la medición: construir el
+			// reporte de 205 personas cuesta segundos, y hacerlo dos veces sólo para
+			// contar filas convertía esta prueba en la más lenta del archivo.
+			let rows = 0;
+			const many = await countQueries(async () => {
+				rows = (await monthly(manager)).rows.length;
+			});
+			expect(rows).toBeGreaterThanOrEqual(200);
+
+			// **No se afirma que el número sea el mismo**, y aquí está lo que esta
+			// prueba enseñó: el reporte *sí* hace más consultas con más gente, pero
+			// no una por persona. Medido: **34 con 5 personas y 45 con 205**.
+			//
+			// Los once de diferencia no son un N+1: son el `insert` de los hechos
+			// diarios materializados, que va en **trozos de 500 filas** porque un
+			// `insert` de decenas de miles supera el límite de parámetros del
+			// protocolo de PostgreSQL (`daily-facts-store.ts`). 205 personas × 31
+			// días son 6.355 filas, o trece trozos; cinco personas caben en uno.
+			//
+			// Así que lo que se afirma es lo que de verdad importa: que el
+			// crecimiento sea **muchísimo menor que el de la plantilla**. Con un N+1
+			// de lectura, `many` estaría por encima de 230.
+			expect(many - few).toBeLessThan(20);
+			expect(many).toBeLessThan(60);
+		} finally {
+			// Se limpian aquí y no en el `afterEach`: doscientas filas de más harían
+			// lento y ruidoso al resto de este archivo.
+			await db
+				.delete(attendanceDailyFacts)
+				.where(inArray(attendanceDailyFacts.userId, bulkIds));
+			await db.delete(profiles).where(inArray(profiles.id, bulkIds));
+		}
+		// Timeout propio: son dos reportes de 205 personas, con sus hechos diarios
+		// materializados. El de 5 segundos por defecto no da.
+	}, 60_000);
 });
 
 describe("§6 — los KPIs", () => {

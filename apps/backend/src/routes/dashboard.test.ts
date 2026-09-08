@@ -55,7 +55,8 @@ mock.module("#/lib/identity", () => ({
 }));
 
 const { createApp } = await import("#/app.ts");
-const { db, pool } = await import("#/db");
+const { db } = await import("#/db");
+const { countQueries } = await import("#/test-support/count-queries.ts");
 const {
 	appConfig,
 	attendanceIncidents,
@@ -203,34 +204,6 @@ async function seedOpenDay(userId: string, date: string) {
 		blocked: false,
 		departmentId,
 	});
-}
-
-/**
- * Cuenta las consultas que salen del pool mientras corre `run`.
- *
- * Se envuelven `query` y `connect` porque Drizzle usa el primero para las
- * lecturas sueltas y el segundo para las transacciones; contar sólo uno dejaría
- * la mitad fuera y daría un número tranquilizador y falso.
- */
-async function countQueries(run: () => Promise<unknown>): Promise<number> {
-	let count = 0;
-	const original = pool.query.bind(pool);
-
-	// Sustitución deliberada para instrumentar, sólo en pruebas. Los paneles son
-	// de lectura y no abren transacción, así que todo pasa por `pool.query`.
-	Object.assign(pool, {
-		query: (...args: unknown[]) => {
-			count += 1;
-			return (original as (...a: unknown[]) => unknown)(...args);
-		},
-	});
-
-	try {
-		await run();
-	} finally {
-		Object.assign(pool, { query: original });
-	}
-	return count;
 }
 
 /** Ids de los perfiles sembrados en masa para la prueba de conteo. */
