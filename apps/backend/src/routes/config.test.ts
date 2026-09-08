@@ -177,6 +177,12 @@ describe("subconjunto público (spec 06 §5)", () => {
 				// antes de enviar, con la misma cifra que aplica el servidor.
 				"incident_report_window_days",
 				"late_tolerance_minutes",
+				// Spec 19 §2.5: el aviso de mantenimiento tiene que llegar a **todo el
+				// mundo conectado**, y "todo el mundo" incluye a quien sólo tiene esta
+				// consulta. Sin las dos claves aquí haría falta un endpoint nuevo para
+				// repartir un aviso que ya viaja.
+				"maintenance_message",
+				"maintenance_mode",
 			].sort(),
 		);
 		// Lo que no le sirve a quien no gestiona, no viaja.
