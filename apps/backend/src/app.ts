@@ -3,6 +3,7 @@ import { cors } from "hono/cors";
 import { HTTPException } from "hono/http-exception";
 import { config as appConfig } from "#/lib/config";
 import { correlate } from "#/lib/correlation.ts";
+import { liveUpdates } from "#/lib/live.ts";
 import { absences } from "#/routes/absences.ts";
 import { attendance } from "#/routes/attendance.ts";
 import { audit } from "#/routes/audit.ts";
@@ -56,6 +57,11 @@ export function createApp() {
 	// tenga que propagarlo a mano. Va antes que cualquier ruta: si se montara
 	// después, las de arriba escribirían sin él.
 	app.use("*", correlate);
+
+	// RN-14.4 — Y el ámbito de los avisos en vivo: se acumulan durante la petición
+	// y se publican cuando el handler termina, o el cliente preguntaría antes de
+	// que la transacción hubiera escrito. Ver `lib/live.ts`.
+	app.use("*", liveUpdates);
 
 	app.route("/api/auth", auth);
 	app.route("/api/me", me);

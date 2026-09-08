@@ -1,7 +1,9 @@
 import { createApp } from "#/app.ts";
 import { config } from "#/lib/config";
 import { withCorrelationId } from "#/lib/correlation.ts";
+import { withLiveScope } from "#/lib/live.ts";
 import { refreshYesterday } from "#/services/daily-facts-store.ts";
+import { purgeReadNotifications } from "#/services/notifications.ts";
 import { processQueuedRuns } from "#/services/report-runs.ts";
 
 const app = createApp();
@@ -27,6 +29,12 @@ const app = createApp();
  */
 const QUEUE_TICK_MS = 5_000;
 const FACTS_TICK_MS = 60 * 60 * 1000;
+/**
+ * La purga de notificaciones leídas (spec 14 RN-14.6) no tiene prisa ninguna:
+ * es mantenimiento, y con `notification_retention_days` en 0 —el default— no
+ * hace nada en absoluto. Una vez al día, y al arrancar.
+ */
+const PURGE_TICK_MS = 24 * 60 * 60 * 1000;
 
 function background(
 	name: string,
@@ -37,8 +45,9 @@ function background(
 		try {
 			// RN-18.8 — Cada vuelta abre su propio ámbito de correlación: las
 			// entradas de una corrida comparten identificador y las de dos corridas
-			// distintas no se confunden.
-			await withCorrelationId(task);
+			// distintas no se confunden. Y el de avisos en vivo (spec 14 RN-14.4),
+			// para que lo que notifique un proceso de fondo salga cuando ya escribió.
+			await withCorrelationId(() => withLiveScope(task));
 		} catch (error) {
 			// Un fallo de fondo no debe tumbar el servidor ni quedarse callado.
 			console.error(`[${name}] falló:`, error);
@@ -51,6 +60,18 @@ function background(
 
 background("cola de reportes", processQueuedRuns, QUEUE_TICK_MS);
 background("hechos diarios", refreshYesterday, FACTS_TICK_MS);
+background(
+	"purga de notificaciones",
+	async () => {
+		const purged = await purgeReadNotifications();
+		// Silencio cuando no hay nada que decir: con la clave en 0 esto correría
+		// todos los días para escribir "purgué 0".
+		if (purged > 0) {
+			console.log(`[purga de notificaciones] ${purged} leídas eliminadas`);
+		}
+	},
+	PURGE_TICK_MS,
+);
 
 export default {
 	port: config.port,
