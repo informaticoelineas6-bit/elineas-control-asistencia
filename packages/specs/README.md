@@ -168,6 +168,18 @@ cuadrar con seis** —falta la de días no laborables, o un mes con un feriado s
 una prueba encontró que `periodRange` construía en UTC y formateaba en local, así que **en La
 Habana marzo terminaba el 30**. Es exactamente lo que RN-15.4 y la spec 07 §2 llevan advirtiendo.
 
+Y la [18](./18-auditoria.md) se construyó **al revés que las demás**: su escritura llevaba
+funcionando desde la [01](./01-organizacion-departamentos.md) —cada spec añadía sus acciones al
+catálogo— y lo que faltaba era **poder leerla**. Hasta ahora la bitácora se consultaba en base,
+que es como decir que no se consultaba. Ahora vive en `/logs` con la diferencia campo a campo que
+su §7 pedía, y **no** dentro del panel de la [19](./19-panel-superadmin.md): esa spec no está
+construida, y hacerla esperar habría dejado la bitácora sin leer un mes más.
+
+Cerró tres de sus cuatro decisiones y dejó **medida su propia deuda**: de las 39 acciones del
+catálogo, 23 tienen una prueba que comprueba que dejan su fila. Lo que sí está cerrado es que
+ninguna se escribe fuera del catálogo y que ninguna del catálogo se queda sin emitir — hay una
+prueba estática para lo segundo, que es el otro lado del enum.
+
 La [17](./17-nomina.md) se terminó **desde el otro extremo**: su modelo y su descuento automático
 los había adelantado la [13](./13-justificacion-ausencias.md) —RN-13.4 no se podía construir ni
 comprobar sin la tabla de ajustes—, así que lo que quedaba era la superficie de administración.
@@ -192,13 +204,17 @@ lectores*.
 | 15 | [Agregación diaria, dashboard y paneles](./15-paneles-y-dashboard.md) | ✅ | 07, 09, 10, 11, 13 — ✅ **en el monorepo** |
 | 16 | [Reportería mensual](./16-reporteria-mensual.md) | ⚠️ | 15 — ✅ **en el monorepo**, menos el transporte a Google Sheets |
 | 17 | [Nómina: ajustes y descuentos](./17-nomina.md) | ⚠️ | 02, 13 — ✅ **en el monorepo**, menos el cierre de periodo (su decisión 2) |
-| 18 | [Bitácora de auditoría](./18-auditoria.md) | ⚠️ | 03 |
+| 18 | [Bitácora de auditoría](./18-auditoria.md) | ⚠️ | 03 — ✅ **en el monorepo**, menos su política de retención |
 
 ### Plataforma
 
 | # | Spec | Estado legacy | Depende de |
 |---|---|---|---|
-| 19 | [Panel de superadmin](./19-panel-superadmin.md) | ✅ | 02, 06, 18 |
+| 19 | [Panel de superadmin](./19-panel-superadmin.md) | ✅ | 02, 06, 18 — **desbloqueada**: la 18 ya está |
+
+> La [19](./19-panel-superadmin.md) esperaba por la bitácora y ya no espera; lo que sí cambió es
+> su §2.2, porque **la bitácora no vive dentro de este panel**: se construyó antes y está en
+> `/logs`. Cuando el panel llegue, la absorbe o enlaza a ella.
 
 > **La 20 —app móvil Android y distribución— se retiró, y por eso el índice salta de la 19 a la
 > 21.** La aplicación se usa desde el navegador, también en el teléfono, y las pantallas de
@@ -233,7 +249,9 @@ Por dependencia técnica, no por valor de negocio:
 17                             nómina (depende de 13) — ✅, y su descuento automático llegó
                                antes, adelantado por la 13 porque RN-13.4 no se podía construir
                                sin él; sólo queda su cierre de periodo
-14 · 18                        transversales, en paralelo desde temprano
+14                             notificaciones: parcial, le falta la entrega en vivo
+18                             bitácora: ✅ — la escritura creció spec a spec y la lectura
+                               llegó al final, que es el orden natural
 19                             plataforma (la 20 se retiró: ver el índice)
 ```
 
@@ -343,6 +361,26 @@ De la [16](./16-reporteria-mensual.md), que cerró tres de sus cuatro:
 
 **Para el XLSX se usa `hucre`**: cero dependencias, ESM y TypeScript nativos, y un formato de
 escritura por filas que es exactamente la forma que ya tenía la cuadrícula compartida.
+
+De la [18](./18-auditoria.md), que cerró tres de sus cuatro decisiones:
+
+- **Un `global_manager` no lee la bitácora, ni "la parte de su ámbito".** No es prudencia: una
+  entrada no tiene departamento, así que ese recorte no se puede calcular sin etiquetar cada fila
+  al escribirla y rellenar hacia atrás las que ya existen. Y lo que un gestor necesita ya está en
+  el propio registro: quién revisó una ausencia está en la revisión.
+- **Un fallo de bitácora aborta la acción, siempre.** Ya lo era —`audit()` escribe dentro de la
+  transacción— y hacer la excepción costaría más que mantenerla: habría que mantener una lista de
+  dominios "críticos".
+- **La IP se registra**, y sólo la ve un `superadmin`.
+- Y una de forma que vale para cualquier catálogo cerrado de este repositorio: **el verbo se
+  escribe contra el enum y se lee como texto.** El enum es el contrato de escritura; al leer, una
+  fila de una versión anterior sigue ahí (RN-18.6) y validarla obligaría a esconderla.
+
+**El identificador de correlación de RN-18.8 no se pasa como argumento**, y es la decisión
+técnica de esta spec: vive en un `AsyncLocalStorage` que el middleware abre por petición, así que
+una cascada comparte identificador sin que ningún servicio de dominio se entere. Pasarlo a mano
+sería repetir el error que la spec 18 §5 diagnostica en el legacy — la llamada que se olvidara de
+propagarlo rompería la cadena sin fallar ni avisar.
 
 De la [17](./17-nomina.md), que dejó su cierre de periodo abierto y cerró todo lo demás:
 

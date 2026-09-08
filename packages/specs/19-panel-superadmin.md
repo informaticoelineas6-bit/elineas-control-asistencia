@@ -23,7 +23,13 @@ Usuarios por rol y estado, marcajes del día/mes, departamentos, incidencias y a
 pendientes, corridas de reporte recientes, errores.
 
 ### 2.2 Bitácora completa
-Ver [18-auditoria](./18-auditoria.md) §7. El panel es su único punto de acceso.
+Ver [18-auditoria](./18-auditoria.md) §7.
+
+> ⚠️ **Ya no es cierto que el panel sea su único punto de acceso, y por una buena razón.** La
+> [18](./18-auditoria.md) se construyó antes que este panel —la escritura llevaba años funcionando
+> y lo que faltaba era leerla— así que la bitácora vive hoy en `/logs`, con el mismo rol mínimo
+> que tendría aquí. Cuando este panel se construya, la absorbe como pestaña o enlaza a ella; lo
+> que no hay que hacer es una segunda pantalla.
 
 ### 2.3 Consola SQL restringida
 
