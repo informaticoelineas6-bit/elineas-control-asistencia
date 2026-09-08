@@ -10,8 +10,8 @@ import {
 	toValueMatrix,
 } from "@elineas/validations";
 import { readXlsx } from "hucre/xlsx";
-import { reportToXlsx } from "#/services/xlsx.ts";
 import { periodRange } from "#/services/reports.ts";
+import { reportToXlsx } from "#/services/xlsx.ts";
 
 /**
  * Pruebas de la matriz del reporte (spec 16 §2 y §7).

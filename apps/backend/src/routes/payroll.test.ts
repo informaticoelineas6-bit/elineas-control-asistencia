@@ -771,7 +771,7 @@ describe("§6 — los totales", () => {
 
 describe("§5 — los sueldos", () => {
 	test("se ven todos, con su departamento, y quien no tiene sale con nulo", async () => {
-		const res = await request("/api/payroll/salaries?search=" + TAG, {
+		const res = await request(`/api/payroll/salaries?search=${TAG}`, {
 			as: manager,
 		});
 		expect(res.status).toBe(200);

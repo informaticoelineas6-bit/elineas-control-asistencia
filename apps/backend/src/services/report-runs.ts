@@ -17,13 +17,13 @@ import { departments, reportRuns } from "#/db/schema";
 import { config } from "#/lib/config.ts";
 import { type Actor, audit } from "#/services/audit.ts";
 import { notify } from "#/services/notifications.ts";
-import { reportToXlsx } from "#/services/xlsx.ts";
 import {
 	buildMonthlyReport,
 	periodRange,
 	type Scope,
 } from "#/services/reports.ts";
 import { currentRuleVersion } from "#/services/rule-versions.ts";
+import { reportToXlsx } from "#/services/xlsx.ts";
 
 /**
  * Generación asíncrona del reporte mensual (spec 16 §3).
