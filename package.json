@@ -20,7 +20,8 @@
     "db:pull": "bun run --filter backend db:pull",
     "db:studio": "bun run --filter backend db:studio",
     "test": "bun run --filter './apps/*' test",
-    "typecheck": "bun run --filter './apps/*' --filter '@elineas/*' typecheck"
+    "typecheck": "bun run --filter './apps/*' --filter '@elineas/*' typecheck",
+    "migrate:legacy": "bun run --filter backend migrate:legacy"
   },
   "devDependencies": {
     "@biomejs/biome": "2.4.5",

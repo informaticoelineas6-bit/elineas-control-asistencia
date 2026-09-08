@@ -15,7 +15,8 @@
     "db:pull": "drizzle-kit pull",
     "db:studio": "drizzle-kit studio",
     "test": "bun test --env-file=.env.local",
-    "typecheck": "tsc --noEmit"
+    "typecheck": "tsc --noEmit",
+    "migrate:legacy": "bun --env-file=.env.local src/migration/cli.ts"
   },
   "dependencies": {
     "@date-fns/tz": "^1.5.0",
