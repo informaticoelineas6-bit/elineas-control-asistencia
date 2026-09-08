@@ -1,13 +1,14 @@
 import {
 	type AuditLogEntry,
 	type AuditPage,
-	decodeAuditCursor,
-	encodeAuditCursor,
+	decodeKeysetCursor,
+	encodeKeysetCursor,
 	type ListAuditQuery,
 } from "@elineas/validations";
 import { and, desc, eq, like, type SQL, sql } from "drizzle-orm";
 import { db } from "#/db";
 import { auditLog, profiles } from "#/db/schema";
+import { cursorAt } from "#/lib/keyset.ts";
 import { getConfig } from "#/services/config.ts";
 
 /**
@@ -29,6 +30,8 @@ type AuditJoin = {
 	entry: typeof auditLog.$inferSelect;
 	actorName: string | null;
 	actorEmail: string | null;
+	/** El instante con microsegundos, para el cursor. Ver `lib/keyset.ts`. */
+	cursorAt: string;
 };
 
 function toEntry(row: AuditJoin): AuditLogEntry {
@@ -56,6 +59,7 @@ const query = () =>
 			entry: auditLog,
 			actorName: profiles.fullName,
 			actorEmail: profiles.email,
+			cursorAt: cursorAt(auditLog.createdAt),
 		})
 		.from(auditLog)
 		.leftJoin(profiles, eq(profiles.id, auditLog.actorId));
@@ -71,10 +75,10 @@ function toPage(rows: AuditJoin[], limit: number): AuditPage {
 		entries: page.map(toEntry),
 		nextCursor:
 			rows.length > limit && last
-				? encodeAuditCursor({
-						createdAt: last.entry.createdAt.toISOString(),
-						id: last.entry.id,
-					})
+				? // Con `last.entry.createdAt` —un `Date`— el cursor se dejaría los
+					// microsegundos y la página siguiente se saltaría las filas de ese
+					// mismo instante. Ver `lib/keyset.ts`.
+					encodeKeysetCursor({ createdAt: last.cursorAt, id: last.entry.id })
 				: null,
 	};
 }
@@ -120,7 +124,7 @@ export async function listAudit(input: ListAuditQuery): Promise<AuditPage> {
 		);
 	}
 
-	const cursor = input.cursor ? decodeAuditCursor(input.cursor) : null;
+	const cursor = input.cursor ? decodeKeysetCursor(input.cursor) : null;
 	if (cursor) {
 		// Comparación de fila completa: el instante **y** el id, porque dos entradas
 		// de la misma cascada comparten milisegundo más veces de las que parece —

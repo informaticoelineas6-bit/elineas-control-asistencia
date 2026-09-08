@@ -6,8 +6,8 @@ import {
 	auditActionLabel,
 	auditDiff,
 	auditDomainOf,
-	decodeAuditCursor,
-	encodeAuditCursor,
+	decodeKeysetCursor,
+	encodeKeysetCursor,
 } from "@elineas/validations";
 
 /**
@@ -71,28 +71,28 @@ describe("§7 — la diferencia visual", () => {
 	});
 });
 
-describe("§6 — el cursor", () => {
+describe("§6 — el cursor (compartido con la spec 14)", () => {
 	const entry = {
 		createdAt: "2026-03-17T14:05:09.123Z",
 		id: "3f1c9a2e-5b7d-4e8f-9a1b-2c3d4e5f6a7b",
 	};
 
 	test("ida y vuelta", () => {
-		expect(decodeAuditCursor(encodeAuditCursor(entry))).toEqual(entry);
+		expect(decodeKeysetCursor(encodeKeysetCursor(entry))).toEqual(entry);
 	});
 
 	test("se parte por el último separador, no por el primero", () => {
 		// Defensivo a propósito: si algún día el cursor llevara algo con un `|`
 		// dentro, partir por el primero devolvería un id truncado y la página
 		// siguiente empezaría en otro sitio sin fallar.
-		expect(decodeAuditCursor("2026-03-17T14:05:09.123Z|extra|abc")).toEqual({
+		expect(decodeKeysetCursor("2026-03-17T14:05:09.123Z|extra|abc")).toEqual({
 			createdAt: "2026-03-17T14:05:09.123Z|extra",
 			id: "abc",
 		});
 	});
 
 	test("una cadena sin separador no es un cursor", () => {
-		expect(decodeAuditCursor("2026-03-17")).toBeNull();
+		expect(decodeKeysetCursor("2026-03-17")).toBeNull();
 	});
 });
 
