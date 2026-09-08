@@ -1,4 +1,5 @@
 export * from "./absences.ts";
+export * from "./admin.ts";
 export * from "./attendance.ts";
 export * from "./audit.ts";
 export * from "./auth.ts";
