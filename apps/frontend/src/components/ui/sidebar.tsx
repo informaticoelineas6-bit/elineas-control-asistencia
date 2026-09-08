@@ -82,6 +82,12 @@ function SidebarProvider({
 			}
 
 			// This sets the cookie to keep the sidebar state.
+			//
+			// La Cookie Store API que propone la regla no está en Safari ni en
+			// Firefox, esto es código de shadcn que se sobrescribe al reinstalar el
+			// componente, y la cookie sólo guarda si el aside está plegado: no lleva
+			// nada que importe.
+			// biome-ignore lint/suspicious/noDocumentCookie: ver el comentario de arriba
 			document.cookie = `${SIDEBAR_COOKIE_NAME}=${openState}; path=/; max-age=${SIDEBAR_COOKIE_MAX_AGE}`;
 		},
 		[setOpenProp, open],
@@ -90,7 +96,9 @@ function SidebarProvider({
 	// Helper to toggle the sidebar.
 	const toggleSidebar = React.useCallback(() => {
 		return isMobile ? setOpenMobile((open) => !open) : setOpen((open) => !open);
-	}, [isMobile, setOpen, setOpenMobile]);
+		// `setOpenMobile` es un setter de `useState`: estable entre renders, así que
+		// no es una dependencia.
+	}, [isMobile, setOpen]);
 
 	// Adds a keyboard shortcut to toggle the sidebar.
 	React.useEffect(() => {
@@ -122,7 +130,8 @@ function SidebarProvider({
 			setOpenMobile,
 			toggleSidebar,
 		}),
-		[state, open, setOpen, isMobile, openMobile, setOpenMobile, toggleSidebar],
+		// `setOpenMobile` es un setter de `useState`: estable entre renders.
+		[state, open, setOpen, isMobile, openMobile, toggleSidebar],
 	);
 
 	return (

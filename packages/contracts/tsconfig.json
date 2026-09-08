@@ -1,7 +1,12 @@
 {
-  "extends": "../../tsconfig.base.json",
-  "include": ["src/**/*.ts"],
-  "compilerOptions": {
-    "outDir": "dist"
-  }
+	"extends": "../../tsconfig.base.json",
+	"include": ["src/**/*.ts"],
+	"compilerOptions": {
+		"outDir": "dist",
+		// `withQuery` usa `URLSearchParams`, que es global en Node y en el
+		// navegador pero no está en la librería `ES2022`. Con los tipos de Node
+		// entra sin arrastrar el DOM entero: este paquete no debe poder tocar
+		// `document` ni por accidente.
+		"types": ["node"]
+	}
 }
