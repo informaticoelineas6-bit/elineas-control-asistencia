@@ -535,9 +535,19 @@ export const attendanceMarks = pgTable(
 			.defaultNow(),
 		/** Nulo sólo en un intento rechazado antes de poder resolver la jornada. */
 		workDate: date("work_date"),
-		latitude: doublePrecision().notNull(),
-		longitude: doublePrecision().notNull(),
-		accuracy: doublePrecision().notNull(),
+		/**
+		 * Nulos **sólo en un marcaje importado** (spec 19 RN-19.5): de aquel hecho
+		 * no se midió la ubicación, y esa regla exige que no se pueda confundir con
+		 * evidencia de ubicación. Un `0, 0` diría "el golfo de Guinea" y una
+		 * `accuracy` de 0 diría "precisión perfecta", que es lo contrario de lo que
+		 * hay; el nulo dice lo único que es verdad — no hubo medición.
+		 *
+		 * Un marcaje real siempre las trae: la entrada de la API las exige y la
+		 * validación de la spec 08 no puede juzgar una geocerca sin ellas.
+		 */
+		latitude: doublePrecision(),
+		longitude: doublePrecision(),
+		accuracy: doublePrecision(),
 		/** Recalculados en el servidor a partir de lat/lng (RN-08.2). */
 		distanceToCenter: doublePrecision("distance_to_center"),
 		insideGeofence: boolean("inside_geofence"),
