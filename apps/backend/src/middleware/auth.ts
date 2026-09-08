@@ -14,6 +14,7 @@ import {
 } from "#/lib/cookies";
 import { refreshJwt, verifyJwt } from "#/lib/identity";
 import { getRoles } from "#/lib/roles-cache";
+import { getConfig } from "#/services/config.ts";
 import {
 	enforceGlobalManagerDepartment,
 	findOrCreateProfile,
@@ -45,6 +46,50 @@ declare module "hono" {
 }
 
 const unauthorized = (message: string) => new HTTPException(401, { message });
+
+/** Los métodos que cambian algo. `OPTIONS` y `HEAD` no cuentan. */
+const WRITE_METHODS = new Set(["POST", "PUT", "PATCH", "DELETE"]);
+
+/**
+ * Modo de mantenimiento (spec 19 §2.5, decisión 2 cerrada).
+ *
+ * **Qué hace exactamente**, que es lo que esa spec dejaba sin definir: bloquea
+ * **toda escritura** de cualquier rol por debajo de `superadmin`. Marcar
+ * asistencia es una escritura, así que queda bloqueado; leer no, y el login
+ * tampoco —`/api/auth` no pasa por aquí—. Quien abra la aplicación tiene que
+ * poder ver el aviso y sus propios datos: un sistema que no deja entrar no puede
+ * explicar por qué está parado.
+ *
+ * **No cierra sesiones**, y es deliberado: cerrarlas obligaría a toda la
+ * plantilla a volver a autenticarse contra el Identity Server —que es otro
+ * sistema y no está en mantenimiento— sin impedir nada que este bloqueo no
+ * impida ya.
+ *
+ * Vive **aquí y no en un middleware global** por una razón concreta: la decisión
+ * depende del rol, y el rol sólo se conoce después de resolver la sesión. Un
+ * middleware anterior no tendría con qué eximir al `superadmin`, que es
+ * precisamente quien está haciendo el mantenimiento y quien tiene que poder
+ * desactivarlo.
+ *
+ * El 503 es el código correcto —"vuelve luego", no "no tienes permiso"— y lleva
+ * el motivo que escribió quien lo activó.
+ */
+async function enforceMaintenance(
+	method: string,
+	effectiveRole: AppRole,
+): Promise<void> {
+	if (!WRITE_METHODS.has(method)) return;
+	if (roleAtLeast(effectiveRole, "superadmin")) return;
+
+	const config = await getConfig();
+	if (!config.maintenance_mode) return;
+
+	throw new HTTPException(503, {
+		message:
+			config.maintenance_message ??
+			"El sistema está en mantenimiento: no se pueden guardar cambios ahora mismo.",
+	});
+}
 
 /**
  * Identidad de la petición. El JWT caducado se renueva de forma transparente
@@ -108,6 +153,11 @@ export const requireAuth: MiddlewareHandler = async (c, next) => {
 			message: "Tu cuenta no tiene un rol asignado en Control de Asistencia.",
 		});
 	}
+
+	// Spec 19 §2.5 — Con el sistema en mantenimiento, nadie por debajo de
+	// `superadmin` escribe. Se comprueba **antes** de tocar el perfil: si la
+	// petición va a ser rechazada, no tiene sentido escribir nada por ella.
+	await enforceMaintenance(c.req.method, effectiveRole);
 
 	// RN-03.6: aquí es donde este sistema conoce por fin los roles, así que aquí
 	// se aplica el departamento forzado del `global_manager`. Es idempotente: no

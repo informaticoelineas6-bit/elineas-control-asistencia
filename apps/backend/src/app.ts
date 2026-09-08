@@ -5,6 +5,7 @@ import { config as appConfig } from "#/lib/config";
 import { correlate } from "#/lib/correlation.ts";
 import { liveUpdates } from "#/lib/live.ts";
 import { absences } from "#/routes/absences.ts";
+import { admin } from "#/routes/admin.ts";
 import { attendance } from "#/routes/attendance.ts";
 import { audit } from "#/routes/audit.ts";
 import { auth } from "#/routes/auth";
@@ -83,6 +84,7 @@ export function createApp() {
 	app.route("/api/absences", absences);
 	app.route("/api/dashboard", dashboard);
 	app.route("/api/reports", reports);
+	app.route("/api/admin", admin);
 	app.route("/api/audit", audit);
 	app.route("/api/notifications", notifications);
 	app.route("/api/payroll", payroll);
