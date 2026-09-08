@@ -5,8 +5,9 @@
 > **Estado en el monorepo nuevo:** ✅ implementado, **incluida la parte de la
 > [17](./17-nomina.md) que RN-13.4 necesita**: sin la tabla de ajustes y el descuento
 > automático, la regla crítica de esta spec no se puede construir ni comprobar, y cuatro de los
-> ocho criterios de la §8 quedarían sin marcar. Lo que falta de la 17 es su **superficie de
-> administración** (ajustes manuales, sueldos, `/payroll/*`), no su modelo.
+> ocho criterios de la §8 quedarían sin marcar. La [17](./17-nomina.md) ya está completa —su
+> superficie de administración se construyó después, encima de este mismo modelo—, así que la
+> barrera de RN-13.5 ya no se apoya en que `/payroll/*` no exista: existe y responde **403**.
 >
 > Vocabulario y RN-13.6 en `packages/validations/src/absences.ts`; la superposición `AJ`/`ANJ`
 > en `apps/backend/src/services/daily-status.ts` (la función de la [15](./15-paneles-y-dashboard.md));
@@ -91,9 +92,13 @@ sea "los días ausentes que no tienen fila".
   un trigger `SECURITY DEFINER`. En el monorepo: el efecto debe ejecutarse **en el servicio de
   dominio del backend, dentro de la misma transacción**, no exponiendo nómina al handler del
   jefe. Nunca en el cliente.
-  > Implementado así, y la comprobación de la barrera es simple: **buscar "payroll" en
-  > `routes/` no da nada**. `services/payroll.ts` sólo se llama desde el servicio de ausencias
-  > y desde la revisión de incidencias, siempre con la transacción como primer argumento.
+  > Implementado así, y la barrera no cambió de forma cuando la [17](./17-nomina.md) trajo sus
+  > rutas: **las dos funciones del descuento automático siguen sin ninguna que las exponga**.
+  > `services/payroll.ts` las ofrece sólo al servicio de ausencias y a la revisión de
+  > incidencias, siempre con la transacción como primer argumento; lo que `routes/payroll.ts`
+  > monta es la administración, detrás de `requireRole("global_manager")`. La comprobación pasó
+  > de "no hay endpoint" (404) a "hay endpoint y te rechaza" (403), que es lo que la regla pedía
+  > desde el principio.
   >
   > Hay una consecuencia que la §7 no anticipó y que se resolvió aquí: esa misma barrera obliga
   > a que **el jefe no vea el importe** del descuento que acaba de causar, porque el importe es
@@ -245,16 +250,15 @@ Dos diferencias con lo que decía esta tabla:
 - [x] Repetir la misma decisión dos veces no duplica ajustes. *(Y dos revisiones
       **simultáneas** tampoco.)*
 - [x] Un `department_head` puede justificar pero recibe 403 en cualquier endpoint de nómina.
-      *(Hoy responden **404**: la superficie de nómina no existe todavía. La prueba lo comprueba
-      así y dice qué actualizar cuando la [17](./17-nomina.md) la construya. Lo que sí está
-      cerrado es que el jefe no ve el importe.)*
+      *(**403 de verdad** desde que la [17](./17-nomina.md) construyó su superficie; antes era un
+      404 de "aquí no hay nada". Y sigue cerrado lo otro: el jefe no ve el importe.)*
 - [x] La decisión aparece en la bitácora con el valor anterior. *(Y los ajustes también,
       RN-17.9, que en el legacy no llegaban.)*
 - [x] El empleado recibe notificación de la clasificación.
-- [ ] El día aparece como AJ o ANJ en el reporte mensual del periodo. *(El reporte es de la
-      [16](./16-reporteria-mensual.md) y no existe. Lo que sí se comprueba es que el día sale
-      `AJ`/`ANJ` en el historial propio, que consume la **misma** agregación diaria de la que
-      saldrá el reporte.)*
+- [x] El día aparece como AJ o ANJ en el reporte mensual del periodo. *(La
+      [16](./16-reporteria-mensual.md) ya está construida y `dayCodeOf` traduce la superposición
+      de esta spec a su código, con **`ANJ` para la ausencia sin revisar** (RN-13.10). Es la misma
+      agregación diaria que pinta el historial propio.)*
 
 ## 9. Decisiones abiertas
 

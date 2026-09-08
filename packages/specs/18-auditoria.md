@@ -111,7 +111,10 @@ Dentro del panel de superadmin ([19](./19-panel-superadmin.md)):
 ## 8. Criterios de aceptación
 
 - [ ] Cada acción listada en §3 tiene un test que verifica que se registra.
-- [ ] Un ajuste de nómina y un cambio de sueldo aparecen en la bitácora (hueco cerrado).
+- [x] Un ajuste de nómina y un cambio de sueldo aparecen en la bitácora (hueco cerrado).
+      *(`payroll_adjustment.created` / `.reverted` —automáticos y manuales, creación y
+      reversión— y `compensation.updated` con el importe anterior y el nuevo. Era el punto 76,
+      el hueco que esta spec nombra en su origen.)*
 - [ ] Las entradas registran el estado anterior, no sólo el nuevo.
 - [ ] Ningún endpoint permite modificar ni borrar entradas.
 - [ ] Un `global_manager` recibe 403 al consultar la bitácora completa.

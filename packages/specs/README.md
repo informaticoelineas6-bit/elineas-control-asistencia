@@ -168,12 +168,30 @@ cuadrar con seis** —falta la de días no laborables, o un mes con un feriado s
 una prueba encontró que `periodRange` construía en UTC y formateaba en local, así que **en La
 Habana marzo terminaba el 30**. Es exactamente lo que RN-15.4 y la spec 07 §2 llevan advirtiendo.
 
+La [17](./17-nomina.md) se terminó **desde el otro extremo**: su modelo y su descuento automático
+los había adelantado la [13](./13-justificacion-ausencias.md) —RN-13.4 no se podía construir ni
+comprobar sin la tabla de ajustes—, así que lo que quedaba era la superficie de administración.
+Con ella, **la barrera de privilegios de RN-13.5 se comprueba de verdad**: hasta ahora un jefe
+recibía 404 porque no había nada montado en `/api/payroll`, y "aquí no hay nada" no es lo mismo
+que "no tienes permiso". Ahora recibe 403, y el rol se exige **una vez para todo el router** en
+vez de endpoint por endpoint, que es la forma de que no se olvide al añadir el séptimo.
+
+Y trajo el primer **choque entre dos reglas ya escritas**, no una decisión pendiente: RN-17.11
+pedía los ajustes del periodo dentro del XLSX del reporte mensual, y la decisión 4 de la
+[16](./16-reporteria-mensual.md) dice que ese archivo lo descarga cualquiera con ámbito sobre él —o
+sea también un jefe de departamento—. Como el importe de un descuento es el sueldo dividido por el
+divisor, meterlo ahí enseñaría el sueldo a quien RN-17.1 excluye, y ninguna comprobación al
+descargar lo arregla: el archivo ya existiría con los importes dentro. Los ajustes salen por su
+cuenta desde `/payroll`, con la **misma** maquinaria de cuadrícula y serializador, y de ahí queda
+una regla anotada en las dos specs: *una hoja nueva en el libro del reporte hereda a todos sus
+lectores*.
+
 | # | Spec | Estado legacy | Depende de |
 |---|---|---|---|
 | 14 | [Notificaciones](./14-notificaciones.md) | ⚠️ | 02, 05 |
 | 15 | [Agregación diaria, dashboard y paneles](./15-paneles-y-dashboard.md) | ✅ | 07, 09, 10, 11, 13 — ✅ **en el monorepo** |
 | 16 | [Reportería mensual](./16-reporteria-mensual.md) | ⚠️ | 15 — ✅ **en el monorepo**, menos el transporte a Google Sheets |
-| 17 | [Nómina: ajustes y descuentos](./17-nomina.md) | ⚠️ | 02, 13 — **parcial en el monorepo**: hecho el descuento automático, falta la administración |
+| 17 | [Nómina: ajustes y descuentos](./17-nomina.md) | ⚠️ | 02, 13 — ✅ **en el monorepo**, menos el cierre de periodo (su decisión 2) |
 | 18 | [Bitácora de auditoría](./18-auditoria.md) | ⚠️ | 03 |
 
 ### Plataforma
@@ -202,8 +220,9 @@ Por dependencia técnica, no por valor de negocio:
 09                             el núcleo del producto
 11 → 12 → 13                   las excepciones
 15 → 16                        agregación y reportes (✅ las dos)
-17                             nómina (depende de 13) — su descuento automático ya está,
-                               adelantado por la 13 porque RN-13.4 no se podía construir sin él
+17                             nómina (depende de 13) — ✅, y su descuento automático llegó
+                               antes, adelantado por la 13 porque RN-13.4 no se podía construir
+                               sin él; sólo queda su cierre de periodo
 14 · 18                        transversales, en paralelo desde temprano
 19 → 20                        plataforma
 ```
@@ -313,6 +332,25 @@ De la [16](./16-reporteria-mensual.md), que cerró tres de sus cuatro:
 
 **Para el XLSX se usa `hucre`**: cero dependencias, ESM y TypeScript nativos, y un formato de
 escritura por filas que es exactamente la forma que ya tenía la cuadrícula compartida.
+
+De la [17](./17-nomina.md), que dejó su cierre de periodo abierto y cerró todo lo demás:
+
+- **Un importe nunca va sin su moneda, y un total tampoco.** No hay una cifra por departamento:
+  hay una por departamento **y moneda**. En la misma plantilla se cobra en varias (spec 02 §6a) y
+  sumarlas da un número que no significa nada.
+- **Los ajustes del periodo no caben en el reporte mensual.** No es preferencia: ese XLSX lo
+  descarga cualquiera con ámbito sobre él y el importe de un descuento revela el sueldo
+  (RN-17.1, hallazgo H-3). Van en su propio archivo, desde `/payroll`.
+- **Un ajuste manual se distingue por no tener origen**, no por su categoría. Las tres categorías
+  se pueden usar a mano; lo que no se puede falsificar es un `source_id`. De ahí que el índice
+  único de RN-17.5 sea parcial: dos manuales del mismo mes son legítimos.
+- **Editar un sueldo sigue siendo `PUT /users/:id/compensation`.** La §6 pedía un segundo
+  endpoint en `/payroll` para lo mismo, con el mismo rol y la misma entrada de bitácora; serían
+  dos sitios donde arreglar la misma regla. Lo que faltaba era **verlos todos**, y eso sí se
+  añadió.
+
+Y una de interfaz que vale dinero: **el signo de un ajuste se elige, no se teclea.** Con un campo
+firmado, olvidar un carácter convierte un descuento de 250 en una bonificación de 250.
 
 Y dos de forma:
 

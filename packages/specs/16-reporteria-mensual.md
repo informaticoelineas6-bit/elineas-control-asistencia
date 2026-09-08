@@ -8,7 +8,7 @@
 > lo mismo— **sí está**, con su prueba celda a celda: falta el transporte, no la forma.
 >
 > La matriz compartida en `packages/validations/src/reports.ts` (`buildReportGrid`); el XLSX con
-> **hucre** en `apps/backend/src/services/report-xlsx.ts`; las tres tablas de las §3, §4 y §5;
+> **hucre** en `apps/backend/src/services/xlsx.ts`; las tres tablas de las §3, §4 y §5;
 > la cola y su trabajador en `services/report-runs.ts`, arrancado desde `index.ts` y no desde
 > `app.ts`; la materialización en `services/daily-facts-store.ts`; la pantalla en
 > `/reports`. 19 pruebas puras en `services/report-rules.test.ts` —incluida la comparación
@@ -328,3 +328,12 @@ admitirlo obliga a decidir cuál gana — sin el campo, la pregunta no existe.
    cualquiera con ámbito sobre ese reporte.** El reporte es de un departamento y un periodo, no
    de una persona: acotarlo por fecha de alta dejaría a un jefe recién nombrado sin poder mirar
    el mes anterior al suyo, que es justo cuando más falta le hace.
+   > ⚠️ **Esta decisión tiene una consecuencia que apareció al construir la
+   > [17](./17-nomina.md):** si el artefacto lo descarga cualquiera con ámbito —o sea también un
+   > `department_head`—, entonces **nada con importes puede entrar en él**. Su RN-17.11 pedía una
+   > hoja de ajustes del periodo dentro de este XLSX, y un importe de ausencia injustificada es
+   > el sueldo dividido por el divisor: enseñárselo a un jefe le enseña el sueldo (RN-17.1,
+   > hallazgo H-3). Los ajustes se exportan por su cuenta desde `/payroll`, con la misma
+   > maquinaria —`gridToXlsx` sobre una cuadrícula construida una sola vez, §7— y otro control de
+   > acceso. **Regla para lo que venga: una hoja nueva en este libro hereda a todos sus
+   > lectores.**

@@ -122,7 +122,11 @@ hace upsert.
       programado cuando exista uno — [10](./10-descansos.md) §10.)
 - [ ] Con la entrega en vivo caída, el sondeo de respaldo sigue actualizando el contador.
 - [x] Aprobar unas vacaciones notifica al solicitante en la misma transacción.
-- [ ] Un ajuste de nómina notifica al empleado afectado.
+- [x] Un ajuste de nómina notifica al empleado afectado. *(Los de ausencia con
+      `absence.reviewed` —es un solo hecho para quien lo recibe— y los manuales de la
+      [17](./17-nomina.md) con su propio tipo, `payroll_adjustment.applied` / `.reverted`: no
+      nacen de una clasificación. **Con el importe dentro**, que es lo que necesita para
+      reclamar.)*
 
 ## 10. Decisiones abiertas
 

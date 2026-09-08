@@ -2,22 +2,26 @@
 
 > **Origen:** `old-docs.md` §3.6, puntos 64, 65, 75, 76; hallazgo H-3.
 > **Estado en el sistema legacy:** ⚠️ implementado con huecos conocidos (sin auditoría, sin notificación, divisor fijo).
-> **Estado en el monorepo nuevo:** ⚠️ parcial, **y a propósito**: está construido el
-> descuento automático que la [13](./13-justificacion-ausencias.md) necesita, y nada más.
-> RN-13.4 no se puede implementar ni comprobar sin la tabla de ajustes, y crear media tabla para
-> migrarla después habría sido peor que declararla entera y dejar sin escribir lo que todavía no
-> se usa.
+> **Estado en el monorepo nuevo:** ✅ implementada, **menos el cierre de periodo** (decisión 2,
+> que sigue abierta a propósito). Se construyó en dos tiempos: el descuento automático lo
+> adelantó la [13](./13-justificacion-ausencias.md) —RN-13.4 no se puede implementar ni comprobar
+> sin la tabla de ajustes— y la superficie de administración de la §5 y la §6 llegó después,
+> encima del mismo modelo y sin migrar nada.
 >
-> **Hay:** la tabla `payroll_adjustments` completa (§2, con el índice único parcial de RN-17.5),
-> `payroll_daily_divisor` en configuración (RN-17.3), la creación y reversión del descuento por
-> ausencia injustificada en `apps/backend/src/services/payroll.ts` con su bitácora (RN-17.9) y
-> su notificación (RN-17.10), y el redondeo decidido (RN-17.12).
+> Vocabulario en `packages/validations/src/payroll.ts` (con `buildPayrollGrid`); contrato en
+> `packages/contracts/src/payroll.ts`; tabla `payroll_adjustments` (§2, con el índice único
+> parcial de RN-17.5 y `revert_reason`); `payroll_daily_divisor` en configuración (RN-17.3);
+> dominio en `apps/backend/src/services/payroll.ts`, donde **las dos funciones del descuento
+> automático siguen sin ninguna ruta que las exponga** (RN-13.5) y las cinco de administración
+> cuelgan de `apps/backend/src/routes/payroll.ts` detrás de un solo
+> `requireRole("global_manager")`. Interfaz: `/payroll` con sus dos pestañas
+> (`apps/frontend/src/modules/payroll/`). Pruebas: 28 de integración en
+> `apps/backend/src/routes/payroll.test.ts`, más la cadena de la 13 en `absences.test.ts`.
 >
-> **No hay:** ni un solo endpoint. Buscar "payroll" en `apps/backend/src/routes/` no da nada, y
-> eso **es** la barrera de RN-13.5 hoy: quien justifica una ausencia llama a `/absences` y el
-> servidor escribe en nómina por él. Faltan los ajustes manuales (RN-17.8), la edición de
-> sueldos, `/payroll/*` (§6), los totales por periodo, la página de la §5 y la presencia en la
-> reportería (RN-17.11).
+> **No hay:** el **cierre de periodo** (§7 y decisión 2), que es lo único que bloquea a la
+> [13](./13-justificacion-ausencias.md) RN-13.9, y la pantalla del empleado con su propio
+> historial (decisión 3). Y una cosa que la spec pedía y se resolvió de otra forma: los ajustes
+> **no** viajan dentro del XLSX del reporte mensual, sino en su propio archivo (RN-17.11).
 > **Depende de:** [13-justificacion-ausencias](./13-justificacion-ausencias.md), [02-usuarios-y-perfiles](./02-usuarios-y-perfiles.md).
 
 ---
@@ -95,6 +99,16 @@ que alimenta al proceso de nómina real, sea cual sea.
 - **RN-17.4 — Reversión, no borrado.** Reclasificar la ausencia como justificada marca el
   ajuste `reverted` con autor y fecha. **Nunca se borra un ajuste.** El historial económico es
   inmutable.
+  > ✅ Y también a mano, desde `/payroll`, con **motivo obligatorio** en la columna
+  > `revert_reason`. El automático no lo lleva porque su motivo es un hecho —la ausencia se
+  > reclasificó, y la revisión que lo cuenta está en `source_id`—; el manual lo exige, que es la
+  > misma asimetría de las specs 11, 12 y 13: la razón se le pide a la decisión discrecional.
+  >
+  > Revertir a mano un descuento **automático** está permitido y la §5 lo da por hecho al pedir
+  > que se vea de dónde vino el ajuste. No reclasifica la ausencia: si más tarde alguien vuelve a
+  > marcarla injustificada nace un ajuste **nuevo** (RN-13.4), y el índice parcial de RN-17.5 lo
+  > permite justamente para eso. El diálogo lo dice antes de revertir, para que la reaparición no
+  > sorprenda.
 - **RN-17.5 — Idempotencia.** Un mismo `source_id` no puede tener dos ajustes `active`
   simultáneos. Debe existir restricción en base, no sólo control en código.
   > ✅ Índice único **parcial** sobre (`source_type`, `source_id`) `where status = 'active' and
@@ -118,6 +132,21 @@ que alimenta al proceso de nómina real, sea cual sea.
   > la salida es que lo vea el propio revisor.
 - **RN-17.8 — Ajustes manuales.** Un `global_manager` puede crear un ajuste de cualquier signo
   con motivo obligatorio, y revertirlo.
+  > ✅ **Hecho**, con tres decisiones que la regla dejaba al implementador:
+  >
+  > - **No tienen origen.** `source_type` y `source_id` quedan nulos, y eso —no la categoría— es
+  >   lo que distingue un ajuste manual de uno automático. Por eso el índice de RN-17.5 es
+  >   parcial en `source_id is not null`: dos manuales del mismo mes para la misma persona son
+  >   legítimos y no deben competir.
+  > - **La moneda se hereda del sueldo** salvo que se indique otra, como en el automático. Lo
+  >   normal es ajustar en aquella en la que se cobra; indicarla es para la excepción.
+  > - **El periodo por defecto es el mes en curso**, en la zona configurada (RN-06.6) y no en la
+  >   del servidor.
+  >
+  > Y una de interfaz que vale dinero: **el signo se elige en dos botones —descuento o
+  > bonificación— y el importe se teclea siempre en positivo.** Con un campo firmado, olvidar un
+  > carácter convierte un descuento de 250 en una bonificación de 250, y eso es dinero de
+  > alguien.
 - **RN-17.9 — Auditoría.** ⚠️ **Hueco del legacy (punto 76):** los ajustes **no** llegan a la
   bitácora. Requisito nuevo: toda creación y reversión se registra en
   [18-auditoria](./18-auditoria.md), y también todo cambio de `monthly_salary`.
@@ -127,6 +156,21 @@ que alimenta al proceso de nómina real, sea cual sea.
 - **RN-17.11 — Presencia en la reportería.** ⚠️ **Hueco del legacy (punto 76):** los ajustes no
   aparecen en el XLSX ni en Sheets. Requisito nuevo: sección o pestaña de ajustes del periodo
   en el reporte mensual ([16](./16-reporteria-mensual.md)).
+  > **Cumplida, pero no ahí — y es un choque de reglas, no una comodidad.** El XLSX del reporte
+  > mensual es un artefacto que se genera en cola y queda guardado, y lo descarga *cualquiera con
+  > ámbito sobre él* (decisión 3 de la [16](./16-reporteria-mensual.md) §11), o sea también un
+  > `department_head`. Un importe de ausencia injustificada es el sueldo dividido por el divisor:
+  > enseñárselo le enseña el sueldo, que es exactamente lo que RN-17.1 y el hallazgo H-3
+  > prohíben. Una hoja más en ese libro tiraría la barrera de privilegios por la puerta de atrás,
+  > y ninguna comprobación de rol al descargar puede arreglarlo, porque el archivo ya existe con
+  > los importes dentro.
+  >
+  > Así que los ajustes del periodo se exportan **desde `/payroll`**, por
+  > `GET /payroll/adjustments/export`, detrás del rol administrativo y **sin guardarse en ningún
+  > volumen**: un XLSX con los sueldos de la plantilla en disco es una copia esperando a que
+  > alguien la encuentre. La forma se comparte con el reporte —`buildPayrollGrid` junto a
+  > `buildReportGrid`, un solo serializador (`gridToXlsx`)— y la prueba es la misma: se escribe,
+  > se vuelve a leer y se compara celda a celda.
 - **RN-17.12 — Redondeo y moneda.** Definir: moneda (S/), decimales y modo de redondeo del
   `monthly_salary / divisor`.
   > **Cerrada: el cálculo se hace en PostgreSQL**, `-round(monthly_salary::numeric / divisor,
@@ -170,6 +214,25 @@ Página de nómina (`/payroll`), sólo rol administrativo:
 - **Alta manual** y **reversión**, ambas con motivo obligatorio.
 - Al revertir, mostrar de dónde vino el ajuste (enlace a la revisión de ausencia que lo creó).
 
+> ✅ **Construida**, en dos pestañas: *Ajustes* primero —es la que mueve dinero, el mismo orden
+> con el que las ausencias abren `/team`— y *Sueldos* después. Cuatro cosas que la §5 no decía y
+> que se decidieron al construirla:
+>
+> - **Los totales van por moneda.** No hay una cifra por departamento y no puede haberla: en la
+>   misma plantilla se cobra en monedas distintas ([02](./02-usuarios-y-perfiles.md) §6a) y sumar
+>   CUP con USD produce un número que no significa nada.
+> - **Un ajuste revertido sigue en la lista**, atenuado. RN-17.4 lo conserva justamente para que
+>   se pueda leer; esconderlo aquí sería conservarlo a medias.
+> - **El listado se acota al periodo por defecto.** Una tabla que sólo crece, sin filtro por mes,
+>   es la consulta que un día tumba la pantalla — y el mes es además la unidad de trabajo (§7).
+> - **La edición de un sueldo es el diálogo de la [02](./02-usuarios-y-perfiles.md)**,
+>   reutilizado tal cual. Mismo endpoint, mismo rol y misma entrada de bitácora; un segundo
+>   formulario serían dos sitios donde arreglar la misma regla.
+>
+> Y lo que la vista de conjunto añade y el diálogo por persona no podía dar: **cuánta gente no
+> tiene sueldo registrado**, con su aviso. Una ausencia injustificada suya no descuenta (RN-17.7),
+> y sin esta lista eso sólo se descubre cuando el descuento no aparece y nadie sabe por qué.
+
 ## 6. API propuesta
 
 | Método | Path | Rol |
@@ -184,14 +247,28 @@ Página de nómina (`/payroll`), sólo rol administrativo:
 Ningún endpoint de nómina es accesible a `department_head` ni a `employee`.
 **Decisión abierta:** ¿el empleado debería ver sus propios ajustes? Hoy no puede.
 
-> **Ninguno de estos endpoints existe todavía**, y esa es la barrera de
-> [13](./13-justificacion-ausencias.md) RN-13.5 en su forma más simple: un jefe recibe **404**,
-> no 403. Cuando se construyan, cada uno lleva su `requireRole("global_manager")` y hay una
-> prueba en `routes/absences.test.ts` que hay que actualizar de 404 a 403.
+> ✅ **Construidos, con dos diferencias respecto de esta tabla.**
 >
-> Sobre la decisión abierta, un dato que ya está resuelto en parte: **el empleado sí ve el
-> importe de su propio descuento**, en la notificación de RN-17.10. Es su sueldo y es el dato
-> que necesita para reclamar. Lo que no tiene es una pantalla con su historial de ajustes.
+> El rol no se comprueba endpoint por endpoint sino **una vez para todo el router**: la barrera
+> de [13](./13-justificacion-ausencias.md) RN-13.5 no puede depender de que alguien se acuerde de
+> repetir la línea al añadir la séptima ruta. Es el mismo criterio con el que `hasScope` vive en
+> una sola función tipada. Y con esto la barrera pasa de **404 a 403**: antes un jefe recibía
+> "aquí no hay nada", ahora recibe "no tienes permiso", que es lo que la regla pedía. La prueba
+> de `routes/absences.test.ts` ya está actualizada.
+>
+> - **No hay `PUT /payroll/salaries/:userId`.** Editar un sueldo ya existe desde la
+>   [02](./02-usuarios-y-perfiles.md): `PUT /users/:id/compensation`, con el mismo rol mínimo y la
+>   misma entrada de bitácora (`compensation.updated`). Lo que faltaba era **verlos todos**, y
+>   eso es `GET /payroll/salaries`.
+> - **Hay uno que la tabla no lista:** `GET /payroll/adjustments/export`, el XLSX del periodo
+>   (RN-17.11). Devuelve el archivo y no un enlace firmado, al contrario que el reporte mensual:
+>   son decenas de filas, caben en la respuesta, y así no queda una copia de los importes en
+>   ningún volumen.
+>
+> Sobre la decisión abierta, sigue resuelta a medias y **a propósito**: el empleado ve el importe
+> de su propio descuento en la notificación de RN-17.10 —es su sueldo y es el dato que necesita
+> para reclamar—, pero no tiene pantalla ni endpoint. Añadirlo es una decisión de producto, no
+> una omisión técnica.
 
 ## 7. Periodo de nómina
 
@@ -212,33 +289,58 @@ modifica y las correcciones van al periodo siguiente
 
 ## 8. Criterios de aceptación
 
-Cinco de estos nueve ya se cumplen con lo que trajo la [13](./13-justificacion-ausencias.md);
-los cuatro que quedan necesitan la superficie de administración, que no existe.
+Los nueve se cumplen. Cinco los trajo la [13](./13-justificacion-ausencias.md) con el descuento
+automático; los otros cuatro necesitaban la superficie de administración, y uno de ellos —el del
+reporte— se cumple **de otra forma que la que pedía**, por una razón que la §11 no anticipaba.
 
-- [ ] Un `department_head` recibe 403 en todos los endpoints de nómina. *(Hoy **404**: no hay
-      endpoints. Comprobado así en `routes/absences.test.ts`.)*
+- [x] Un `department_head` recibe 403 en todos los endpoints de nómina. *(Antes **404**: no
+      existían. Comprobado contra los seis, y también contra un empleado, en
+      `routes/payroll.test.ts`; la de `absences.test.ts` sigue guardando la mitad que le toca a
+      esa spec.)*
 - [x] Marcar una ausencia injustificada crea un ajuste con el monto exacto esperado.
-- [x] Reclasificar la revierte; no queda ningún registro borrado.
+- [x] Reclasificar la revierte; no queda ningún registro borrado. *(Y revertir a mano tampoco
+      borra: la fila queda con autor, fecha, motivo y **el mismo importe**. Revertir dos veces es
+      409, no un segundo autor.)*
 - [x] Dos escrituras concurrentes de la misma revisión no crean dos ajustes activos (RN-17.5,
       restricción en base).
-- [x] Un empleado sin sueldo configurado no rompe el flujo de justificación.
-- [x] Todo ajuste aparece en la bitácora. *(Y todo cambio de sueldo ya lo hacía, desde la
-      [02](./02-usuarios-y-perfiles.md): `compensation.updated`.)*
-- [x] El empleado recibe notificación de cada ajuste. *(De los que existen: los de ausencia. Los
-      manuales necesitarán su propio tipo de notificación, porque no nacen de una clasificación.)*
-- [ ] El reporte mensual incluye los ajustes del periodo. *(Necesita la [16](./16-reporteria-mensual.md).)*
-- [ ] Los totales por departamento cuadran con la suma de ajustes activos. *(Necesita
-      `/payroll/summary`.)*
+- [x] Un empleado sin sueldo configurado no rompe el flujo de justificación. *(Y ahora además se
+      **ve**: la pestaña de sueldos avisa de cuánta gente está así.)*
+- [x] Todo ajuste aparece en la bitácora. *(Los automáticos y los manuales, creación y reversión.
+      Y todo cambio de sueldo ya lo hacía desde la [02](./02-usuarios-y-perfiles.md):
+      `compensation.updated`.)*
+- [x] El empleado recibe notificación de cada ajuste. *(Los manuales tienen ya **su propio tipo**
+      —`payroll_adjustment.applied` y `.reverted`—, que es lo que la [14](./14-notificaciones.md)
+      dejaba anotado: no nacen de una clasificación, así que `absence.reviewed` no los podía
+      contar.)*
+- [x] El reporte mensual incluye los ajustes del periodo. ⚠️ **No dentro de ese XLSX**, y no por
+      comodidad: ese archivo lo descarga cualquiera con ámbito sobre él, incluido un jefe, y el
+      importe de un descuento es el sueldo dividido por el divisor (RN-17.1, H-3). Van en su
+      propio archivo, desde `/payroll` y detrás del rol administrativo. Ver RN-17.11.
+- [x] Los totales por departamento cuadran con la suma de ajustes activos. *(Comprobado, y
+      **moneda a moneda**: un revertido no cuenta y dos monedas no se suman.)*
 
 ## 9. Decisiones abiertas
 
 1. ~~Redondeo y decimales del descuento diario.~~ **Cerrada: dos decimales, media al alza, y el
    cálculo en PostgreSQL sobre `numeric`.** Ver RN-17.12.
-2. **⚠️ Sigue abierta — ¿cierre de periodo?** (§7) El `effective_period` ya está; lo que falta
-   es la noción de "este mes ya no admite cambios", y es lo que bloquea
-   [13](./13-justificacion-ausencias.md) RN-13.9.
-3. ¿El empleado ve sus propios ajustes? (§6) — resuelta a medias: ve el importe de su descuento
-   en la notificación, pero no tiene pantalla.
+2. **⚠️ Sigue abierta — ¿cierre de periodo?** (§7) El `effective_period` ya está y los datos
+   quedan imputados al mes correcto, así que cerrarla no obliga a migrar nada; lo que falta es la
+   noción de "este mes ya no admite cambios", y es lo único que bloquea
+   [13](./13-justificacion-ausencias.md) RN-13.9. **Es la única pieza de esta spec sin
+   construir.**
+3. ¿El empleado ve sus propios ajustes? (§6) — sigue resuelta a medias, y ahora por decisión: ve
+   el importe de su descuento en la notificación, y no hay endpoint que le devuelva su historial.
+   Añadirlo es una línea de producto, no de arquitectura.
 4. ¿El descuento debería ser proporcional a horas no trabajadas en vez de día completo?
 5. ¿Otros conceptos automáticos (tardanzas acumuladas, horas extra)? Hoy sólo la ausencia
-   injustificada descuenta.
+   injustificada descuenta. El modelo no se opone: un concepto nuevo es otro `source_type`, y el
+   índice de RN-17.5 ya lo aísla del que existe.
+
+Y tres que la implementación cerró sin que estuvieran en esta lista:
+
+- **Un total nunca va sin moneda** (§5, RN-17.12). No hay una cifra por departamento: hay una por
+  departamento **y moneda**.
+- **Los ajustes del periodo no caben en el reporte mensual** sin romper RN-17.1. Salen por su
+  propio endpoint (RN-17.11).
+- **Un ajuste manual se distingue por no tener origen**, no por su categoría. Las tres categorías
+  siguen disponibles a mano; lo que no se puede falsificar es un `source_id`.
