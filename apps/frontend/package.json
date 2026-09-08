@@ -11,7 +11,8 @@
     "generate-routes": "tsr generate",
     "build": "vite build",
     "preview": "vite preview --port 3004",
-    "test": "bun test"
+    "test": "bun test",
+    "typecheck": "tsc --noEmit"
   },
   "dependencies": {
     "@date-fns/tz": "^1.5.0",

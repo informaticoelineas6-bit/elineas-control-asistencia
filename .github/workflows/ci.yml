@@ -1,0 +1,108 @@
+# Integración continua (spec 22 §2).
+#
+# **El mayor hueco estructural del legacy era éste: no existía.** Lint, pruebas,
+# build y despliegue eran manuales y nada bloqueaba una fusión rota (punto 69).
+#
+# Los cinco pasos son los de la §2 y en ese orden, que es el del coste: lo que
+# falla en segundos va antes que lo que tarda minutos. Un `lint` roto no debería
+# esperar a que arranque un PostgreSQL.
+#
+# RQ-22.1 — Ningún cambio se fusiona a `main` sin que los cinco pasen. Esto lo
+# declara; hacerlo cumplir es marcar el trabajo `verificar` como comprobación
+# obligatoria en la configuración de la rama (Settings → Branches), que es lo
+# único de esta spec que no se puede poner en el repositorio.
+#
+# **Decisión 1 de la §9, cerrada: GitHub Actions.** El repositorio ya vive en
+# GitHub y `gh` es la herramienta que se usa; montar otra plataforma sería añadir
+# una cuenta, un secreto y un sitio más donde mirar cuando algo falla.
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+# Un empujón nuevo cancela la verificación anterior de la misma rama: lo que
+# importa es si el último commit pasa.
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  verificar:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+
+    services:
+      # Las pruebas del backend son **de integración a propósito** (spec 22
+      # RQ-22.3 y `contributing.md`): con la RLS de Supabase fuera, el handler de
+      # Hono es la única barrera de autorización, y una prueba con la
+      # autorización simulada no probaría nada. Así que hace falta un PostgreSQL
+      # de verdad, no un doble.
+      postgres:
+        image: postgres:16-alpine
+        env:
+          POSTGRES_USER: elineas
+          POSTGRES_PASSWORD: elineas
+          POSTGRES_DB: elineas_control_asistencia
+        ports:
+          - 5434:5432
+        options: >-
+          --health-cmd "pg_isready -U elineas"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 10
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: oven-sh/setup-bun@v2
+        with:
+          bun-version: latest
+
+      # `--frozen-lockfile`: si el `bun.lock` no cuadra con los `package.json`,
+      # eso es el fallo, no algo que la CI deba arreglar por su cuenta.
+      - name: Instalar dependencias
+        run: bun install --frozen-lockfile
+
+      - name: 1 · Lint y formato
+        run: bunx biome ci .
+
+      - name: 2 · Typecheck
+        run: bun run typecheck
+
+      # El script de pruebas del backend pasa `--env-file=.env.local`
+      # explícitamente porque Bun no lo carga con `NODE_ENV=test`. Se escribe
+      # aquí el mismo archivo que un desarrollador tiene en local, así que la CI
+      # corre **exactamente el mismo comando** y no puede desviarse de él.
+      - name: Preparar el entorno del backend
+        run: |
+          cat > apps/backend/.env.local <<'ENV'
+          DATABASE_URL="postgresql://elineas:elineas@127.0.0.1:5434/elineas_control_asistencia"
+          AUTH_API_URL="http://identity.invalid"
+          SYSTEM_SLUG=control-asistencia
+          FRONTEND_URL=http://localhost:3004
+          ENV
+
+      # `AUTH_API_URL` apunta a un dominio que no resuelve **a propósito**: las
+      # pruebas sustituyen el módulo del Identity Server, así que si alguna
+      # intentara hablar con él de verdad, tiene que fallar de forma ruidosa en
+      # vez de irse a un servidor real.
+      - name: Aplicar migraciones
+        run: bun run db:migrate
+
+      - name: 3 · Pruebas
+        run: bun run test
+
+      - name: 4 · Build
+        run: bun run build
+
+      # RQ-22.4 — El presupuesto de tamaño, sobre el build que acaba de salir.
+      - name: Presupuesto de tamaño del cliente
+        run: bun scripts/check-bundle.ts
+
+      # Paso 5 · El esquema del repositorio y sus migraciones no se separan
+      # (punto 70, la deriva de esquema). No necesita base de datos: compara
+      # `schema.ts` con las instantáneas de `drizzle/meta`.
+      - name: 5 · Verificación de esquema
+        run: bun scripts/check-schema-drift.ts
