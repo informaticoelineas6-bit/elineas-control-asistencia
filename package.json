@@ -19,7 +19,7 @@
     "db:push": "bun run --filter backend db:push",
     "db:pull": "bun run --filter backend db:pull",
     "db:studio": "bun run --filter backend db:studio",
-    "test": "bun run --filter backend test"
+    "test": "bun run --filter './apps/*' test"
   },
   "devDependencies": {
     "@biomejs/biome": "2.4.5",

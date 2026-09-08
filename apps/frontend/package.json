@@ -10,7 +10,8 @@
     "dev": "vite dev --port 3004",
     "generate-routes": "tsr generate",
     "build": "vite build",
-    "preview": "vite preview --port 3004"
+    "preview": "vite preview --port 3004",
+    "test": "bun test"
   },
   "dependencies": {
     "@date-fns/tz": "^1.5.0",

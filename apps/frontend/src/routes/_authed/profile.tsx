@@ -2,6 +2,7 @@ import { useQuery } from "@tanstack/react-query";
 import { createFileRoute } from "@tanstack/react-router";
 import { CircleAlert, Info, Loader2 } from "lucide-react";
 import { useState } from "react";
+import { SignOutButton } from "#/components/app-sidebar.tsx";
 import { Badge } from "#/components/ui/badge.tsx";
 import { Button } from "#/components/ui/button.tsx";
 import { Label } from "#/components/ui/label.tsx";
@@ -208,6 +209,16 @@ function OwnProfilePage() {
 						)}
 					</div>
 				</form>
+
+				{/*
+				 * Spec 05 §3 — *Perfil* es el cuarto destino del EmployeeShell y
+				 * **incluye cerrar sesión**: en ese shell no hay aside donde ponerlo, y
+				 * es el único sitio donde alguien lo va a buscar. En escritorio queda
+				 * como una segunda salida, que no molesta a nadie.
+				 */}
+				<div className="border-t pt-4">
+					<SignOutButton />
+				</div>
 			</div>
 		</div>
 	);
