@@ -1,4 +1,4 @@
-import type { AttendanceDay, AttendanceDayStatus } from "@elineas/validations";
+import type { AttendanceDay } from "@elineas/validations";
 import { useQuery } from "@tanstack/react-query";
 import { endOfMonth, startOfMonth } from "date-fns";
 import { CalendarClock, Clock, LogIn, LogOut } from "lucide-react";
@@ -20,6 +20,14 @@ import {
 } from "#/components/ui/table.tsx";
 import { formatWeekdayDate, toISODate } from "#/lib/dates.ts";
 import { attendanceHistoryQueryOptions } from "#/modules/attendance/api.ts";
+import {
+	ABSENCE_LABEL,
+	formatWorked,
+	STATUS_BADGE,
+	STATUS_LABEL,
+	STATUS_TONE,
+	time,
+} from "#/modules/attendance/day-presentation.ts";
 import { InlineError } from "#/modules/errors/inline-error.tsx";
 
 /**
@@ -31,69 +39,11 @@ import { InlineError } from "#/modules/errors/inline-error.tsx";
  * jornada.
  *
  * Es el mismo componente de calendario de la spec 07: aquí sólo se le pasan otras
- * marcas.
+ * marcas. Y las etiquetas, los tonos y los formatos vienen de
+ * `day-presentation.ts`, compartidos con la vista de la semana del EmployeeShell
+ * (spec 05 §3): dos tablas para los mismos seis estados acabarían diciendo cosas
+ * distintas del mismo día.
  */
-
-const STATUS_LABEL: Record<AttendanceDayStatus, string> = {
-	PRESENTE: "Presente",
-	TARDE: "Tarde",
-	AUSENTE: "Ausente",
-	DESCANSO: "Descanso",
-	NO_LABORABLE: "No laborable",
-	// Spec 11 RN-11.12: superposición sobre lo que le hubiera tocado al día.
-	VACACIONES: "Vacaciones",
-};
-
-const STATUS_TONE: Record<AttendanceDayStatus, CalendarTone> = {
-	PRESENTE: "positive",
-	TARDE: "warning",
-	AUSENTE: "danger",
-	DESCANSO: "info",
-	NO_LABORABLE: "neutral",
-	// Mismo tono que DESCANSO a propósito: sólo hay cinco tonos en el calendario
-	// (`CalendarTone`) y las dos son "día libre planeado, no un problema". La
-	// etiqueta es la que distingue una cosa de la otra.
-	VACACIONES: "info",
-};
-
-/**
- * Spec 13. Los códigos del reporte se enseñan **desarrollados**: `AJ` y `ANJ`
- * son el vocabulario de la reportería (spec 16), no el de quien lee su propio
- * historial en el móvil.
- */
-const ABSENCE_LABEL: Record<"AJ" | "ANJ", string> = {
-	AJ: "Justificada",
-	ANJ: "No justificada",
-};
-
-const STATUS_BADGE: Record<
-	AttendanceDayStatus,
-	"default" | "secondary" | "warning" | "destructive" | "outline"
-> = {
-	PRESENTE: "secondary",
-	TARDE: "warning",
-	AUSENTE: "destructive",
-	DESCANSO: "outline",
-	NO_LABORABLE: "outline",
-	VACACIONES: "secondary",
-};
-
-const time = (value: string | null) =>
-	value
-		? new Date(value).toLocaleTimeString("es-CU", {
-				hour: "2-digit",
-				minute: "2-digit",
-			})
-		: "—";
-
-/** "8 h 15 min", que es como se lee una jornada. */
-function formatWorked(minutes: number | null): string {
-	if (minutes === null) return "—";
-	const hours = Math.floor(minutes / 60);
-	const rest = minutes % 60;
-	if (hours === 0) return `${rest} min`;
-	return rest === 0 ? `${hours} h` : `${hours} h ${rest} min`;
-}
 
 export function AttendanceHistory() {
 	const [month, setMonth] = useState(() => startOfMonth(new Date()));
