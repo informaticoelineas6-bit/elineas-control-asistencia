@@ -1,6 +1,7 @@
 import type { AuditAction } from "@elineas/validations";
 import type { db } from "#/db";
 import { auditLog } from "#/db/schema";
+import { currentCorrelationId } from "#/lib/correlation.ts";
 
 /**
  * Escritura de la bitácora (spec 18).
@@ -54,6 +55,15 @@ export type AuditEntry = {
 };
 
 export async function audit(tx: Database, entry: AuditEntry): Promise<void> {
+	// RN-18.8 — El id de correlación se añade **aquí**, no en los puntos de uso:
+	// una cadena en cascada comparte el de su petición sin que ningún servicio
+	// tenga que acordarse de propagarlo. Ver `lib/correlation.ts`.
+	const correlationId = currentCorrelationId();
+	const metadata =
+		correlationId === null
+			? (entry.metadata ?? null)
+			: { ...entry.metadata, correlationId };
+
 	await tx.insert(auditLog).values({
 		actorId: entry.actorId,
 		action: entry.action,
@@ -62,6 +72,6 @@ export async function audit(tx: Database, entry: AuditEntry): Promise<void> {
 		oldData: entry.oldData ?? null,
 		newData: entry.newData ?? null,
 		sourceIp: entry.sourceIp ?? null,
-		metadata: entry.metadata ?? null,
+		metadata,
 	});
 }

@@ -1,5 +1,6 @@
 import { createApp } from "#/app.ts";
 import { config } from "#/lib/config";
+import { withCorrelationId } from "#/lib/correlation.ts";
 import { refreshYesterday } from "#/services/daily-facts-store.ts";
 import { processQueuedRuns } from "#/services/report-runs.ts";
 
@@ -34,7 +35,10 @@ function background(
 ) {
 	const tick = async () => {
 		try {
-			await task();
+			// RN-18.8 — Cada vuelta abre su propio ámbito de correlación: las
+			// entradas de una corrida comparten identificador y las de dos corridas
+			// distintas no se confunden.
+			await withCorrelationId(task);
 		} catch (error) {
 			// Un fallo de fondo no debe tumbar el servidor ni quedarse callado.
 			console.error(`[${name}] falló:`, error);
