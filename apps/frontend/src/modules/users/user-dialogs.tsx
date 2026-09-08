@@ -171,7 +171,16 @@ export function EditUserDialog({
 export function CompensationDialog({
 	user,
 	onClose,
-}: DialogProps & { user: UserProfile }) {
+}: DialogProps & {
+	/**
+	 * Sólo hacen falta el id y el nombre, y por eso no se pide un `UserProfile`
+	 * entero: la pantalla de nómina (spec 17 §5) edita sueldos desde su propio
+	 * listado y reutiliza este diálogo tal cual. Es la misma llamada, el mismo rol
+	 * y la misma entrada de bitácora; duplicarlo allí serían dos sitios donde
+	 * arreglar el día que cambie la regla.
+	 */
+	user: { id: string; fullName: string };
+}) {
 	const current = useQuery(compensationQueryOptions(user.id));
 	const update = useUpdateCompensation();
 	// Nulo = "no se ha tocado": se muestra lo que hay guardado hasta que alguien

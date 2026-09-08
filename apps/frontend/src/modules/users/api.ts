@@ -15,6 +15,7 @@ import {
 } from "@tanstack/react-query";
 import { apiJson } from "#/lib/api-client.ts";
 import { sessionQueryKey } from "#/modules/auth/session.ts";
+import { payrollQueryKey } from "#/modules/payroll/api.ts";
 
 /**
  * Acceso a usuarios y perfiles (spec 02).
@@ -170,10 +171,14 @@ export function useUpdateCompensation() {
 					body: JSON.stringify(usersSpec.updateCompensation.body.parse(input)),
 				},
 			),
-		onSuccess: (_result, variables) =>
-			queryClient.invalidateQueries({
+		onSuccess: (_result, variables) => {
+			void queryClient.invalidateQueries({
 				queryKey: [...usersQueryKey, variables.id, "compensation"],
-			}),
+			});
+			// El listado de sueldos de la spec 17 §5 lee lo mismo desde otro sitio:
+			// sin esto, quien acaba de cambiar un importe sigue viendo el anterior.
+			void queryClient.invalidateQueries({ queryKey: payrollQueryKey });
+		},
 	});
 }
 
