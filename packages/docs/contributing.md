@@ -60,8 +60,16 @@ bun run db:studio
 ## Pruebas
 
 ```bash
-bun run test           # equivale a: bun test dentro de apps/backend
+bun run test           # las dos apps
+bun run --filter backend test    # sólo el backend (las que necesitan Postgres)
+bun run --filter frontend test   # sólo el frontend (puras, sin dependencias)
 ```
+
+**El frontend tiene pruebas desde la spec 05**, y muy pocas a propósito: sólo lo que es una
+**regla pura** y no un componente. La primera es la resolución de shell (§2 de esa spec), que
+tiene cuatro casos y un override que los pisa; comprobarla desde un componente exigiría abrir un
+navegador y redimensionar una ventana. No hay entorno de DOM ni biblioteca de pruebas de
+componentes, y mientras no haga falta, mejor así.
 
 Las pruebas del backend son **de integración**: hablan con el Postgres real y sólo
 sustituyen el Identity Server. Con la RLS de Supabase fuera del proyecto, el handler

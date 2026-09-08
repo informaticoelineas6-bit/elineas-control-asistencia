@@ -2,16 +2,20 @@
 
 > **Origen:** `old-docs.md` Parte 2 (dos shells), puntos 11, 12, 13, 14.
 > **Estado en el sistema legacy:** ✅ implementado.
-> **Estado en el monorepo nuevo:** ⚠️ parcial. Existe el **AdminShell** con aside colapsable
-> filtrado por rol, cabecera con campana de notificaciones, guard de página y pantalla de cuenta
-> pendiente (`apps/frontend/src/routes/_authed.tsx`, `components/app-sidebar.tsx`,
-> `modules/auth/navigation.ts`), y las **tres capas de contención de errores** de §5
-> (`modules/errors/`, declaradas en `router.tsx` y en `routes/__root.tsx`). Los **badges de
-> pendientes** (RN-05.8) existen desde la [12](./12-incidencias.md) y la
-> [13](./13-justificacion-ausencias.md) ya añadió el suyo sin tocar la mecánica: la tabla de
-> navegación declara *qué* contar y el aside resuelve *cuánto*. Falta el **EmployeeShell** entero
-> (§3) y la regla de resolución de shell (§2). Las secciones que aún no tienen spec implementada
-> son marcadores.
+> **Estado en el monorepo nuevo:** ✅ implementada, **los dos shells**. Fue lo último que quedó
+> abierto de los cimientos, y se cerró al final a propósito: la regla de resolución de §2 no
+> tenía entre qué elegir mientras el EmployeeShell no existiera, y el EmployeeShell no tenía qué
+> enseñar mientras sus cuatro destinos fueran marcadores. Ahora los cuatro existen.
+>
+> **AdminShell**: aside colapsable filtrado por rol, cabecera con campana, guard de página,
+> pantalla de cuenta pendiente y **barra inferior de respaldo en móvil** (RN-05.9)
+> —`routes/_authed.tsx`, `components/app-sidebar.tsx`, `modules/shells/admin-bottom-bar.tsx`—.
+> **EmployeeShell**: `modules/shells/employee-shell.tsx`, con su barra inferior de cuatro
+> destinos y su badge. **La regla de §2** vive en `modules/shells/resolve.ts` —función pura, con
+> **la primera prueba del frontend del repositorio**— y lo que necesita entorno, en
+> `use-shell.ts`. Las tres capas de contención de errores de §5 siguen en `modules/errors/`.
+>
+> Ya no hay ningún marcador: las diecinueve rutas de §7 tienen su pantalla.
 > **Depende de:** [04-autenticacion](./04-autenticacion.md), [03-roles-y-autorizacion](./03-roles-y-autorizacion.md).
 
 ---
@@ -46,6 +50,31 @@ empleado (porque también marca), en escritorio ve el de admin.
   cada ruta sigue protegida por su guard.
 - **RN-05.3** — El shell nunca decide permisos. Sólo decide qué se muestra en el menú.
 
+> ✅ **La regla vive en una función pura de cinco líneas** (`resolveShell`), separada del hook
+> que la alimenta. Es la parte de esta spec que más se parece a una regla de negocio —cuatro
+> casos y un override que los pisa— y probarla no debería exigir abrir un navegador y
+> redimensionar una ventana. De ahí que sea la primera prueba del frontend del repositorio.
+>
+> **Decisión 1 de la §8, cerrada: el override `?ui=` se queda en producción**, y con un tercer
+> valor que la spec no nombraba —`?ui=auto`— para poder deshacerlo. Dos razones:
+>
+> - **No puede otorgar nada.** RN-05.2 y RN-05.3 ya lo dicen y el código lo cumple: `?ui=admin`
+>   como `employee` pinta el armazón y cada ruta sigue echando a quien no le toca, porque el
+>   filtrado y el guard salen de `canAccess`. Esconder detrás de una bandera algo que no puede
+>   hacer daño es ceremonia.
+> - **Es la única forma de ver lo que ve un operario.** Un jefe de planta que llama para decir
+>   "no me deja marcar" describe una pantalla que en un escritorio no se puede reproducir de otra
+>   manera.
+>
+> Lo que sí hizo falta decidir: **el override se recuerda en la pestaña** (`sessionStorage`).
+> Sin eso se perdería en el primer enlace que se pulse y no serviría para nada. Y en la pestaña
+> —no en una cookie— porque una herramienta de depuración no debe seguir a nadie a la sesión
+> siguiente ni contaminar otra ventana.
+>
+> ⚠️ **El primer render no sabe el ancho de la ventana.** En el servidor no hay viewport que
+> medir, así que sale el AdminShell y el efecto corrige en el cliente. Es la misma concesión que
+> ya hacía el aside de shadcn y se nota menos que su alternativa: pintar nada hasta saberlo.
+
 ## 3. EmployeeShell
 
 Navegación inferior de cuatro destinos:
@@ -62,6 +91,30 @@ Navegación inferior de cuatro destinos:
   actualizan sin recargar. *(En el AdminShell ya se cumple: toda mutación de incidencias
   invalida su conteo y el de notificaciones.)*
 - **RN-05.6** — Debe funcionar con una sola mano y sin scroll para la acción principal.
+
+> ✅ **Construido**, y las decisiones que lo hacen usable son de tamaño y de posición:
+>
+> - **La barra va abajo**, donde llega el pulgar. Un menú arriba en un teléfono de seis pulgadas
+>   obliga a recolocar la mano en cada toque.
+> - **Cada destino mide 56 px de alto y lleva su etiqueta debajo del icono.** Un icono solo se
+>   adivina, y en planta —con prisa, con guantes— adivinar cuesta toques.
+> - **Respeta el área segura del sistema.** Sin `env(safe-area-inset-bottom)`, en un iPhone el
+>   último destino queda debajo de la barra del sistema.
+> - **El contenido es lo único que hace scroll**: la barra no se va nunca, así que *Marcar* está
+>   siempre a un toque. Eso **es** RN-05.6.
+>
+> Y una decisión sobre *Mi semana* que merece quedar dicha: **reutiliza los datos, no el
+> diseño.** Es la misma consulta que *Mi asistencia* —el mismo endpoint ya agregado por el
+> servidor (spec 15 §4)— pero un calendario de seis semanas y una tabla de cinco columnas en 375
+> px es justo lo que este shell existe para evitar. Son siete tarjetas en una columna. Lo que sí
+> se comparte son las etiquetas y los formatos (`day-presentation.ts`), que salieron de
+> `history.tsx` al llegar la segunda vista: dos tablas para los mismos seis estados acabarían
+> diciendo cosas distintas del mismo día, y en dos pantallas que abre la misma persona.
+>
+> **RN-05.4** se cumple con `defaultRouteFor(role, shell)`: en el EmployeeShell el destino es
+> *Marcar*, en el AdminShell es *Inicio*. Depende del shell y no sólo del rol porque **la misma
+> persona quiere cosas distintas según desde dónde entre** — un jefe en el teléfono va a marcar;
+> el mismo jefe en su escritorio va a mirar a su equipo.
 
 ## 4. AdminShell
 
@@ -96,11 +149,13 @@ quedó pendiente.
 > mezclaba en un mismo grupo lo que uno hace consigo mismo y lo que hace con su equipo. La
 > división real es por **de quién son los datos**: los míos, los de mi gente, los de la empresa.
 >
-> Del borrador quedan por colocar, cuando existan sus specs: *Mi semana*
-> ([09](./09-marcaje-asistencia.md)) y *Superadmin* ([19](./19-panel-superadmin.md)). El *Panel
-> global* del borrador **no va a existir como ítem propio**: la [15](./15-paneles-y-dashboard.md)
-> lo unificó con el de departamento en *Asistencia del día*, porque son la misma vista con
-> distinto alcance.
+> Del borrador quedaban dos por colocar y **ya están los dos**, en sitios distintos y por
+> motivos distintos: *Superadmin* es un ítem de *Administración* sólo para `superadmin`
+> ([19](./19-panel-superadmin.md)), y *Mi semana* **no es un ítem del aside** — vive en la barra
+> inferior del EmployeeShell (§3), porque en escritorio la vista que sirve es *Mi asistencia* y
+> tener las dos en el menú sería ofrecer dos veces el mismo dato. El *Panel global* del borrador
+> **no existe como ítem propio**: la [15](./15-paneles-y-dashboard.md) lo unificó con el de
+> departamento en *Asistencia del día*, porque son la misma vista con distinto alcance.
 > *Incidencias* ya está, en *Personal* y con badge: la ve cualquier rol porque la
 > [12](./12-incidencias.md) §7 dice "autenticado" y no invoca RN-03.4 como sí hace la
 > [11](./11-vacaciones.md) con las vacaciones.
@@ -130,6 +185,11 @@ quedó pendiente.
   > con una línea.
 - **RN-05.9** — En viewport móvil el AdminShell conserva una barra inferior de respaldo con
   los destinos principales; la barra lateral pasa a ser un panel desplegable.
+  > ✅ La segunda mitad ya la cumplía el aside —en pantallas pequeñas se convierte en panel
+  > deslizante— y la primera se añadió con **una lista corta y explícita**: *Inicio*, *Asistencia
+  > del día*, *Mi equipo* y *Usuarios*, filtrados por `canAccess`. No son "los primeros de cada
+  > grupo" porque lo que un gestor abre desde el teléfono no es lo primero del menú: es cómo va
+  > el día y qué espera por él.
 
 ## 5. Contención de errores
 
@@ -152,12 +212,13 @@ Tres capas, heredadas del legacy:
 
 ## 6. Criterios de aceptación
 
-- [ ] Un `employee` en móvil ve la barra inferior; el mismo usuario en escritorio ve la lateral.
-      *(Falta el EmployeeShell, §3.)*
-- [ ] Un `superadmin` en móvil ve el AdminShell (con barra inferior de respaldo). *(Falta la
-      barra de respaldo, RN-05.9.)*
-- [ ] `?ui=admin` como `employee` muestra el armazón pero cada ruta protegida sigue redirigiendo.
-      *(Falta el override, RN-05.2.)*
+- [x] Un `employee` en móvil ve la barra inferior; el mismo usuario en escritorio ve la lateral.
+      *(Y un `department_head` también ve la de empleado en el móvil, que es lo que la §2 pide
+      explícitamente: también marca. Los cuatro casos de la regla tienen prueba.)*
+- [x] Un `superadmin` en móvil ve el AdminShell (con barra inferior de respaldo).
+- [x] `?ui=admin` como `employee` muestra el armazón pero cada ruta protegida sigue redirigiendo.
+      *(El override sólo entra en `resolveShell`, que no mira permisos; el filtrado del menú y el
+      guard siguen saliendo de `canAccess`.)*
 - [x] Un error lanzado dentro de una página no deja la aplicación en blanco.
 - [x] Una ruta que no existe muestra un 404 con vuelta al destino por defecto del rol.
 - [x] Ningún mensaje de error del proveedor de datos llega al usuario en inglés.
@@ -195,6 +256,7 @@ pueda ver desde ahí.
 | `/logs` | Logs | ✅ ([18](./18-auditoria.md)) |
 | `/admin` | Superadmin | ✅ ([19](./19-panel-superadmin.md)) |
 | `/notifications` | — (se llega desde la campana) | ✅ ([14](./14-notificaciones.md) §8) |
+| `/my-week` | Mi semana | ✅ (§3, en la barra inferior del EmployeeShell) |
 
 > **`/notifications` no está en el aside**, y es la única ruta del AdminShell que no está en
 > ninguna sección del menú. Se llega desde la campana, que ya está siempre visible en la
@@ -203,7 +265,8 @@ pueda ver desde ahí.
 > —cada persona ve las suyas y sólo las suyas (spec 14 RN-14.1)—, así que no existe una versión
 > "de más" de esa pantalla que haya que esconder.
 
-Ruta prevista que aún no existe: `/my-week` (§3). La otra que faltaba, la de incidencias, ya
+**Ya no queda ninguna ruta prevista sin construir**: `/my-week` llegó con el EmployeeShell y,
+como `/notifications`, no está en el aside — se llega por la barra inferior. La otra que faltaba, la de incidencias, ya
 está — pero como **`/incidents`** y no como el `/issues` que decía la §3: eran dos palabras
 inglesas para la misma cosa, y la tabla, el tipo, el servicio y el módulo de la
 [12](./12-incidencias.md) ya se llaman *incident*. La etiqueta sigue siendo *Incidencias*, que
@@ -219,8 +282,14 @@ monta sin rehacerla.
 
 ## 8. Decisiones abiertas
 
-1. ¿Se conserva el override `?ui=` en producción o queda tras una bandera de desarrollo?
-2. ¿El `department_head` en escritorio necesita también acceso rápido a marcar?
+1. ~~¿Se conserva el override `?ui=` en producción o queda tras una bandera de desarrollo?~~
+   **Cerrada: se conserva**, y se recuerda en la pestaña. No puede otorgar permisos y es la única
+   forma de reproducir lo que ve un operario. Ver §2.
+2. ~~¿El `department_head` en escritorio necesita también acceso rápido a marcar?~~ **Cerrada: ya
+   lo tiene, y no hacía falta añadir nada.** *Marcar* está en el grupo *Personal* de su aside
+   desde el principio —la exclusión de RN-03.4 sólo alcanza al gestor global—, así que la
+   pregunta se responde mirando el menú. Lo que sí cambió es a dónde entra: desde el teléfono,
+   directo a *Marcar* (RN-05.4).
 3. ~~Rutas en español (`/marcar`, `/mi-semana`) — confirmar que se mantiene la convención del
    legacy en el sistema nuevo.~~ **Resuelta: no se mantiene.** Todo el código —rutas incluidas—
    se escribe en inglés; la interfaz sigue en español. Ver §8.

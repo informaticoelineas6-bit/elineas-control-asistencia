@@ -57,17 +57,19 @@ que la spec pide; cada cabecera detalla qué falta y por qué.
 | 02 | [Usuarios y perfiles](./02-usuarios-y-perfiles.md) | ✅ | ✅ | 01 |
 | 03 | [Roles y autorización](./03-roles-y-autorizacion.md) | ✅ | ✅ | 02 |
 | 04 | [Autenticación y sesión](./04-autenticacion.md) | ✅ | ✅ | 02, 03 |
-| 05 | [Shells de interfaz y navegación](./05-shells-y-navegacion.md) | ✅ | ⚠️ | 03, 04 |
+| 05 | [Shells de interfaz y navegación](./05-shells-y-navegacion.md) | ✅ | ✅ | 03, 04 |
 | 06 | [Configuración global](./06-configuracion-global.md) | ✅ | ✅ | 03 |
 
-Lo único que queda abierto en los cimientos es el **EmployeeShell** de la
-[05](./05-shells-y-navegacion.md) §3. Dos de sus cuatro destinos ya existen —`/clock-in` y
-`/profile`— y las pantallas de marcaje e historial están hechas en columna estrecha y con el
-botón grande, así que montarlas en una barra inferior no obliga a rehacerlas; el tercero,
-*Incidencias*, existe desde la [12](./12-incidencias.md) —como `/incidents`, no como el
-`/issues` que decía la spec— y falta `/my-week` (reutiliza el historial de la
-[09](./09-marcaje-asistencia.md)) y la regla de resolución de shell (§2), que hoy no tiene entre
-qué elegir.
+**Los cimientos están cerrados.** El último hueco era el **EmployeeShell** de la
+[05](./05-shells-y-navegacion.md) §3, y se construyó al final a propósito: la regla de resolución
+de shell no tenía entre qué elegir mientras ese shell no existiera, y el shell no tenía qué
+enseñar mientras sus cuatro destinos fueran marcadores. Cuando llegó, tres de los cuatro ya
+estaban hechos —`/clock-in`, `/incidents` y `/profile`— y el cuarto, *Mi semana*, **reutiliza los
+datos de la [09](./09-marcaje-asistencia.md) pero no su diseño**: un calendario de seis semanas y
+una tabla de cinco columnas en 375 px es justo lo que ese shell existe para evitar.
+
+Y con la spec móvil retirada, este shell **dejó de ser un lujo**: es la única interfaz que un
+operario va a ver, en el navegador de su teléfono.
 
 ### Reglas de trabajo — el marco que hace válido un marcaje
 
@@ -288,7 +290,9 @@ Por dependencia técnica, no por valor de negocio:
 
 ```
 00                             base propia + Identity Server: precede a todo
-01 → 02 → 03 → 04 → 05        cimientos: sin esto no hay nada
+01 → 02 → 03 → 04 → 05        cimientos: ✅ — la 05 se cerró al final, porque su regla de
+                               resolución de shell no tenía entre qué elegir hasta que los
+                               cuatro destinos del EmployeeShell existieran
 06                             configuración: casi todas las reglas leen de aquí
 07 → 08 → 10                   el marco de validez de un marcaje
 09                             el núcleo del producto
@@ -410,6 +414,22 @@ De la [16](./16-reporteria-mensual.md), que cerró tres de sus cuatro:
 
 **Para el XLSX se usa `hucre`**: cero dependencias, ESM y TypeScript nativos, y un formato de
 escritura por filas que es exactamente la forma que ya tenía la cuadrícula compartida.
+
+De la [05](./05-shells-y-navegacion.md), que cerró sus dos decisiones pendientes:
+
+- **El override `?ui=` se queda en producción**, y se recuerda en la pestaña. No puede otorgar
+  permisos —el filtrado y el guard salen de `canAccess`, no del shell— y es la única forma de
+  reproducir en un escritorio lo que ve un operario que llama diciendo "no me deja marcar".
+- **Un jefe de departamento ya tenía acceso rápido a marcar**: está en el grupo *Personal* de su
+  aside desde el principio. La pregunta se respondía mirando el menú.
+- Y una de forma: **el destino por defecto depende del shell, no sólo del rol** (RN-05.4). La
+  misma persona quiere cosas distintas según desde dónde entre — un jefe en el teléfono va a
+  marcar, el mismo jefe en su escritorio va a mirar a su equipo.
+
+**Y esta spec trae la primera prueba del frontend del repositorio**: la regla de resolución de
+shell es pura, tiene cuatro casos y un override que los pisa, y comprobarla desde un componente
+exigiría abrir un navegador y redimensionar una ventana. `bun run test` corre ya los dos
+workspaces.
 
 De la [19](./19-panel-superadmin.md), que cerró tres de sus cuatro:
 
