@@ -1,4 +1,5 @@
 import { z } from "zod";
+import { keysetCursorSchema } from "./cursor.ts";
 
 /**
  * Esquemas de notificaciones (spec 14).
@@ -116,6 +117,54 @@ export const notificationSchema = z.object({
 export const listNotificationsQuerySchema = z.object({
 	unreadOnly: z.stringbool().default(false),
 	limit: z.coerce.number().int().min(1).max(100).default(30),
+	/**
+	 * §8 — La vista completa pagina. El cursor es el compartido con la bitácora
+	 * (`cursor.ts`): las dos listas crecen por el extremo que se lee y se ordenan
+	 * igual, así que el problema del `offset` es el mismo.
+	 */
+	cursor: keysetCursorSchema.optional(),
+});
+
+/**
+ * Una página de notificaciones.
+ *
+ * **La lista dejó de devolver un array** cuando la §8 pidió paginación. Podría
+ * haberse añadido un segundo endpoint paginado y dejar el primero como estaba,
+ * pero serían dos formas de leer lo mismo: la campana se queda con las primeras
+ * y la vista completa sigue pidiendo — la misma consulta, no otra.
+ *
+ * `nextCursor` nulo significa "no hay más", y se calcula pidiendo una fila más
+ * de las que se devuelven.
+ */
+export const notificationPageSchema = z.object({
+	notifications: z.array(notificationSchema),
+	nextCursor: z.string().nullable(),
+});
+
+/**
+ * RN-14.4 — Lo que viaja por el flujo de eventos (`GET /notifications/stream`).
+ *
+ * **Es un aviso, no la notificación.** El servidor manda "algo tuyo cambió" y el
+ * cliente vuelve a preguntar; no manda el contenido. Tres razones, y las tres
+ * pesan:
+ *
+ * - **El aislamiento de RN-14.1 no depende del canal.** Lo que el cliente
+ *   termina viendo sale siempre de `GET /notifications`, que filtra por la
+ *   sesión. Un flujo que empujara contenido sería un segundo camino por el que
+ *   pueden escaparse los datos de otro.
+ * - **No hay dos fuentes de verdad.** Con contenido empujado habría que
+ *   reconciliar lo que llegó por el flujo con lo que devuelve la consulta —el
+ *   orden, lo leído, lo deduplicado— y esa reconciliación es donde se pierden
+ *   los avisos.
+ * - **Un aviso perdido no se nota.** Si la conexión se cae entre dos eventos, el
+ *   sondeo de respaldo trae el estado completo de todas formas.
+ *
+ * `unread` viaja sólo para que la campana pueda pintar el número sin esperar a
+ * la consulta; el que manda sigue siendo el del endpoint.
+ */
+export const notificationEventSchema = z.object({
+	type: z.literal("notifications.changed"),
+	unread: z.number().int().nonnegative(),
 });
 
 export const unreadCountSchema = z.object({
@@ -124,3 +173,8 @@ export const unreadCountSchema = z.object({
 
 export type Notification = z.infer<typeof notificationSchema>;
 export type NotificationType = z.infer<typeof notificationTypeSchema>;
+export type NotificationPage = z.infer<typeof notificationPageSchema>;
+export type NotificationEvent = z.infer<typeof notificationEventSchema>;
+export type ListNotificationsQuery = z.infer<
+	typeof listNotificationsQuerySchema
+>;

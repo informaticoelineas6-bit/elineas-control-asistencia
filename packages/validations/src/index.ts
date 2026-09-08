@@ -4,6 +4,7 @@ export * from "./audit.ts";
 export * from "./auth.ts";
 export * from "./config.ts";
 export * from "./currency.ts";
+export * from "./cursor.ts";
 export * from "./dashboard.ts";
 export * from "./departments.ts";
 export * from "./geo.ts";

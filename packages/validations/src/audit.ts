@@ -1,4 +1,5 @@
 import { z } from "zod";
+import { keysetCursorSchema } from "./cursor.ts";
 import { isoDateSchema } from "./time.ts";
 
 /**
@@ -211,36 +212,12 @@ export const auditLogEntrySchema = z.object({
 });
 
 /**
- * El cursor de paginación: **el instante y el id de la última entrada leída**,
- * en claro y separados por `|`.
- *
- * Va por *keyset* y no por `offset` porque la bitácora crece por el extremo que
- * se está leyendo: con `offset`, una entrada nueva durante la lectura desplaza
- * la página siguiente y repite una fila. Y va en claro porque no esconde nada —
- * los dos datos están en la fila que el cliente acaba de recibir— y un cursor
- * opaco sólo añade un `base64` que hay que depurar a mano cuando algo falla.
+ * El cursor de esta lista es **el compartido** (`cursor.ts`): la lista completa
+ * de notificaciones (spec 14 §8) tiene exactamente la misma forma —crece por el
+ * extremo que se lee y se ordena por `created_at desc, id desc`— y dos
+ * implementaciones del mismo *keyset* acabarían divergiendo en el caso raro, que
+ * aquí es el de dos filas con el mismo milisegundo.
  */
-export const auditCursorSchema = z
-	.string()
-	.regex(
-		/^\d{4}-\d{2}-\d{2}T[\d:.]+Z\|[0-9a-fA-F-]{36}$/,
-		"El cursor de la bitácora no es válido.",
-	);
-
-export const encodeAuditCursor = (entry: {
-	createdAt: string;
-	id: string;
-}): string => `${entry.createdAt}|${entry.id}`;
-
-export function decodeAuditCursor(
-	cursor: string,
-): { createdAt: string; id: string } | null {
-	const separator = cursor.lastIndexOf("|");
-	if (separator < 0) return null;
-	const createdAt = cursor.slice(0, separator);
-	const id = cursor.slice(separator + 1);
-	return createdAt && id ? { createdAt, id } : null;
-}
 
 export const listAuditQuerySchema = z.object({
 	actorId: z.uuid().optional(),
@@ -261,7 +238,7 @@ export const listAuditQuerySchema = z.object({
 	/** Rango por fecha civil, inclusivo en los dos extremos. */
 	from: isoDateSchema.optional(),
 	to: isoDateSchema.optional(),
-	cursor: auditCursorSchema.optional(),
+	cursor: keysetCursorSchema.optional(),
 	limit: z.coerce.number().int().min(1).max(100).default(50),
 });
 

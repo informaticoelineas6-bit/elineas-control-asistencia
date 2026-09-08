@@ -121,7 +121,24 @@ export const configValueSchemas = {
 	 */
 	payroll_daily_divisor: z.number().int().min(1).max(31),
 
-	// ── 3.7 Reportería ──────────────────────────────────────────────────────
+	// ── 3.7 Notificaciones ──────────────────────────────────────────────────
+	/**
+	 * Días que se conservan las notificaciones **leídas** (spec 14 RN-14.6).
+	 * `0` = no se purga nada, que es el default y deja la regla inerte.
+	 *
+	 * Sólo alcanza a las leídas, y eso no es una cautela sino la regla: una
+	 * notificación sin leer es trabajo pendiente de alguien, y borrarla porque
+	 * lleva mucho tiempo ahí es exactamente lo contrario de para qué existe. Una
+	 * leída ya cumplió su función y sólo ocupa sitio.
+	 *
+	 * La cifra la pone el negocio —cuánto historial de avisos quiere conservar— y
+	 * el default reproduce lo que el sistema hacía hasta ahora: nada. ⚠️ No
+	 * confundir con la retención de la **bitácora** (spec 18 RN-18.7, todavía
+	 * abierta): esa guarda quién hizo qué, y probablemente deba conservarse años.
+	 */
+	notification_retention_days: z.number().int().min(0).max(3650),
+
+	// ── 3.8 Reportería ──────────────────────────────────────────────────────
 	/** Si los `department_head` salen en el reporte global (spec 16 RN-16.2). */
 	include_heads_in_global_reports: z.boolean(),
 	report_slo_error_rate_pct: z.number().min(0).max(100),
@@ -129,7 +146,7 @@ export const configValueSchemas = {
 	/** Nulo = la exportación a Sheets está sin configurar (spec 16). */
 	google_sheets_report_spreadsheet_id: z.string().trim().min(1).nullable(),
 
-	// ── 3.8 Ámbito ──────────────────────────────────────────────────────────
+	// ── 3.9 Ámbito ──────────────────────────────────────────────────────────
 	/**
 	 * Departamento al que se fuerzan los perfiles con rol `global_manager`
 	 * (RN-03.6). Se guarda por **id**, no por nombre: el legacy lo resolvía por
@@ -163,6 +180,7 @@ export const CONFIG_DEFAULTS: AppConfigValues = {
 	vacation_days_per_worked_day: 0,
 	incident_report_window_days: 0,
 	payroll_daily_divisor: 30,
+	notification_retention_days: 0,
 	include_heads_in_global_reports: true,
 	report_slo_error_rate_pct: 1,
 	report_slo_availability_pct: 99,
