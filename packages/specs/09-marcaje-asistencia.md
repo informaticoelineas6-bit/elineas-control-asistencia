@@ -61,7 +61,8 @@ cambios no son retroactivos ([06](./06-configuracion-global.md) RN-06.4).
 |---|---|---|
 | `work_date` | date, nullable | A qué **jornada** pertenece la marca ([07](./07-horarios-y-calendario.md) RN-07.5): en un turno de noche la salida de la madrugada cuenta para el día anterior. Nulo sólo en un intento rechazado antes de poder resolverla |
 | `is_late` / `late_minutes` | boolean / int | La tardanza **con la tolerancia de entonces** (RN-09.7) |
-| `source` | text | `manual` · `auto_schedule` · `auto_geofence` · `import` (RN-09.14) |
+| `source` | text | `manual` · `auto_schedule` · `auto_geofence` · `import` (RN-09.14). **`import` ya se usa**: es la importación de histórico de la [19](./19-panel-superadmin.md) §2.4 |
+| `latitude` / `longitude` / `accuracy` | double, **nullable** | Nulas **sólo en un marcaje importado** ([19](./19-panel-superadmin.md) RN-19.5): de aquel hecho no se midió la ubicación, y un `0, 0` señalaría a un punto real. Un marcaje de esta spec siempre las trae — la validación de la [08](./08-sedes-y-geocerca.md) no puede juzgar una geocerca sin ellas |
 | `department_id` | uuid, nullable | La denormalización que la §2 pedía evaluar: **sí**, como foto del momento. La reportería filtra por departamento constantemente, y para un reporte histórico el valor correcto es el de entonces, no el de hoy |
 
 La columna que la §2 llamaba `timestamp` es **`marked_at`**: no conviene llamar a una
@@ -288,7 +289,10 @@ interfaz lo muestra tal cual; no reescribe mensajes.
 2. ~~¿Se guardan todos los intentos bloqueados?~~ **Todos**, con `blocked = true` y motivo. Es
    la prueba de "intenté marcar cuatro veces" y el respaldo de una incidencia; el antirrebote
    evita que el volumen se dispare.
-3. ~~¿Se añade `source`?~~ **Sí, ya** (RN-09.14), aunque hoy todo sea `manual`.
+3. ~~¿Se añade `source`?~~ **Sí, ya** (RN-09.14) — y la apuesta salió: la importación de
+   histórico de la [19](./19-panel-superadmin.md) escribe `import` sin migrar nada. El campo se
+   añadió con esta frase dentro, *"cuando exista la importación histórica nadie podrá
+   distinguirlos hacia atrás si no está el campo"*, y así fue.
 4. ~~¿Se ofrece el modo `geofence_exit`?~~ **Se mantiene con advertencia visible** y sin
    seguimiento en segundo plano (decidido en la [08](./08-sedes-y-geocerca.md)).
 5. ~~¿Marcaje sin conexión con cola local?~~ **No ahora.** Una cola obliga a aceptar la hora

@@ -185,9 +185,9 @@ Dentro del panel de superadmin ([19](./19-panel-superadmin.md)):
 - Acceso desde cada recurso a "ver su historial".
 
 > ✅ **Construida en `/logs`**, que ya existía como marcador de `superadmin`, y **no dentro del
-> panel de la [19](./19-panel-superadmin.md)**: esa spec no está construida y hacer depender esta
-> pantalla de ella habría dejado la bitácora sin leer un mes más. Cuando la 19 llegue, la absorbe
-> como pestaña o enlaza aquí; no hay nada que rehacer.
+> panel de la [19](./19-panel-superadmin.md)**: cuando esto se construyó, esa spec no existía, y
+> hacer depender la bitácora de ella la habría dejado sin leer un mes más. La 19 llegó a
+> continuación y **enlaza aquí** en vez de tener su propia copia.
 >
 > La diferencia campo a campo la calcula `auditDiff`, en `@elineas/validations` y con sus pruebas
 > puras: es una función con casos de borde —el alta sin estado anterior, la baja sin estado

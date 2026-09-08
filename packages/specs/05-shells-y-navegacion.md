@@ -193,6 +193,7 @@ pueda ver desde ahí.
 | `/payroll` | Nómina | ✅ ([17](./17-nomina.md)) |
 | `/settings` | Configuración | ✅ ([06](./06-configuracion-global.md)) |
 | `/logs` | Logs | ✅ ([18](./18-auditoria.md)) |
+| `/admin` | Superadmin | ✅ ([19](./19-panel-superadmin.md)) |
 | `/notifications` | — (se llega desde la campana) | ✅ ([14](./14-notificaciones.md) §8) |
 
 > **`/notifications` no está en el aside**, y es la única ruta del AdminShell que no está en

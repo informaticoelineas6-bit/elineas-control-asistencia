@@ -20,7 +20,8 @@
 | Validación | Ad hoc | Zod compartido (`packages/validations`) |
 | Contratos | Ninguno (cliente hablando directo a la base) | `packages/contracts` |
 | Móvil | Capacitor sobre la SPA | **No se migra**: se usa desde el navegador del teléfono, con las pantallas de marcaje hechas para eso ([05](./05-shells-y-navegacion.md) §3) |
-| Almacenamiento | Buckets de Supabase (`monthly-reports`, `app-releases`) | Por decidir |
+| Almacenamiento | Buckets de Supabase (`monthly-reports`, `app-releases`) | Volumen privado del contenedor para los reportes; `app-releases` sin destino (la app móvil salió del alcance) |
+| Histórico de asistencia | Tablas del legacy | **Se importa con la herramienta de la [19](./19-panel-superadmin.md) §2.4**: hoja de cálculo, informe previo y escritura idempotente marcada `source = import` |
 
 ## 2. Los cuatro cambios de fondo
 

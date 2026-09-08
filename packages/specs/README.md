@@ -233,11 +233,36 @@ lectores*.
 
 | # | Spec | Estado legacy | Depende de |
 |---|---|---|---|
-| 19 | [Panel de superadmin](./19-panel-superadmin.md) | ✅ | 02, 06, 18 — **desbloqueada**: la 18 ya está |
+| 19 | [Panel de superadmin](./19-panel-superadmin.md) | ✅ | 02, 06, 18 — ✅ **en el monorepo**, sin consola SQL (decidido) |
 
-> La [19](./19-panel-superadmin.md) esperaba por la bitácora y ya no espera; lo que sí cambió es
-> su §2.2, porque **la bitácora no vive dentro de este panel**: se construyó antes y está en
-> `/logs`. Cuando el panel llegue, la absorbe o enlaza a ella.
+La [19](./19-panel-superadmin.md) cierra el bloque, y su decisión más importante fue **no
+construir algo**: la consola SQL. Su §6.1 la llamaba "la decisión de seguridad más importante del
+proyecto" y ofrecía tres alternativas; se toma la que ella misma recomendaba. La lista negra del
+legacy —bloquear `BEGIN`/`COMMIT`— no impide un `DELETE FROM profiles` y esquivarla es cuestión de
+un comentario o un salto de línea; la variante de sólo lectura exige un rol de base de datos con
+credencial propia, y sin ella el endpoint correría como el dueño del esquema. Y la necesidad
+legítima ya estaba cubierta por `db:studio`, con credenciales que no se alcanzan desde un
+navegador. **Hay una prueba de que el endpoint no existe**, para que volver a añadirlo sea un acto
+deliberado.
+
+Lo demás sí se construyó, y dos cosas merecen quedar dichas. **El mantenimiento quedó definido**
+—bloquea escrituras, no cierra sesiones, deja leer y entrar, exime al `superadmin`— y su bloqueo
+vive en `requireAuth`, el único sitio donde ya se conoce el rol; el aviso llega a todo el mundo
+por el subconjunto público de la configuración, sin un canal nuevo. Y **la importación de
+histórico funcionó gracias a tres piezas que ya estaban puestas**: la columna `source` que la 09
+añadió "para cuando exista la importación", el índice único por minuto que creó para el
+antirrebote —y que aquí es la idempotencia de RN-19.3 sin escribir una línea— y el recálculo de
+hechos diarios de la 16.
+
+Su §2.1 se quedó sin poder responder lo primero que pedía —"usuarios por rol"—, y es la **quinta
+aparición** de la decisión 3 de la [11](./11-vacaciones.md) §9: los roles viven en el Identity
+Server y este sistema no los conoce hasta que la persona entra. Es la primera vez que no hay
+salida parcial: simplemente no hay número, y la pantalla lo dice.
+
+⚠️ **Y un hallazgo que decide si la importación sirve con archivos reales**: Excel no guarda las
+fechas como texto, guarda **números de serie**, y las horas como fracción de día. Sin convertirlos,
+un histórico exportado daría cero filas válidas y el informe diría "fecha no válida" sobre algo que
+en la pantalla se ve perfectamente.
 
 > **La 20 —app móvil Android y distribución— se retiró, y por eso el índice salta de la 19 a la
 > 21.** La aplicación se usa desde el navegador, también en el teléfono, y las pantallas de
@@ -275,7 +300,8 @@ Por dependencia técnica, no por valor de negocio:
 14 · 18                        transversales, ✅ las dos — y las dos crecieron spec a spec
                                con lo que las demás necesitaban, así que lo último que se
                                construyó de cada una fue su superficie de lectura
-19                             plataforma (la 20 se retiró: ver el índice)
+19                             plataforma: ✅, y su decisión más importante fue **no**
+                               construir la consola SQL
 ```
 
 **21** y **22** no son una fase final: se leen **antes de empezar**. La 22 fija cómo se
@@ -384,6 +410,18 @@ De la [16](./16-reporteria-mensual.md), que cerró tres de sus cuatro:
 
 **Para el XLSX se usa `hucre`**: cero dependencias, ESM y TypeScript nativos, y un formato de
 escritura por filas que es exactamente la forma que ya tenía la cuadrícula compartida.
+
+De la [19](./19-panel-superadmin.md), que cerró tres de sus cuatro:
+
+- **No hay consola SQL, y no la va a haber por descuido.** Una lista negra sobre texto SQL no se
+  puede arreglar, y la necesidad legítima vive fuera de la aplicación (`db:studio`).
+- **El mantenimiento bloquea escrituras, no sesiones.** Cerrar sesiones sólo obligaría a toda la
+  plantilla a volver a autenticarse contra un sistema que no está en mantenimiento.
+- **La importación se queda en el panel**, no en la spec 21: el corte del legacy no es su único
+  caso, y RN-19.10 tolera exactamente esto — algo que se hace casi nunca.
+- Y una de modelo: **un marcaje importado no tiene coordenadas.** Las tres columnas admiten nulo
+  para poder decir "no se midió" en vez de un `0, 0` que señalaría a un punto real. Es lo que
+  hace verificable RN-19.5.
 
 De la [14](./14-notificaciones.md), que cerró tres de sus cinco (más una por alcance):
 

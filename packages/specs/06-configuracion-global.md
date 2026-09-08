@@ -129,7 +129,23 @@ todas dependen de estos valores.
 > `vacation_days_per_worked_day` para esto y es un error: son parámetros distintos (§3.4,
 > [17](./17-nomina.md) §7).
 
-### 3.7 Notificaciones
+### 3.7 Mantenimiento
+
+| Clave | Tipo | Default | Consumido por |
+|---|---|---|---|
+| `maintenance_mode` | boolean | `false` | [19](./19-panel-superadmin.md) §2.5 |
+| `maintenance_message` | string \| null | `null` | idem |
+
+> Cierran la decisión 2 de la [19](./19-panel-superadmin.md): con `maintenance_mode` en `true` el
+> servidor rechaza **toda escritura** de cualquier rol por debajo de `superadmin` con un 503 que
+> lleva el mensaje; las lecturas y el login siguen.
+>
+> **Las dos están en el subconjunto público de la §5**, y es lo que hace que el aviso llegue a
+> todo el mundo sin un endpoint nuevo: el criterio de aceptación de esa spec dice "se refleja en
+> la UI de todos los usuarios conectados", y "todos" incluye a quien sólo tiene
+> `GET /config/public`.
+
+### 3.8 Notificaciones
 
 | Clave | Tipo | Default | Consumido por |
 |---|---|---|---|
@@ -144,7 +160,7 @@ todas dependen de estos valores.
 > ([18](./18-auditoria.md) RN-18.7, todavía abierta): ésa guarda quién hizo qué y probablemente
 > deba conservarse años.
 
-### 3.8 Reportería
+### 3.9 Reportería
 
 | Clave | Tipo | Default | Consumido por |
 |---|---|---|---|
@@ -153,7 +169,7 @@ todas dependen de estos valores.
 | `report_slo_availability_pct` | number 0–100 | `99` | idem |
 | `google_sheets_report_spreadsheet_id` | string \| null | `null` | [16](./16-reporteria-mensual.md) §Sheets |
 
-### 3.9 Ámbito
+### 3.10 Ámbito
 
 | Clave | Tipo | Default | Consumido por |
 |---|---|---|---|
