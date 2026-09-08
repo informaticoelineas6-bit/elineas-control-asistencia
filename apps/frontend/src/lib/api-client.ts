@@ -1,5 +1,15 @@
 const backendUrl = import.meta.env.VITE_BACKEND_URL;
 
+/**
+ * La URL absoluta de un path del backend.
+ *
+ * `apiFetch` no sirve para todo: el flujo de notificaciones en vivo (spec 14
+ * RN-14.4) lo abre `EventSource`, que construye la petición por su cuenta y sólo
+ * acepta una URL. Esto evita que el módulo de notificaciones tenga que leer
+ * `VITE_BACKEND_URL` por segunda vez.
+ */
+export const apiUrl = (path: string): string => `${backendUrl}${path}`;
+
 export class ApiError extends Error {
 	constructor(
 		readonly status: number,

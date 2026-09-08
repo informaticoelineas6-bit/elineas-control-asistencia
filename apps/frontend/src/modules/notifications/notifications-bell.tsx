@@ -1,7 +1,7 @@
 import type { Notification } from "@elineas/validations";
 import { useQuery } from "@tanstack/react-query";
-import { useNavigate } from "@tanstack/react-router";
-import { Bell, CheckCheck } from "lucide-react";
+import { Link, useNavigate } from "@tanstack/react-router";
+import { Bell, CheckCheck, List } from "lucide-react";
 import { useState } from "react";
 import { Button } from "#/components/ui/button.tsx";
 import {
@@ -20,11 +20,13 @@ import {
 } from "#/modules/notifications/api.ts";
 
 /**
- * Campana de notificaciones (spec 14), en su mínimo viable.
+ * Campana de notificaciones (spec 14 §8).
  *
- * El contador se sondea cada 30 s (RN-14.4); la lista sólo se pide cuando se abre
- * el panel, para no traer treinta registros que nadie va a mirar. Falta el aviso
- * emergente al llegar una nueva (RN-14.5), que llega con la entrega en vivo.
+ * El contador llega por dos caminos (RN-14.4): el flujo en vivo lo actualiza en
+ * el momento y el sondeo cada 30 s es el respaldo. La lista sólo se pide cuando
+ * se abre el panel, para no traer treinta registros que nadie va a mirar, y el
+ * panel enseña **las primeras**: la vista completa de la §8 vive en
+ * `/notifications`, que es donde se pagina y se filtra.
  */
 export function NotificationsBell() {
 	const [open, setOpen] = useState(false);
@@ -58,8 +60,9 @@ export function NotificationsBell() {
 }
 
 function NotificationsPanel({ unreadCount }: { unreadCount: number }) {
-	const notifications = useQuery(notificationsQueryOptions());
+	const page = useQuery(notificationsQueryOptions());
 	const markAllRead = useMarkAllNotificationsRead();
+	const rows = page.data?.notifications;
 
 	return (
 		<SheetContent className="w-full gap-0 sm:max-w-md">
@@ -72,8 +75,8 @@ function NotificationsPanel({ unreadCount }: { unreadCount: number }) {
 				</SheetDescription>
 			</SheetHeader>
 
-			{unreadCount > 0 && (
-				<div className="px-4 pb-2">
+			<div className="flex flex-wrap gap-2 px-4 pb-2">
+				{unreadCount > 0 && (
 					<Button
 						variant="outline"
 						size="sm"
@@ -83,18 +86,24 @@ function NotificationsPanel({ unreadCount }: { unreadCount: number }) {
 						<CheckCheck />
 						Marcar todas como leídas
 					</Button>
-				</div>
-			)}
+				)}
+				<Button variant="ghost" size="sm" asChild>
+					<Link to="/notifications">
+						<List />
+						Ver todas
+					</Link>
+				</Button>
+			</div>
 
 			<div className="flex-1 overflow-y-auto border-t">
-				{notifications.isPending && (
+				{page.isPending && (
 					<div className="space-y-3 p-4">
 						<Skeleton className="h-16 w-full" />
 						<Skeleton className="h-16 w-full" />
 					</div>
 				)}
 
-				{notifications.data?.length === 0 && (
+				{rows?.length === 0 && (
 					<p className="p-6 text-center text-sm text-muted-foreground">
 						Aquí aparecerán los avisos que te afecten: pausas de tu
 						departamento, decisiones sobre tus solicitudes y recordatorios.
@@ -102,7 +111,7 @@ function NotificationsPanel({ unreadCount }: { unreadCount: number }) {
 				)}
 
 				<ul className="divide-y">
-					{notifications.data?.map((notification) => (
+					{rows?.map((notification) => (
 						<NotificationItem
 							key={notification.id}
 							notification={notification}
@@ -136,7 +145,11 @@ function relativeTime(iso: string): string {
 	});
 }
 
-function NotificationItem({ notification }: { notification: Notification }) {
+export function NotificationItem({
+	notification,
+}: {
+	notification: Notification;
+}) {
 	const navigate = useNavigate();
 	const markRead = useMarkNotificationRead();
 	const isUnread = notification.readAt === null;

@@ -10,6 +10,7 @@ import {
 } from "#/components/ui/sidebar.tsx";
 import { Skeleton } from "#/components/ui/skeleton.tsx";
 import { sessionQueryOptions } from "#/modules/auth/session.ts";
+import { NotificationsLive } from "#/modules/notifications/live.tsx";
 import { NotificationsBell } from "#/modules/notifications/notifications-bell.tsx";
 
 export const Route = createFileRoute("/_authed")({ component: AuthedLayout });
@@ -58,6 +59,13 @@ function AuthedLayout() {
 				<div className="flex-1 p-6">
 					<Outlet />
 				</div>
+
+				{/*
+				 * La entrega en vivo (RN-14.4) y el aviso emergente (RN-14.5) se montan
+				 * **una sola vez y aquí**: una conexión SSE por pestaña, no una por
+				 * pantalla. Va dentro del layout autenticado porque necesita sesión.
+				 */}
+				<NotificationsLive />
 			</SidebarInset>
 		</SidebarProvider>
 	);
