@@ -168,6 +168,29 @@ cuadrar con seis** —falta la de días no laborables, o un mes con un feriado s
 una prueba encontró que `periodRange` construía en UTC y formateaba en local, así que **en La
 Habana marzo terminaba el 30**. Es exactamente lo que RN-15.4 y la spec 07 §2 llevan advirtiendo.
 
+La [14](./14-notificaciones.md) llegó al final con **el catálogo de su §4 ya completo**: los
+doce eventos los habían ido añadiendo las specs que los originan, así que no quedaba ninguna
+regla de generación por escribir. Lo que faltaba era la **entrega**, y con ella su decisión
+abierta más antigua: **es SSE**. El tráfico va en un solo sentido, `EventSource` reconecta solo y
+Hono lo trae de serie; un WebSocket habría añadido un canal de vuelta que nunca se usaría. El
+sondeo cada 30 s **se queda**, porque RN-14.4 lo exige y porque es lo único que hay cuando la
+pestaña está en segundo plano.
+
+Dos decisiones que la spec no pedía y que son las que hacen que funcione. **Por el flujo viaja un
+aviso, no la notificación**: el servidor dice "algo tuyo cambió" y el cliente vuelve a preguntar,
+así que el aislamiento de RN-14.1 se comprueba en un solo sitio y no hay dos fuentes de verdad que
+reconciliar. Y **el aviso sale cuando la transacción ya escribió, no cuando se llama a
+`notify()`** — si saliera ahí, el cliente preguntaría antes del `COMMIT`, no vería nada y se
+quedaría con el contador viejo treinta segundos justo después de que pasara algo. Los
+destinatarios se acumulan en un `AsyncLocalStorage` y se publican al terminar el handler: la
+misma maquinaria que el id de correlación de la 18, y por el mismo motivo — que ningún servicio de
+dominio tenga que acordarse de nada.
+
+Cerró tres de sus cinco decisiones y la retirada de la spec móvil le cerró otra por alcance (no
+hay push). Las dos que quedan son de producto, y **la que importa es la del correo**: sin app
+nativa y con la pestaña cerrada, un jefe sigue sin enterarse de una solicitud hasta que abre la
+aplicación. Es el hueco que el push habría tapado.
+
 Y la [18](./18-auditoria.md) se construyó **al revés que las demás**: su escritura llevaba
 funcionando desde la [01](./01-organizacion-departamentos.md) —cada spec añadía sus acciones al
 catálogo— y lo que faltaba era **poder leerla**. Hasta ahora la bitácora se consultaba en base,
@@ -200,7 +223,7 @@ lectores*.
 
 | # | Spec | Estado legacy | Depende de |
 |---|---|---|---|
-| 14 | [Notificaciones](./14-notificaciones.md) | ⚠️ | 02, 05 |
+| 14 | [Notificaciones](./14-notificaciones.md) | ⚠️ | 02, 05 — ✅ **en el monorepo**, menos preferencias por usuario y correo |
 | 15 | [Agregación diaria, dashboard y paneles](./15-paneles-y-dashboard.md) | ✅ | 07, 09, 10, 11, 13 — ✅ **en el monorepo** |
 | 16 | [Reportería mensual](./16-reporteria-mensual.md) | ⚠️ | 15 — ✅ **en el monorepo**, menos el transporte a Google Sheets |
 | 17 | [Nómina: ajustes y descuentos](./17-nomina.md) | ⚠️ | 02, 13 — ✅ **en el monorepo**, menos el cierre de periodo (su decisión 2) |
@@ -249,9 +272,9 @@ Por dependencia técnica, no por valor de negocio:
 17                             nómina (depende de 13) — ✅, y su descuento automático llegó
                                antes, adelantado por la 13 porque RN-13.4 no se podía construir
                                sin él; sólo queda su cierre de periodo
-14                             notificaciones: parcial, le falta la entrega en vivo
-18                             bitácora: ✅ — la escritura creció spec a spec y la lectura
-                               llegó al final, que es el orden natural
+14 · 18                        transversales, ✅ las dos — y las dos crecieron spec a spec
+                               con lo que las demás necesitaban, así que lo último que se
+                               construyó de cada una fue su superficie de lectura
 19                             plataforma (la 20 se retiró: ver el índice)
 ```
 
@@ -362,6 +385,19 @@ De la [16](./16-reporteria-mensual.md), que cerró tres de sus cuatro:
 **Para el XLSX se usa `hucre`**: cero dependencias, ESM y TypeScript nativos, y un formato de
 escritura por filas que es exactamente la forma que ya tenía la cuadrícula compartida.
 
+De la [14](./14-notificaciones.md), que cerró tres de sus cinco (más una por alcance):
+
+- **La entrega en vivo es SSE, y el sondeo se queda.** No es "o uno u otro": la regla exige el
+  respaldo, y una campana quieta no se distingue de una bandeja vacía.
+- **Por el flujo viaja un aviso, no la notificación.** El contenido sale siempre del endpoint que
+  filtra por la sesión, así que el aislamiento se comprueba en un sitio y no en dos.
+- **Las notificaciones leídas se purgan por configuración**, `notification_retention_days` con
+  default 0; las **no leídas no se purgan nunca**, por viejas que sean: son trabajo pendiente de
+  alguien.
+- Y una de forma, hermana de la anterior: **`/notifications` no está en el aside y no lleva
+  `RequireRole`.** No hay rol que comprobar porque no hay ámbito — cada persona ve las suyas y
+  sólo las suyas—, así que no existe una versión "de más" de esa pantalla.
+
 De la [18](./18-auditoria.md), que cerró tres de sus cuatro decisiones:
 
 - **Un `global_manager` no lee la bitácora, ni "la parte de su ámbito".** No es prudencia: una
@@ -375,6 +411,14 @@ De la [18](./18-auditoria.md), que cerró tres de sus cuatro decisiones:
 - Y una de forma que vale para cualquier catálogo cerrado de este repositorio: **el verbo se
   escribe contra el enum y se lee como texto.** El enum es el contrato de escritura; al leer, una
   fila de una versión anterior sigue ahí (RN-18.6) y validarla obligaría a esconderla.
+
+⚠️ **Y un fallo que conviene conocer antes de escribir el siguiente cursor**, porque no da
+ningún síntoma: `timestamptz` guarda **microsegundos** y el `Date` de JavaScript sólo llega a
+**milisegundos**, así que un cursor construido desde el valor de JS deja fuera todas las filas de
+ese mismo microsegundo — las hermanas escritas en la misma transacción. Una fila **desaparece al
+pasar de página** y nada falla. Lo encontró la prueba de paginación de la 18 y afectaba igual a la
+lista de notificaciones, que comparte el cursor; ahora el instante lo formatea PostgreSQL y no
+pasa por JavaScript (`lib/keyset.ts`).
 
 **El identificador de correlación de RN-18.8 no se pasa como argumento**, y es la decisión
 técnica de esta spec: vive en un `AsyncLocalStorage` que el middleware abre por petición, así que

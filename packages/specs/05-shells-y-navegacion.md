@@ -190,9 +190,17 @@ pueda ver desde ahí.
 | `/reports` | Reportes | ✅ ([16](./16-reporteria-mensual.md)) |
 | `/users` | Usuarios | ✅ ([02](./02-usuarios-y-perfiles.md)) |
 | `/departments` | Departamentos | ✅ ([01](./01-organizacion-departamentos.md)) |
-| `/payroll` | Nómina | marcador ([17](./17-nomina.md)) — su **backend está a medias a propósito**: el descuento automático existe, la superficie de administración no |
+| `/payroll` | Nómina | ✅ ([17](./17-nomina.md)) |
 | `/settings` | Configuración | ✅ ([06](./06-configuracion-global.md)) |
-| `/logs` | Logs | marcador ([18](./18-auditoria.md)) |
+| `/logs` | Logs | ✅ ([18](./18-auditoria.md)) |
+| `/notifications` | — (se llega desde la campana) | ✅ ([14](./14-notificaciones.md) §8) |
+
+> **`/notifications` no está en el aside**, y es la única ruta del AdminShell que no está en
+> ninguna sección del menú. Se llega desde la campana, que ya está siempre visible en la
+> cabecera; ponerla además en el menú pondría al mismo nivel una pantalla y un icono que la
+> abre. Es también la única sin `RequireRole`: no hay rol que comprobar porque no hay ámbito
+> —cada persona ve las suyas y sólo las suyas (spec 14 RN-14.1)—, así que no existe una versión
+> "de más" de esa pantalla que haya que esconder.
 
 Ruta prevista que aún no existe: `/my-week` (§3). La otra que faltaba, la de incidencias, ya
 está — pero como **`/incidents`** y no como el `/issues` que decía la §3: eran dos palabras

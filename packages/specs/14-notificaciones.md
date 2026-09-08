@@ -2,16 +2,22 @@
 
 > **Origen:** `old-docs.md` §3.6, puntos 46, 47, 48, 49; hallazgo H-4; punto 76.
 > **Estado en el sistema legacy:** ✅ implementado, ⚠️ con lógica de negocio en el cliente.
-> **Estado en el monorepo nuevo:** ⚠️ parcial (mínimo viable, adelantado por la
-> [01](./01-organizacion-departamentos.md)). Existen la tabla `notifications` con su índice de
-> deduplicación, la generación **en el servidor y en la transacción del hecho** (RN-14.1/14.2),
-> los cuatro endpoints de lectura y marcado de §7, y la campana con panel en la cabecera.
-> **Entrega por sondeo cada 30 s** (RN-14.4); no hay entrega en vivo ni aviso emergente
-> (RN-14.5). Del catálogo de §4 se emiten: pausa y reanudación de departamento, aparición de un
-> perfil incompleto (RN-02.12), cierre del alta al asignar departamento, **cambio de horario del
-> departamento** (RN-07.10, con `dedupe_key` por departamento) y **sede de trabajo desactivada**
-> (spec 08 RN-08.6). Código:
-> `apps/backend/src/services/notifications.ts`, `apps/frontend/src/modules/notifications/`.
+> **Estado en el monorepo nuevo:** ✅ implementada. Nació como mínimo viable con la
+> [01](./01-organizacion-departamentos.md) y creció spec a spec —**el catálogo de §4 está
+> completo**: los doce eventos se emiten—; lo que faltaba era la entrega en vivo, el aviso
+> emergente, la vista completa y la retención.
+>
+> **Entrega por dos caminos, y los dos hacen falta** (RN-14.4): flujo **SSE** en
+> `GET /notifications/stream` y sondeo cada 30 s como respaldo. Aviso emergente al llegar una
+> nueva (RN-14.5). Purga de leídas por `notification_retention_days`, default 0 = sin purga
+> (RN-14.6). Código: `apps/backend/src/services/notifications.ts`,
+> `apps/backend/src/lib/live.ts` (el registro de suscriptores y el ámbito por petición),
+> `apps/frontend/src/modules/notifications/` y la vista completa en `/notifications`. Pruebas:
+> 14 de integración en `apps/backend/src/routes/notifications.test.ts`, incluida la del flujo.
+>
+> **Lo que no hay:** preferencias por usuario (decisión 4) ni correo electrónico (decisión 5).
+> Y las notificaciones del sistema de la §6 quedaron **fuera del alcance** con la retirada de la
+> spec de la app móvil.
 > **Depende de:** [02-usuarios-y-perfiles](./02-usuarios-y-perfiles.md), [05-shells-y-navegacion](./05-shells-y-navegacion.md).
 
 ---
@@ -52,9 +58,43 @@ de horario, un recordatorio pendiente.
   como respaldo**. En el monorepo hay que elegir mecanismo (SSE, WebSocket o sondeo).
   **Mantener siempre un respaldo por sondeo**: la entrega en vivo falla en móviles con la
   pantalla apagada y en redes de planta.
+  > **Decisión 1 cerrada: SSE.** El tráfico va en un solo sentido —servidor → cliente—, así que
+  > un WebSocket añadiría un canal de vuelta que nunca se usaría y una negociación de protocolo
+  > que los intermediarios tratan aparte. `EventSource` reconecta solo, Hono trae `streamSSE` y
+  > no hace falta ninguna dependencia nueva. **El sondeo se queda**, como la regla exige.
+  >
+  > Y dos decisiones de forma que la regla no pedía y que son las que hacen que esto funcione:
+  >
+  > - **Por el flujo viaja un aviso, no la notificación.** El servidor manda "algo tuyo cambió,
+  >   con este contador" y el cliente vuelve a preguntar. Así el aislamiento de RN-14.1 se
+  >   comprueba en **un** sitio —`GET /notifications`, que filtra por la sesión— en vez de en
+  >   dos; no hay dos fuentes de verdad que reconciliar (el orden, lo leído, lo deduplicado); y
+  >   un aviso perdido no se nota, porque el sondeo trae el estado completo de todas formas.
+  > - **El aviso se publica cuando la transacción ya escribió, no cuando se llama a `notify()`.**
+  >   Una notificación nace dentro de la transacción del hecho que la origina (RN-14.2): si el
+  >   aviso saliera ahí, el cliente preguntaría **antes** del `COMMIT`, no vería nada nuevo y se
+  >   quedaría con el contador viejo hasta el siguiente sondeo — treinta segundos de "no ha
+  >   pasado nada" justo después de que pasara. Los destinatarios se acumulan en un
+  >   `AsyncLocalStorage` y se publican al terminar el handler; si falla, no se publica nada. Es
+  >   la misma maquinaria que el id de correlación de la [18](./18-auditoria.md) RN-18.8, y por
+  >   el mismo motivo de fondo: que ningún servicio de dominio tenga que acordarse de nada.
 - **RN-14.5 — Aviso emergente** al llegar una nueva mientras la app está abierta.
+  > ✅ **Hecho**, y sólo **cuando el contador sube**. El mismo flujo despierta al marcar una como
+  > leída desde otra pestaña, y un aviso emergente por algo que uno mismo acaba de leer es
+  > exactamente el ruido que hace que la gente deje de mirar la campana. Se va solo a los ocho
+  > segundos y se puede descartar; tocar *Ver* lleva al recurso **sin** marcarla leída: abrir una
+  > cosa y dar el aviso por leído son dos actos distintos.
 - **RN-14.6 — Retención.** **Decisión abierta:** ¿se purgan las leídas tras N días? Sin purga
   la tabla crece sin límite.
+  > **Decisión 3 cerrada: `notification_retention_days` en configuración, default `0` = sin
+  > purga** ([06](./06-configuracion-global.md) §3.7). El criterio de siempre: la cifra es del
+  > negocio y el default deja la regla inerte.
+  >
+  > **Sólo alcanza a las leídas.** Una sin leer es trabajo pendiente de alguien, y borrarla
+  > porque lleva mucho tiempo ahí es lo contrario de para qué existe; una leída ya cumplió su
+  > función. La purga corre una vez al día en el proceso de fondo y **no deja entrada en la
+  > bitácora**: es mantenimiento sobre datos derivados, no la decisión de nadie, y una fila
+  > diaria de "purgué 12" sólo taparía las de la [18](./18-auditoria.md) §3.
 
 ## 4. Catálogo de eventos
 
@@ -87,13 +127,16 @@ hace upsert.
 > usuario abría la app, y la regla no aparecía al buscarla en la capa de dominio.
 > **En el sistema nuevo esta y cualquier otra regla de generación vive en el servidor.**
 
-## 6. Notificaciones del sistema (móvil)
+## 6. ~~Notificaciones del sistema (móvil)~~ — fuera del alcance
 
-- Permisos solicitados en el primer render autenticado en runtime nativo, no al arrancar.
-- Si el usuario los niega, la aplicación sigue funcionando con las notificaciones in-app.
-- **Decisión abierta:** ¿se implementan notificaciones push reales (FCM) o sólo locales?
-  El legacy sólo pide permisos; no hay evidencia de un servicio push. Sin push, un jefe no se
-  entera de una solicitud hasta que abre la app.
+> **Decisión 2 cerrada por alcance: no hay push.** La spec de la app móvil y su distribución se
+> retiró, así que no hay runtime nativo al que pedirle permisos ni al que empujarle nada. La
+> aplicación se usa desde el navegador, también en el teléfono.
+>
+> La consecuencia que esta sección advertía **sigue siendo verdad y conviene no perderla de
+> vista**: sin push, un jefe no se entera de una solicitud hasta que abre la aplicación. Lo que
+> el flujo SSE de RN-14.4 mejora es el caso de la pestaña abierta, que es el del turno de
+> oficina; para el resto, la vía sería el correo electrónico (decisión 5, abierta).
 
 ## 7. API propuesta
 
@@ -105,6 +148,23 @@ hace upsert.
 | `POST` | `/notifications/read-all` |
 | `GET` | `/notifications/stream` (SSE, si se elige ese mecanismo) |
 
+> ✅ **Los cinco existen**, con dos precisiones:
+>
+> - **`list` devuelve una página, no un array.** La §8 pide paginación, así que la respuesta es
+>   `{ notifications, nextCursor }` y el cursor es **el mismo de la bitácora**
+>   ([18](./18-auditoria.md) §6): las dos listas crecen por el extremo que se lee y se ordenan
+>   igual. Podría haberse añadido un segundo endpoint paginado dejando el primero intacto, pero
+>   serían dos formas de leer lo mismo — la campana se queda con la primera página y la vista
+>   completa sigue pidiendo.
+> - **`stream` no devuelve JSON**: es un `text/event-stream`. Late cada 25 s con un `ping` que
+>   **no consulta la base** —con doscientas conexiones abiertas eso serían ocho consultas por
+>   segundo para decir "sigo aquí"— y se da de baja del registro al cerrarse, o cada recarga de
+>   pestaña dejaría un suscriptor muerto en memoria.
+>
+> Y lo que **no** existe, que también es contrato: ningún método de escritura sobre
+> `/notifications` (RN-14.2). Hay una prueba que comprueba que `POST`, `PUT`, `PATCH` y `DELETE`
+> devuelven 404.
+
 ## 8. UI
 
 - **Campanilla** en la cabecera con contador de no leídas.
@@ -112,15 +172,34 @@ hace upsert.
 - Vista completa con filtro leídas/no leídas y paginación.
 - Cada notificación es accionable: toca → va al recurso.
 
+> ✅ **Los cuatro.** La vista completa está en `/notifications`, **no en el aside** y **sin
+> `RequireRole`**: se llega desde la campana —que ya está siempre visible— y no hay rol que
+> comprobar porque no hay ámbito. Cada persona ve las suyas y sólo las suyas, y eso lo garantiza
+> el servidor filtrando por la sesión; ni un `superadmin` puede pedir las de otro, así que no
+> existe una versión "de más" de la pantalla que haya que esconder
+> ([05](./05-shells-y-navegacion.md) §7).
+>
+> Una diferencia deliberada entre las dos superficies: **el panel de la campana sondea y la vista
+> completa no.** Quien está revisando su historial no necesita que la lista se le mueva debajo
+> del dedo, y el aviso en vivo ya le dice si llega algo nuevo.
+
 ## 9. Criterios de aceptación
 
-- [ ] Un usuario no puede leer ni marcar notificaciones de otro (test de autorización).
-- [ ] Ningún endpoint permite a un cliente crear una notificación.
+- [x] Un usuario no puede leer ni marcar notificaciones de otro (test de autorización). *(Era el
+      criterio más importante de esta spec y el único sin prueba. Comprobado en los tres
+      caminos: el listado sólo trae las propias —**ni un `superadmin` ve las de otro**—, marcar
+      una ajena devuelve el mismo 404 que una inexistente y la deja sin leer, y "marcar todas" no
+      alcanza a las de nadie más.)*
+- [x] Ningún endpoint permite a un cliente crear una notificación. *(Los cuatro métodos de
+      escritura devuelven 404: no existen.)*
 - [x] El recordatorio de descansos genera una sola notificación viva por semana y persona.
       (`dedupeKey` por persona; se retira en cuanto configura sus días. Hoy se evalúa **al
       iniciar sesión**, así que quien no entre en una semana no lo recibe: pasa a proceso
       programado cuando exista uno — [10](./10-descansos.md) §10.)
-- [ ] Con la entrega en vivo caída, el sondeo de respaldo sigue actualizando el contador.
+- [x] Con la entrega en vivo caída, el sondeo de respaldo sigue actualizando el contador.
+      *(Comprobado en su forma más literal: **sin ninguna conexión abierta**, el contador refleja
+      la notificación nueva. Es lo que hace que una entrega caída no se note más de treinta
+      segundos.)*
 - [x] Aprobar unas vacaciones notifica al solicitante en la misma transacción.
 - [x] Un ajuste de nómina notifica al empleado afectado. *(Los de ausencia con
       `absence.reviewed` —es un solo hecho para quien lo recibe— y los manuales de la
@@ -130,8 +209,19 @@ hace upsert.
 
 ## 10. Decisiones abiertas
 
-1. Mecanismo de entrega en vivo: SSE vs. WebSocket vs. sólo sondeo.
-2. ¿Push real (FCM) en Android? (§6)
-3. Política de retención/purga. (RN-14.6)
-4. ¿Preferencias por usuario (silenciar tipos)? Hoy no existen.
-5. ¿Correo electrónico para eventos críticos, o sólo in-app?
+1. ~~Mecanismo de entrega en vivo.~~ **Cerrada: SSE**, con el sondeo de respaldo intacto. Ver
+   RN-14.4.
+2. ~~¿Push real (FCM) en Android?~~ **Cerrada por alcance: no.** No hay runtime nativo desde que
+   se retiró la spec de la app móvil. Ver §6.
+3. ~~Política de retención/purga.~~ **Cerrada: `notification_retention_days`, default 0**, y sólo
+   sobre las leídas. Ver RN-14.6.
+4. **⚠️ Sigue abierta — ¿preferencias por usuario (silenciar tipos)?** Hoy no existen, y el
+   catálogo de §4 está completo: doce tipos, todos emitiéndose. Es la pregunta que aparece cuando
+   alguien empieza a recibir avisos que no le sirven, y hasta entonces cualquier respuesta sería
+   inventada. El modelo no se opone: sería una tabla de preferencias que `notify` consultara antes
+   de escribir.
+5. **⚠️ Sigue abierta — ¿correo electrónico para eventos críticos?** Y es la que más importa de
+   las dos, porque **cubre el caso que el push habría cubierto**: sin app nativa y con la pestaña
+   cerrada, un jefe no se entera de una solicitud hasta que abre la aplicación. Es una decisión
+   con infraestructura detrás —hace falta un servidor de correo saliente, y la empresa opera en
+   Cuba ([06](./06-configuracion-global.md) §8)— así que no la decide el código.

@@ -129,7 +129,22 @@ todas dependen de estos valores.
 > `vacation_days_per_worked_day` para esto y es un error: son parámetros distintos (§3.4,
 > [17](./17-nomina.md) §7).
 
-### 3.7 Reportería
+### 3.7 Notificaciones
+
+| Clave | Tipo | Default | Consumido por |
+|---|---|---|---|
+| `notification_retention_days` | int 0–3650 (días) | `0` (sin purga) | [14](./14-notificaciones.md) RN-14.6 |
+
+> Cierra la decisión 3 de la [14](./14-notificaciones.md) con el criterio de siempre: la cifra la
+> pone el negocio y el default deja la regla inerte —hoy no se purga nada, igual que antes—.
+>
+> **Sólo alcanza a las notificaciones leídas**, y eso es la regla y no una cautela: una sin leer
+> es trabajo pendiente de alguien, y borrarla porque lleva mucho tiempo ahí es lo contrario de
+> para qué existe. ⚠️ No confundir con la retención de la **bitácora**
+> ([18](./18-auditoria.md) RN-18.7, todavía abierta): ésa guarda quién hizo qué y probablemente
+> deba conservarse años.
+
+### 3.8 Reportería
 
 | Clave | Tipo | Default | Consumido por |
 |---|---|---|---|
@@ -138,7 +153,7 @@ todas dependen de estos valores.
 | `report_slo_availability_pct` | number 0–100 | `99` | idem |
 | `google_sheets_report_spreadsheet_id` | string \| null | `null` | [16](./16-reporteria-mensual.md) §Sheets |
 
-### 3.8 Ámbito
+### 3.9 Ámbito
 
 | Clave | Tipo | Default | Consumido por |
 |---|---|---|---|

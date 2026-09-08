@@ -163,6 +163,16 @@ de §3 que verifique que la entrada se escribe. Instrumentar por convención, no
 >   comparando cadenas: decide si una acción de las 21:00 en La Habana cae en el día que se está
 >   mirando o en el siguiente. Es el error que una prueba encontró en `periodRange` de la
 >   [16](./16-reporteria-mensual.md).
+>
+> ⚠️ **Y un fallo que la prueba del cursor encontró, del mismo linaje que aquél y peor de
+> diagnosticar:** `timestamptz` guarda **microsegundos** y el `Date` de JavaScript sólo llega a
+> **milisegundos**, así que un cursor construido con `row.createdAt.toISOString()` lleva un
+> instante *anterior* al real y la página siguiente deja fuera **todas las filas de ese mismo
+> microsegundo** — que son precisamente las hermanas escritas en la misma transacción, o sea las
+> cascadas de RN-18.8. El síntoma es una entrada que **desaparece al pasar de página**: no falla
+> nada, no hay error, sólo falta una fila. El instante lo formatea ahora PostgreSQL con su
+> precisión completa (`lib/keyset.ts`) y no pasa por JavaScript. Afectaba igual a la lista de
+> notificaciones, que comparte el cursor.
 
 ## 7. UI
 
