@@ -1,7 +1,34 @@
 # 21 · Migración desde el sistema legacy
 
 > **Origen:** transversal a todo `old-docs.md`; hallazgos H-2 y H-3; puntos 22 (`geofence_config`), 70 (deriva de esquema), 80 (limpieza).
-> **Estado:** ❌ no iniciada. Esta spec no describe una funcionalidad del producto, sino **el trabajo de traer los datos y las decisiones del sistema anterior**.
+> **Estado:** ⚠️ **la herramienta está construida y probada; el corte no se ha hecho.** Esta spec
+> no describe una funcionalidad del producto, sino **el trabajo de traer los datos y las
+> decisiones del sistema anterior**, así que "terminada" no la decide el código: la decide un fin
+> de semana con el legacy delante.
+>
+> **Hay:** el migrador en `apps/backend/src/migration/` —`legacy-tables.ts` declara qué se trae y
+> qué no, `legacy.ts` lo ejecuta y `cli.ts` es la orden— con **los tres comandos que fija la
+> [00](./00-migracion-datos-e-identidad.md) RN-00.23**: `extract` (origen → esquema `legacy`),
+> `load` (simulación por defecto, escribe con `--commit`) y `verify`. El procedimiento tecleado
+> está en [DEPLOY.md](../../DEPLOY.md) §4.
+>
+> **Son dos etapas y no una**, y eso no era evidente hasta escribirlo: `extract` es lo único que
+> toca el legacy, así que la ventana contra el sistema que se apaga es de minutos —la spec 00 §B.3
+> la limita a cuatro horas, y con una sola etapa cada reintento se la come entera— y `load`, que
+> es donde viven las transformaciones y por tanto los errores, se repite sobre la copia sin volver
+> a leer producción. Con una ventaja que no era el objetivo: **`verify` funciona con el legacy ya
+> desconectado**, porque compara contra esa copia cruda, que queda como prueba documental de lo
+> que había.
+>
+> **Y está probado sin el legacy delante**, que era el problema: la prueba de
+> `migration/legacy.test.ts` **fabrica el origen** —crea un esquema con la forma que
+> `old-docs.md` §3 documenta, incluidas las dos tablas homónimas del otro sistema— lo siembra,
+> migra contra la base real y comprueba el resultado. Un migrador que nadie ha ejecutado es una
+> hoja de instrucciones, no una herramienta.
+>
+> **No hay, y no puede haberlo todavía:** el corte, la comparación del reporte de un mes cerrado
+> contra el legacy (§9, que exige los dos sistemas vivos) y el procedimiento de vuelta atrás
+> probado.
 > **Léase junto a [00-migracion-datos-e-identidad](./00-migracion-datos-e-identidad.md)**, que
 > fija las decisiones (contenedor de PostgreSQL, Identity Server) y la UX del corte. Aquí está
 > el detalle tabla por tabla.
@@ -49,9 +76,16 @@ Consecuencias para la migración:
 
 - **RN-21.1** — La extracción de datos debe limitar la lista de tablas explícitamente. No se
   copia el esquema entero.
+  > ✅ `LEGACY_COPIES` es esa lista, y el orden del array **es el orden de inserción**: respeta
+  > las claves ajenas sin que nadie tenga que acordarse.
 - **RN-21.2** — Cuidado con los **homónimos**: `audit_logs` (ajeno) vs `audit_log` (propio);
   `incidents` (ajeno) vs `attendance_incidents` (propio). Confundirlos importaría datos de
   otro sistema.
+  > ✅ Y con dos redes, porque este error no da ningún aviso —cuadra de tipos y entra—: las
+  > quince tablas ajenas están enumeradas (`FOREIGN_TABLES`) y el `plan` **falla** si alguna
+  > aparece en la lista blanca, que es lo que atrapa el descuido del día que alguien añada una
+  > tabla mirando el nombre de reojo. La prueba siembra filas en `audit_logs` e `incidents` del
+  > otro sistema y comprueba que no llegan.
 - **RN-21.3** — Confirmar si el otro sistema comparte además la tabla de usuarios de
   autenticación. Si es así, la migración de identidades tiene que discriminar por pertenencia
   a este producto.
@@ -73,8 +107,27 @@ Consecuencias para la migración:
 - **RN-21.4** — La migración de `payroll_adjustments` es **crítica y no negociable**: es
   historial económico. Debe migrarse íntegro, incluidos los revertidos, y verificarse contra
   los totales del sistema anterior.
+  > ✅ `verify` compara **el conteo y la suma**, que no son la misma comprobación: mil filas
+  > pueden estar todas y una traer el importe mal. La suma se compara como texto, sin pasar
+  > dinero por coma flotante (RN-17.12).
+  >
+  > ⚠️ Y dos columnas que el legacy no tenía: **moneda y periodo**. La moneda entra como `CUP` —la
+  > empresa paga en peso cubano salvo excepción, y las excepciones se corrigen a mano— y el
+  > periodo se imputa desde `created_at`, que es **la única respuesta disponible** para lo ya
+  > escrito: en el legacy los ajustes se filtraban por fecha de creación, que es justamente la
+  > fragilidad que la [17](./17-nomina.md) §7 describe. De ahí en adelante sale de la fecha de la
+  > ausencia.
 - **RN-21.5** — Los identificadores se conservan cuando sea posible, para que las referencias
   cruzadas (`source_id`, `reviewed_by`) sigan resolviendo.
+  > ⚠️ **Y aquí está la trampa más cara de esta migración.** El id de un perfil sale de
+  > `profiles.user_id`, **no** de `profiles.id`: en el legacy el perfil era 1:1 con `auth.users` y
+  > todo el historial cuelga del id de autenticación —`attendance_marks.user_id`, `reviewed_by`,
+  > `created_by`, `source_id`—. Conservar el id de la fila de perfil dejaría **todas** esas
+  > referencias apuntando al vacío, y sin un solo error: son uuids válidos. La prueba lo fija —
+  > siembra un perfil cuyo `id` y `user_id` son distintos y comprueba cuál sobrevive.
+  >
+  > La consecuencia buena: **la tabla de correspondencia de la §5.3 no hace falta.** Si los
+  > identificadores se conservan, no hay nada que correlacionar.
 - **RN-21.6** — Verificación obligatoria por dominio: conteo de filas origen vs destino, y
   para asistencia además una comparación del **reporte mensual de un mes cerrado** generado
   por ambos sistemas. Si no coinciden celda a celda, la migración no está terminada.
@@ -99,8 +152,18 @@ El trabajo concreto es de **emparejamiento**:
 - **RN-21.7 — Ningún perfil puede quedar sin emparejar.** Un perfil sin `identity_user_id` es
   un empleado que no podrá entrar el lunes. `verify` debe fallar si queda alguno
   ([00](./00-migracion-datos-e-identidad.md) RN-00.47).
+  > ✅ **Y no hay que comprobarlo en `verify`: es imposible de incumplir.**
+  > `profiles.identity_user_id` es `not null`, así que un perfil sin identidad **no se puede
+  > insertar**. El esquema convierte la regla en una precondición.
+  >
+  > ⚠️ Lo que eso cambia es el orden que esta §5 describía. El emparejamiento **no es un paso
+  > posterior**: las identidades tienen que existir en el Identity Server *antes* de copiar, y el
+  > migrador recibe el mapa `correo → identidad` como **entrada** (`IDENTITY_MAP`, CSV o JSON del
+  > alta masiva). Sin él no arranca.
 - **RN-21.8 — Correos duplicados o ausentes en el legacy** son el fallo probable de este paso:
   detectarlos y resolverlos **antes** del corte, no durante.
+  > ✅ Los dos casos los detecta el `plan`, que es el paso que se ejecuta **antes** y tantas veces
+  > como haga falta. Un correo sin emparejar o repetido bloquea `run`, con la lista delante.
 - **RN-21.9 — Los roles se recrean en el IS a partir de `user_roles`**, que sirve como lista de
   referencia y luego se descarta. Verificar uno a uno: quién era `department_head` y quién
   `global_manager` no puede quedar a criterio de nadie.
@@ -122,6 +185,22 @@ El trabajo concreto es de **emparejamiento**:
 
 Recomendación inicial: **corte limpio**, con el legacy en sólo lectura durante un periodo de
 gracia.
+
+> **Decisión 1 cerrada: corte limpio.** Ya no es sólo una recomendación, porque las otras dos se
+> quedaron sin sitio:
+>
+> - **Funcionalidad por funcionalidad** la descartaba esta misma sección —no hay base común sobre
+>   la que convivir— y sigue igual.
+> - **Sólo hacia adelante** era la alternativa razonable *cuando no había forma de traer el
+>   histórico*. Ahora la hay dos veces: este migrador y, para lo que venga fuera de la base, la
+>   importación de hoja de cálculo de la [19](./19-panel-superadmin.md) §2.4. Dejar los reportes
+>   partidos en dos sistemas —uno apagado— para ahorrar un fin de semana ya no se sostiene.
+>
+> Lo que el corte limpio exige y **está**: que el sistema nuevo esté completo (las veintiuna specs
+> anteriores lo están) y que la migración sea **repetible**, para poder ensayarla entera sobre una
+> copia antes del día señalado. Lo es por construcción: los identificadores se conservan y todas
+> las inserciones llevan `on conflict do nothing`, así que la segunda pasada no escribe nada —hay
+> una prueba de eso—.
 
 ## 7. Deuda que **no** se migra
 
@@ -147,23 +226,78 @@ Lista explícita de cosas del legacy que deben quedarse atrás:
 > repositorio.** Sin excepciones, ni siquiera para "un índice rápido en producción". Debe
 > haber una verificación en CI que compare el esquema desplegado con el del repositorio.
 
+> ✅ **La verificación existe**: es el paso 5 del CI de la [22](./22-calidad-y-deuda-tecnica.md)
+> §2, `scripts/check-schema-drift.ts`. Si `schema.ts` tiene cambios sin migración, la
+> comprobación falla — y se comprobó que detecta la deriva de verdad, no sólo que termina en
+> cero.
+>
+> ⚠️ **Cubre la mitad del punto 70, y conviene no confundirlas.** Lo que compara es el
+> **repositorio contra sus propias migraciones**: atrapa el cambio de esquema que nadie escribió
+> como migración. Lo que *no* puede ver desde CI es la base **desplegada**, que es donde ocurrió
+> la deriva del legacy —SQL ejecutado a mano en producción—. Eso lo garantiza el despliegue: la
+> base sólo se toca con `bun run db:migrate`, y sobre eso no hay comprobación automática que
+> sustituya a la disciplina.
+
 ## 9. Criterios de aceptación de la migración
 
-- [ ] Conteo de filas coincide por cada tabla migrada.
+Estos criterios son de **la migración**, no de la herramienta, así que la mayoría sólo se pueden
+marcar el día del corte. Lo que sí se puede decir hoy es cuáles tienen ya su comprobación escrita
+y esperando —contra un origen fabricado con la forma del legacy— y cuáles necesitan el legacy
+delante.
+
+- [x] Conteo de filas coincide por cada tabla migrada. *(`verify`, RN-21.6. Y con una prueba de
+      que **falla** cuando falta una fila: sin eso, `verify` podría ser una función que siempre
+      dice que sí.)*
 - [ ] El reporte mensual de un mes cerrado es idéntico celda a celda en ambos sistemas.
-- [ ] Los totales de ajustes de nómina coinciden, incluidos los revertidos.
-- [ ] Ningún dato de las tablas ajenas (§3) entró en el sistema nuevo.
+      ⚠️ **Es el criterio que ninguna herramienta puede cerrar**: exige generar el reporte del
+      legacy, y el legacy es el que se está apagando. Se hace a mano, con los dos sistemas vivos,
+      antes del corte. Lo que el migrador hace para que sea posible es rellenar `work_date` —el
+      legacy no la tenía, y sin ella la agregación diaria no encuentra los marcajes y el mes
+      migrado saldría vacío—.
+- [x] Los totales de ajustes de nómina coinciden, incluidos los revertidos. *(`verify` compara la
+      **suma**, no sólo el conteo, RN-21.4.)*
+- [x] Ningún dato de las tablas ajenas (§3) entró en el sistema nuevo. *(La prueba siembra filas
+      en `audit_logs` e `incidents` del otro sistema y comprueba que no llegan.)*
 - [ ] Todos los usuarios pueden iniciar sesión tras el corte, con rol asignado en el IS.
-- [ ] Ningún perfil quedó sin `identity_user_id` (RN-21.7).
-- [ ] Los roles recreados en el IS coinciden uno a uno con los del legacy (RN-21.9).
-- [ ] Las referencias cruzadas (revisores, orígenes de ajustes) resuelven correctamente.
-- [ ] Existe un procedimiento de vuelta atrás documentado y probado.
+      *(Depende del Identity Server, no de aquí. Lo que este lado garantiza es que ningún perfil
+      entra sin identidad.)*
+- [x] Ningún perfil quedó sin `identity_user_id` (RN-21.7). *(**Imposible de incumplir**: la
+      columna es `not null`. Y el `plan` lo detecta antes de escribir, con la lista de correos
+      delante.)*
+- [ ] Los roles recreados en el IS coinciden uno a uno con los del legacy (RN-21.9). *(`user_roles`
+      se lee como lista de referencia y no se migra; la comparación es en la consola del IS.)*
+- [x] Las referencias cruzadas (revisores, orígenes de ajustes) resuelven correctamente. *(Es
+      RN-21.5 y la prueba lo fija: un ajuste migrado sigue apuntando a la revisión que lo originó,
+      y un perfil cuyo `id` y `user_id` eran distintos aparece con el que hace resolver todo lo
+      demás.)*
+- [ ] Existe un procedimiento de vuelta atrás documentado y probado. ⚠️ **Pendiente**, y es lo que
+      más se echaría en falta a las tres de la mañana. Lo que sí está: la migración es repetible,
+      así que se puede ensayar entera sobre una copia — que es la mitad de un plan de vuelta
+      atrás; la otra mitad es un `pg_dump` antes de empezar y saber quién decide restaurarlo.
 
 ## 10. Decisiones abiertas
 
-1. Estrategia de corte. (§6)
-2. ¿Se reimplementa RLS en Postgres? (§2.1 y [00](./00-migracion-datos-e-identidad.md) RN-00.1)
-3. ¿Se migran los artefactos de reportes históricos o se regeneran?
-4. ¿Qué pasa con el otro sistema que comparte la base? ¿Sigue necesitando esas tablas?
-5. ¿Cómo se entregan las contraseñas temporales de la carga masiva a cada empleado?
-   ([00](./00-migracion-datos-e-identidad.md) §B.1)
+1. ~~Estrategia de corte.~~ **Cerrada: corte limpio**, con el legacy en sólo lectura un periodo de
+   gracia. Las otras dos se quedaron sin sitio; ver §6.
+2. **⚠️ Sigue abierta — ¿se reimplementa RLS en Postgres?** Es el riesgo número uno de la
+   migración ([00](./00-migracion-datos-e-identidad.md) RN-00.1) y **la única decisión abierta que
+   afecta a todo lo construido**. Lo que ha cambiado desde que se escribió: la mitigación que esa
+   regla pedía —"ninguna funcionalidad se da por migrada sin su test de autorización"— está
+   cumplida y **verificada fila por fila** en la [22](./22-calidad-y-deuda-tecnica.md) §3: cada
+   endpoint con ámbito tiene su 403 comprobado con usuarios reales de cada rol. Eso no sustituye a
+   una segunda barrera en la base, pero cambia la pregunta: ya no es "¿cómo compensamos la pérdida
+   de RLS?" sino "¿hace falta además de esto?".
+3. ~~¿Se migran los artefactos de reportes históricos o se regeneran?~~ **Cerrada: se regeneran.**
+   Un XLSX del legacy trae **la matriz del legacy**, con sus columnas y sus códigos, así que
+   conservarlo sería guardar un documento que ya no se puede reproducir. Los datos de los que sale
+   sí se migran, y con ellos el reporte se vuelve a generar cuando haga falta
+   ([16](./16-reporteria-mensual.md) RN-16.10).
+4. **⚠️ Sigue abierta — ¿qué pasa con el otro sistema que comparte la base?** No la decide este
+   proyecto: son sus tablas y su equipo. Lo que a esta migración le importa está resuelto — **de
+   aquí no se lee ni una de ellas**— y lo que queda es una conversación: cuando este sistema deje
+   de usar esa base, alguien tiene que decidir si el otro se queda solo en ella o también se muda.
+5. **⚠️ Sigue abierta — ¿cómo se entregan las contraseñas temporales?**
+   ([00](./00-migracion-datos-e-identidad.md) §B.1) Es de operación y de personas, no de código, y
+   depende de una de las dos preguntas al equipo del Identity Server que la spec cero dejó
+   pendientes: si el IS fuerza el cambio de contraseña al primer ingreso, la entrega puede ser en
+   papel; si no, hace falta otra vía.

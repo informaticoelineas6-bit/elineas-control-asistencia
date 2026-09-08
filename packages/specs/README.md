@@ -281,7 +281,7 @@ en la pantalla se ve perfectamente.
 
 | # | Spec | Estado | Contenido |
 |---|---|---|---|
-| 21 | [Migración desde el legacy](./21-migracion-desde-legacy.md) | ❌ | Qué datos se traen, qué se deja atrás, estrategia de corte |
+| 21 | [Migración desde el legacy](./21-migracion-desde-legacy.md) | ⚠️ **la herramienta, sí; el corte, no** | Qué datos se traen, qué se deja atrás, estrategia de corte |
 | 22 | [Calidad, pruebas y deuda técnica](./22-calidad-y-deuda-tecnica.md) | ✅ **en el monorepo** | CI, cobertura mínima obligatoria, principios de arquitectura |
 
 ## Orden de construcción sugerido
@@ -310,6 +310,41 @@ Por dependencia técnica, no por valor de negocio:
 
 **21** y **22** no son una fase final: se leen **antes de empezar**. La 22 fija cómo se
 construye todo lo demás y la 21 condiciona el modelo de datos.
+
+La **[21](./21-migracion-desde-legacy.md)** es la única cuyo "terminada" no lo decide el código:
+la decide un fin de semana con el legacy delante. Lo que se puede construir está construido — el
+migrador, con `plan` que no escribe nada, `run` y `verify` — y **probado sin el legacy**, que era
+el problema: la prueba **fabrica el origen**, con la forma que `old-docs.md` §3 documenta y con las
+dos tablas homónimas del otro sistema sembradas, para poder demostrar que no entran.
+
+Y su forma no la eligió esta spec sino la **cero**: RN-00.23 fija tres comandos —`extract`,
+`load` con simulación por defecto, `verify`— y dos etapas. Al construirlo se vio por qué: `extract`
+es lo único que toca el legacy, así que el sistema viejo se desconecta en cuanto termina y la
+ventana de corte que la spec 00 §B.3 limita a cuatro horas no se la come un reintento. Con una
+ventaja que no era el objetivo: **`verify` funciona con el legacy ya apagado**, porque compara
+contra la copia cruda.
+
+Escribirlo dejó tres cosas que ninguna lectura de la spec habría dado:
+
+- **El id de un perfil sale de `profiles.user_id`, no de `profiles.id`.** En el legacy el perfil
+  era 1:1 con `auth.users` y todo el historial cuelga del id de autenticación. Conservar el otro
+  dejaría **todas** las referencias cruzadas apuntando al vacío, y sin un error: son uuids
+  válidos. Es la trampa más cara de esta migración, y la consecuencia buena es que la tabla de
+  correspondencia que la spec preveía no hace falta.
+- **RN-21.7 es imposible de incumplir, y por eso el orden de la spec estaba al revés.**
+  `identity_user_id` es `not null`: un perfil sin identidad no se puede ni insertar. Así que el
+  emparejamiento no es un paso posterior sino una **precondición**, y el migrador recibe el mapa
+  `correo → identidad` como entrada.
+- **Hay dos comprobaciones que no se le ocurren a nadie hasta que fallan**: los vocabularios
+  cerrados —un `incident_type` que en el legacy se llamara distinto entraría sin una queja y
+  reventaría *después* del corte, al leerlo— y las columnas `jsonb`, que el cliente de PostgreSQL
+  devuelve ya parseadas y reinserta como texto plano. La segunda la encontró la prueba.
+
+Y dos columnas que el legacy no tenía y hay que **calcular**: `work_date` de cada marcaje —sin
+ella la agregación diaria no encuentra nada y el mes migrado saldría vacío— y su
+`department_id`, que sólo se puede rellenar con el departamento de hoy: exactamente la
+aproximación que esa columna se añadió para evitar. Está dicho en la spec, porque quien cambió de
+departamento aparecerá en su histórico bajo el nuevo.
 
 La **[22](./22-calidad-y-deuda-tecnica.md)** se construyó al final aunque se leyera al principio,
 y tiene su ironía: **el flujo de CI que exige que nada se fusione roto llegó después de diez

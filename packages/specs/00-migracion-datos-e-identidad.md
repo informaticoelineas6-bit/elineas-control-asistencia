@@ -198,8 +198,21 @@ Acompañamiento:
   bun run migrate:legacy verify     # informe de conteos y comparación de reportes
   ```
 
+  > ✅ **Construida con esa forma exacta** (`apps/backend/src/migration/`, y el procedimiento en
+  > [DEPLOY.md](../../DEPLOY.md) §4). Tres comandos, ni uno más — es el criterio medible de §B.3 —
+  > y el del medio **simula por defecto**: escribir en la base del corte no puede ser el
+  > comportamiento de un comando sin argumentos.
+  >
+  > Lo que la prescripción de dos etapas gana, y que se ve al usarla: `extract` es lo único que
+  > toca el legacy, así que el sistema viejo se puede desconectar en cuanto termina, y `load` —que
+  > es donde están las transformaciones, o sea los errores— se repite sobre la copia cuantas veces
+  > haga falta. La [21](./21-migracion-desde-legacy.md) tiene el detalle tabla por tabla.
 - **RN-00.24** — `verify` es la única fuente de verdad sobre si la migración terminó. Su
   salida es legible por una persona, no un volcado de registros.
+  > ✅ Compara conteos por tabla y **la suma de los ajustes de nómina** (RN-21.4), que no es la
+  > misma comprobación: mil filas pueden estar todas y una traer el importe mal. Y hay una prueba
+  > de que **falla** cuando falta una fila — sin eso, `verify` podría ser una función que siempre
+  > dice que sí.
 - **RN-00.25** — El script se ejecuta primero contra una copia, en un entorno de prueba, y ese
   ensayo es obligatorio antes del corte real.
 
@@ -397,6 +410,8 @@ autenticarse aquí (RN-00.30) · el IS permite alta masiva (§B.1).
 - [ ] No queda ninguna referencia a Supabase en código, configuración ni variables de entorno.
 - [ ] El esquema completo está descrito por migraciones de Drizzle en el repositorio.
 - [ ] `migrate:legacy verify` pasa: conteos iguales y reporte mensual idéntico celda a celda.
+      *(La primera mitad la comprueba el comando y está probada contra un origen fabricado; la
+      segunda exige los dos sistemas vivos y se hace a mano antes del corte.)*
 - [ ] Ninguna tabla del otro sistema (H-2) entró en la base nueva.
 - [ ] Los totales de nómina coinciden con el sistema anterior.
 
