@@ -2,8 +2,10 @@ import { Hono } from "hono";
 import { cors } from "hono/cors";
 import { HTTPException } from "hono/http-exception";
 import { config as appConfig } from "#/lib/config";
+import { correlate } from "#/lib/correlation.ts";
 import { absences } from "#/routes/absences.ts";
 import { attendance } from "#/routes/attendance.ts";
+import { audit } from "#/routes/audit.ts";
 import { auth } from "#/routes/auth";
 import { config as configRoutes } from "#/routes/config.ts";
 import { dashboard } from "#/routes/dashboard.ts";
@@ -49,6 +51,12 @@ export function createApp() {
 		return c.json({ error: "Error interno del servidor." }, 500);
 	});
 
+	// RN-18.8 — Un ámbito de correlación por petición, para que una cadena de
+	// acciones comparta identificador en la bitácora sin que ningún servicio
+	// tenga que propagarlo a mano. Va antes que cualquier ruta: si se montara
+	// después, las de arriba escribirían sin él.
+	app.use("*", correlate);
+
 	app.route("/api/auth", auth);
 	app.route("/api/me", me);
 	app.route("/api/departments", departments);
@@ -69,6 +77,7 @@ export function createApp() {
 	app.route("/api/absences", absences);
 	app.route("/api/dashboard", dashboard);
 	app.route("/api/reports", reports);
+	app.route("/api/audit", audit);
 	app.route("/api/notifications", notifications);
 	app.route("/api/payroll", payroll);
 	app.route("/api/rest-groups", restGroupsRouter);
