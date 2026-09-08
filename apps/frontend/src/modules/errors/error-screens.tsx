@@ -6,6 +6,7 @@ import { Button } from "#/components/ui/button.tsx";
 import { defaultRouteFor } from "#/modules/auth/navigation.ts";
 import { sessionQueryOptions } from "#/modules/auth/session.ts";
 import { friendlyError } from "#/modules/errors/messages.ts";
+import { useShell } from "#/modules/shells/use-shell.ts";
 
 /**
  * Contención de errores (spec 05 §5), en sus tres capas.
@@ -41,10 +42,13 @@ function Shell({
 	);
 }
 
-/** Enlace de vuelta al destino por defecto del rol (spec 05 §5). */
+/** Enlace de vuelta al destino por defecto del rol y su shell (spec 05 §5). */
 function HomeLink() {
 	const session = useQuery(sessionQueryOptions());
-	const to = session.data ? defaultRouteFor(session.data.effectiveRole) : "/";
+	const shell = useShell(session.data?.effectiveRole);
+	const to = session.data
+		? defaultRouteFor(session.data.effectiveRole, shell)
+		: "/";
 
 	return (
 		<Button variant="outline" asChild>

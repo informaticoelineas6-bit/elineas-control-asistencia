@@ -1,4 +1,5 @@
 import { type AppRole, ROLES_THAT_DO_NOT_MARK } from "@elineas/validations";
+import type { LucideIcon } from "lucide-react";
 import {
 	BadgeDollarSign,
 	BedDouble,
@@ -213,7 +214,53 @@ export const NAV_SECTIONS = [
 	},
 ] as const;
 
-export type NavPath = (typeof NAV_SECTIONS)[number]["items"][number]["to"];
+/**
+ * Rutas que **no son ítems de menú** pero sí tienen regla de acceso.
+ *
+ * `/my-week` es el gemelo móvil de *Mi asistencia* (spec 05 §3): vive en la barra
+ * inferior del EmployeeShell y no en el aside, porque en escritorio la vista que
+ * sirve es `/attendance` —con su calendario y su tabla— y tener las dos en el
+ * menú sería ofrecer dos veces el mismo dato.
+ *
+ * Están **aquí y no fuera de la tabla** porque RN-05.7 exige que el filtrado del
+ * menú y el guard de página salgan del mismo sitio: una ruta sin entrada en
+ * `ROUTE_ACCESS` sería una ruta que el guard no sabe proteger.
+ */
+const EXTRA_ROUTES = {
+	/** Mismo acceso que `/attendance`: quien marca. El gestor global no marca. */
+	"/my-week": {
+		allowedRoles: EMPLOYEE_AND_UP,
+		excludedRoles: MARKS_EXCLUDED,
+	},
+} as const satisfies Record<
+	string,
+	{ allowedRoles: readonly AppRole[]; excludedRoles: readonly AppRole[] }
+>;
+
+export type NavPath =
+	| (typeof NAV_SECTIONS)[number]["items"][number]["to"]
+	| keyof typeof EXTRA_ROUTES;
+
+/**
+ * La forma de un ítem del menú, y la lista plana de todos.
+ *
+ * `NAV_SECTIONS` es una tupla `as const` para que `NavPath` salga de ella, y esa
+ * misma precisión hace que recorrerla desde fuera sea incómodo —el tipo de
+ * `flatMap` sobre una tupla de tuplas no colapsa—. Esto es la vista plana con la
+ * forma declarada, para quien sólo necesita "todos los ítems".
+ */
+export type NavItem = {
+	to: NavPath;
+	label: string;
+	icon: LucideIcon;
+	roles: readonly AppRole[];
+	excludedRoles?: readonly AppRole[];
+	badge?: NavBadge;
+};
+
+export const NAV_ITEMS: readonly NavItem[] = NAV_SECTIONS.flatMap(
+	(section) => section.items as readonly NavItem[],
+);
 
 /**
  * Contadores que un ítem del menú puede mostrar como badge (RN-05.8).
@@ -247,7 +294,7 @@ export type RouteAccess = {
 	excludedRoles: readonly AppRole[];
 };
 
-export const ROUTE_ACCESS = Object.fromEntries(
+const MENU_ROUTE_ACCESS = Object.fromEntries(
 	NAV_SECTIONS.flatMap((section) =>
 		section.items.map((item) => [
 			item.to,
@@ -260,6 +307,11 @@ export const ROUTE_ACCESS = Object.fromEntries(
 		]),
 	),
 ) as Record<NavPath, RouteAccess>;
+
+export const ROUTE_ACCESS: Record<NavPath, RouteAccess> = {
+	...MENU_ROUTE_ACCESS,
+	...EXTRA_ROUTES,
+};
 
 export function canAccess(
 	role: AppRole | null | undefined,
@@ -277,16 +329,69 @@ export function rolesWithAccess(path: NavPath): readonly AppRole[] {
 }
 
 /**
- * Destino por defecto de cada rol: adonde va tras iniciar sesión y adonde
- * apunta el "volver al inicio" de las pantallas de error y del 404.
+ * Los cuatro destinos de la barra inferior del EmployeeShell (spec 05 §3).
  *
- * Hoy es el panel para todos. Cuando exista la pantalla de marcaje
- * ([09](../../../../../packages/specs/09-marcaje-asistencia.md)), RN-05.4 la
- * convierte en el destino de quien marca, y los gestores globales —que no
- * marcan— se quedan en el panel.
+ * Se filtran igual que los del aside, con `canAccess`: el shell no decide
+ * permisos (RN-05.3), sólo deja de ofrecer lo que el guard rechazaría.
+ *
+ * *Notificaciones* no está aquí y no es un olvido: es la campana de la cabecera,
+ * que en este shell también está siempre visible. RN-05.5 pide que los badges de
+ * la barra se actualicen sin recargar, y el que le toca a la barra es el de
+ * incidencias — el de notificaciones lo lleva la campana.
  */
-export function defaultRouteFor(_role: AppRole): NavPath {
-	return "/dashboard";
+export const EMPLOYEE_NAV = [
+	{ to: "/clock-in", label: "Marcar", icon: Timer },
+	{ to: "/my-week", label: "Mi semana", icon: CalendarCheck },
+	{
+		to: "/incidents",
+		label: "Incidencias",
+		icon: FileWarning,
+		badge: "incidents-own",
+	},
+	{ to: "/profile", label: "Perfil", icon: UserRound },
+] as const satisfies readonly {
+	to: NavPath;
+	label: string;
+	icon: LucideIcon;
+	badge?: NavBadge;
+}[];
+
+/**
+ * Los destinos de la barra inferior de respaldo del AdminShell en móvil
+ * (RN-05.9).
+ *
+ * Es una lista corta y **explícita**, no "los primeros de cada grupo": lo que un
+ * gestor abre desde el teléfono no es lo primero del menú, es el estado del día y
+ * lo que espera por él. El aside sigue estando —convertido en panel deslizante—
+ * para todo lo demás.
+ */
+export const ADMIN_QUICK_NAV = [
+	"/dashboard",
+	"/daily",
+	"/team",
+	"/users",
+] as const satisfies readonly NavPath[];
+
+/**
+ * Destino por defecto: adonde va tras iniciar sesión y adonde apunta el "volver
+ * al inicio" de las pantallas de error y del 404.
+ *
+ * **RN-05.4 — en el EmployeeShell es *Marcar***, que es la razón de ser de ese
+ * shell: quien lo usa tiene el teléfono en la mano y la nave delante. En el
+ * AdminShell es *Inicio*, que es el primer ítem de su menú y lo que un jefe o un
+ * gestor abren para ver cómo va el día.
+ *
+ * Depende del shell y no sólo del rol porque **la misma persona quiere cosas
+ * distintas según desde dónde entre**: un jefe de departamento en el teléfono va
+ * a marcar; el mismo jefe en su escritorio va a mirar a su equipo.
+ */
+export function defaultRouteFor(
+	role: AppRole,
+	shell: "employee" | "admin" = "admin",
+): NavPath {
+	return shell === "employee" && canAccess(role, "/clock-in")
+		? "/clock-in"
+		: "/dashboard";
 }
 
 export const ROLE_LABELS: Record<AppRole, string> = {

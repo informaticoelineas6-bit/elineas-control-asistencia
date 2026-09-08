@@ -9,6 +9,7 @@ import {
 	type NavPath,
 } from "#/modules/auth/navigation.ts";
 import { sessionQueryOptions } from "#/modules/auth/session.ts";
+import { useShell } from "#/modules/shells/use-shell.ts";
 
 /**
  * Guard de página (spec 04 §6): equivalente al `ProtectedRoute` del legacy.
@@ -42,18 +43,21 @@ export function RequireRole({
 	const session = useQuery(sessionQueryOptions());
 	const role = session.data?.effectiveRole;
 	const allowed = canAccess(role, path);
+	// RN-05.4 — El destino por defecto depende del shell: en el móvil de un
+	// operario es *Marcar*, en un escritorio es *Inicio*.
+	const shell = useShell(role);
 
 	useEffect(() => {
 		if (!role || allowed) return;
 
-		const fallback = defaultRouteFor(role);
+		const fallback = defaultRouteFor(role, shell);
 		// Un rol sin acceso ni siquiera a su propio destino por defecto sería un
 		// error de configuración del menú; mandarlo allí igualmente lo dejaría
 		// rebotando entre dos rutas.
 		if (fallback === path) return;
 
 		void navigate({ to: fallback, replace: true });
-	}, [role, allowed, path, navigate]);
+	}, [role, allowed, path, navigate, shell]);
 
 	// "Cargando" no es "sin permiso": pintar el rechazo mientras llega la sesión
 	// haría parpadear la pantalla en cada recarga (spec 04 §5).

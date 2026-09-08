@@ -4,8 +4,10 @@ import { useState } from "react";
 import { Button } from "#/components/ui/button.tsx";
 import { Input } from "#/components/ui/input.tsx";
 import { Label } from "#/components/ui/label.tsx";
+import { defaultRouteFor } from "#/modules/auth/navigation.ts";
 import { useLogin } from "#/modules/auth/session.ts";
 import { InlineError } from "#/modules/errors/inline-error.tsx";
+import { useShell } from "#/modules/shells/use-shell.ts";
 
 export const Route = createFileRoute("/login")({ component: LoginPage });
 
@@ -19,6 +21,11 @@ export const Route = createFileRoute("/login")({ component: LoginPage });
 function LoginPage() {
 	const navigate = useNavigate();
 	const login = useLogin();
+	// RN-05.4 — Adónde se entra depende del shell: quien entra desde el teléfono
+	// va a *Marcar*, que es lo que ha venido a hacer. El rol todavía no se conoce
+	// —la sesión llega con la respuesta—, así que se resuelve con el de la
+	// respuesta y el viewport de ahora.
+	const shell = useShell(null);
 	const [email, setEmail] = useState("");
 	const [password, setPassword] = useState("");
 
@@ -31,7 +38,9 @@ function LoginPage() {
 					// Perfil sin departamento: entra, pero a la pantalla de cuenta
 					// pendiente, no al panel (RN-00.46 / RN-02.3).
 					void navigate({
-						to: session.profile.isComplete ? "/dashboard" : "/pending-account",
+						to: session.profile.isComplete
+							? defaultRouteFor(session.effectiveRole, shell)
+							: "/pending-account",
 					});
 				},
 			},
