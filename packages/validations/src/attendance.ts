@@ -119,9 +119,14 @@ export const attendanceMarkSchema = z.object({
 	 * Nulo sólo en un intento rechazado antes de poder resolverlo (sin horario).
 	 */
 	workDate: isoDateSchema.nullable(),
-	latitude: latitudeSchema,
-	longitude: longitudeSchema,
-	accuracy: z.number(),
+	/**
+	 * Nulas **sólo en un marcaje importado** (spec 19 RN-19.5): de ese hecho no se
+	 * midió la ubicación. No es un dato que falte por descuido — es la diferencia
+	 * entre "no se midió" y un `0, 0` que además señalaría a un punto real.
+	 */
+	latitude: latitudeSchema.nullable(),
+	longitude: longitudeSchema.nullable(),
+	accuracy: z.number().nullable(),
 	/** Recalculados en el servidor (RN-08.2). Nulos si no había sede que juzgar. */
 	distanceToCenter: z.number().nullable(),
 	insideGeofence: z.boolean().nullable(),

@@ -121,7 +121,28 @@ export const configValueSchemas = {
 	 */
 	payroll_daily_divisor: z.number().int().min(1).max(31),
 
-	// ── 3.7 Notificaciones ──────────────────────────────────────────────────
+	// ── 3.7 Mantenimiento ───────────────────────────────────────────────────
+	/**
+	 * Modo de mantenimiento (spec 19 §2.5, decisión 2 cerrada).
+	 *
+	 * Con esto en `true`, **el servidor rechaza toda escritura** de cualquier rol
+	 * por debajo de `superadmin` con un 503 que lleva el mensaje de abajo; las
+	 * lecturas siguen funcionando y el login también. Ver `middleware/auth.ts`.
+	 *
+	 * Vive en configuración y no en una tabla propia porque es exactamente lo que
+	 * esta spec 06 modela —un parámetro global que cambia el comportamiento sin
+	 * despliegue— y porque así `GET /config/public` lo reparte solo: cualquier
+	 * cliente conectado puede pintar el aviso sin un endpoint nuevo.
+	 */
+	maintenance_mode: z.boolean(),
+	/**
+	 * El aviso que ve todo el mundo mientras dure. Es **obligatorio al activar**
+	 * (lo exige la entrada de la API, no el tipo): un mantenimiento sin motivo
+	 * deja a la plantilla mirando una pantalla que no explica nada.
+	 */
+	maintenance_message: z.string().trim().min(1).max(300).nullable(),
+
+	// ── 3.8 Notificaciones ──────────────────────────────────────────────────
 	/**
 	 * Días que se conservan las notificaciones **leídas** (spec 14 RN-14.6).
 	 * `0` = no se purga nada, que es el default y deja la regla inerte.
@@ -138,7 +159,7 @@ export const configValueSchemas = {
 	 */
 	notification_retention_days: z.number().int().min(0).max(3650),
 
-	// ── 3.8 Reportería ──────────────────────────────────────────────────────
+	// ── 3.9 Reportería ──────────────────────────────────────────────────────
 	/** Si los `department_head` salen en el reporte global (spec 16 RN-16.2). */
 	include_heads_in_global_reports: z.boolean(),
 	report_slo_error_rate_pct: z.number().min(0).max(100),
@@ -146,7 +167,7 @@ export const configValueSchemas = {
 	/** Nulo = la exportación a Sheets está sin configurar (spec 16). */
 	google_sheets_report_spreadsheet_id: z.string().trim().min(1).nullable(),
 
-	// ── 3.9 Ámbito ──────────────────────────────────────────────────────────
+	// ── 3.10 Ámbito ──────────────────────────────────────────────────────────
 	/**
 	 * Departamento al que se fuerzan los perfiles con rol `global_manager`
 	 * (RN-03.6). Se guarda por **id**, no por nombre: el legacy lo resolvía por
@@ -180,6 +201,8 @@ export const CONFIG_DEFAULTS: AppConfigValues = {
 	vacation_days_per_worked_day: 0,
 	incident_report_window_days: 0,
 	payroll_daily_divisor: 30,
+	maintenance_mode: false,
+	maintenance_message: null,
 	notification_retention_days: 0,
 	include_heads_in_global_reports: true,
 	report_slo_error_rate_pct: 1,
@@ -213,6 +236,14 @@ export const PUBLIC_CONFIG_KEYS = [
 	 * esta lista, y no revela nada: es un plazo, igual que la tolerancia.
 	 */
 	"incident_report_window_days",
+	/**
+	 * Spec 19 §2.5 — El criterio de aceptación dice que el modo mantenimiento
+	 * **se refleja en la UI de todos los usuarios conectados**, y "todos" incluye
+	 * al empleado que sólo tiene `GET /config/public`. Sin estas dos claves aquí
+	 * haría falta un endpoint nuevo para repartir un aviso que ya viaja.
+	 */
+	"maintenance_mode",
+	"maintenance_message",
 ] as const satisfies readonly ConfigKey[];
 
 export const publicConfigSchema = configSchema.pick(

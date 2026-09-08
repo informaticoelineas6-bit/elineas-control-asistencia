@@ -75,6 +75,17 @@ export const auditActionSchema = z.enum([
 	"report_run.failed",
 	/** Recálculo manual de hechos diarios (RN-16.9). */
 	"attendance_facts.refreshed",
+	/**
+	 * Panel de superadmin (spec 19 RN-19.8: **toda** acción del panel se audita).
+	 *
+	 * `maintenance.*` lleva el motivo en su `metadata`, y es de donde sale el
+	 * "quién y cuándo lo activó" que pide la §2.5: no se guarda por duplicado en
+	 * configuración. `attendance.imported` lleva el nombre del archivo, el rango y
+	 * el número de filas (RN-19.6).
+	 */
+	"maintenance.enabled",
+	"maintenance.disabled",
+	"attendance.imported",
 ]);
 
 export type AuditAction = z.infer<typeof auditActionSchema>;
@@ -138,6 +149,10 @@ export const AUDIT_ACTION_LABELS: Record<AuditAction, string> = {
 	"report_run.completed": "Reporte terminado",
 	"report_run.failed": "Reporte fallido",
 	"attendance_facts.refreshed": "Hechos diarios recalculados",
+	// Panel de superadmin (spec 19)
+	"maintenance.enabled": "Mantenimiento activado",
+	"maintenance.disabled": "Mantenimiento desactivado",
+	"attendance.imported": "Histórico importado",
 };
 
 /**
@@ -172,6 +187,8 @@ export const AUDIT_DOMAIN_LABELS: Record<string, string> = {
 	payroll_adjustment: "Nómina",
 	report_run: "Reportes",
 	attendance_facts: "Hechos diarios",
+	maintenance: "Mantenimiento",
+	attendance: "Asistencia",
 };
 
 export const AUDIT_ACTIONS = auditActionSchema.options;
